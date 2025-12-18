@@ -1,0 +1,45 @@
+{
+    // Define a varying pleural pressure from a respiratory period
+    // on top of a default spherical heart forward simulation
+    // The required parameter in parent configuration are:
+    // pleural.pressure.min
+    // pleural.pressure.max
+    // respiration.period
+    "type": "spherical_heart_forward_simulation",
+    "parameters":{
+        // pleural.pressure.offset = (pleural.pressure.min + pleural.pressure.max) / 2
+        "pleural.pressure.offset": {
+            "type": "product",
+            "factors": [
+                {
+                    "type": "sum",
+                    "add" : ["pleural.pressure.min", "pleural.pressure.max"]
+                },
+                0.5
+            ]
+        },
+        // pleural.pressure.amplitude = pleural.pressure.max - pleural.pressure.offset
+        "pleural.pressure.amplitude": {
+            "type": "sum",
+            "add": [
+                "pleural.pressure.max"
+            ],
+            "subtract": [
+                "pleural.pressure.offset"
+            ]
+        },
+        // pleural.pressure.frequency = 1 / "respiration.period"
+        "pleural.pressure.frequency": {
+            "type": "product", 
+            "factors": [1.0], 
+            "inverses": ["respiration.period"]
+        },
+        "pleural.pressure": {
+            "type": "sinus_offset",
+            "offset_value": "pleural.pressure.offset",
+            "amplitude": "pleural.pressure.amplitude",
+            "frequency": "pleural.pressure.frequency",
+            "phase_shift": 0.0
+        }
+    }
+}

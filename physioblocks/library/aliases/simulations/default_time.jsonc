@@ -1,0 +1,8 @@
+{
+    "type": "time",
+    // The parameter "start" and "end" must be provided
+    // "start":,
+    // "duration": ,
+    "step_size": 0.001,
+    "min_step": 6.25e-5
+}

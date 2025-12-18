@@ -1,0 +1,157 @@
+{
+    "type": "default_forward_simulation",
+    "net": {
+        "type": "spherical_heart_net",
+        "boundaries_conditions": {
+            "atrial": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "atrial.blood_pressure"
+                }
+            ],
+            "venous": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "venous.blood_pressure"
+                }
+            ]
+        }
+    },
+    "variables_initialization": {
+        "valve_atrium.flux": 0.0,
+        "valve_arterial.flux": 0.0,
+        "cavity.dynamics.disp": 0.0,
+        "cavity.velocity_law.vel": 0.0,
+        "cavity.velocity_law.accel": 0.0,
+        "cavity.rheology.fib_deform": 0.0,
+        "cavity.rheology.active_law.active_stiffness": 1.0,
+        "cavity.rheology.active_law.active_energy_sqrt": 0.0,
+        "cavity.rheology.active_law.active_tension_discr": 0.0
+    },
+    "variables_magnitudes": {
+        "valve_atrium.flux": 1.0e-3,
+        "valve_arterial.flux": 1.0e-3,
+        "cavity.dynamics.disp": 0.01,
+        "cavity.rheology.fib_deform": 0.1,
+        "cavity.velocity_law.vel": 0.1,
+        "cavity.velocity_law.accel": 1.0,
+        "aorta_proximal.blood_pressure": 1.0e4,
+        "aorta_distal.blood_pressure": 1.0e4,
+        "cavity.blood_pressure": 1.0e4,
+        "cavity.rheology.active_law.active_stiffness": 1.0e5,
+        "cavity.rheology.active_law.active_energy_sqrt": 10.0,
+        "cavity.rheology.active_law.active_tension_discr": 1.0e4
+    },
+    "parameters": {
+
+        // "Inverse the heart_rate to get the heartbeat period in seconds"
+        // Required parameters initialization is:
+        // heart_rate in beat / min
+        "heartbeat_duration": {"type": "product", "factors": [60.0] , "inverses": ["heart_rate"]},
+        "pleural.pressure": 0.0,
+        "diastole_scaling_factor": 0.80,
+
+        // dynamics section
+        "cavity.dynamics.vol_mass": 1000.0,
+        "cavity.dynamics.damping_coef": 70.0,
+        
+        // velocity law section
+        "cavity.velocity_law.scheme_ts_hht": 0.4,
+
+        // rheology section
+        "cavity.rheology.series_stiffness": 100000000.0,
+        "cavity.rheology.damping_parallel": 70.0,
+
+        // active law section
+        "cavity.rheology.active_law.starling_abscissas": [
+            -0.1668,
+            -0.0073,
+            0.0534,
+            0.0969,
+            0.1326,
+            0.2016,
+            0.4663,
+            0.9187,
+            1.1762
+        ],
+        "cavity.rheology.active_law.starling_ordinates": [
+            0.0,
+            0.5614,
+            0.7748,
+            0.8933,
+            0.9618,
+            1.0,
+            1.0,
+            0.1075,
+            0.0
+        ],
+        "cavity.rheology.active_law.destruction_rate": 12.0,
+        "cavity.rheology.active_law.crossbridge_stiffness": 273000.0,
+
+        // Parametrize the active law activation
+        // Required parameters initialization are:
+        // heartbeat_duration
+        // active_law.activation.min
+        // active_law.activation.max
+        "active_law.activation.min": -20.0,
+        "active_law.activation.max": 35.0,
+        "cavity.rheology.active_law.activation": {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "heartbeat_duration",
+            "alpha": "diastole_scaling_factor",
+            "reference_function": [
+                [0.0, "active_law.activation.min"],
+                [0.027, "active_law.activation.min"],
+                [0.037, 0.0],
+                [0.145, "active_law.activation.max"],
+                [0.309, "active_law.activation.max"],
+                [0.417, 0.0],
+                [0.427, "active_law.activation.min"],
+                [0.9, "active_law.activation.min"]
+            ],
+            "phases": [0, 0, 1, 1, 1, 0, 0]
+        },
+
+        // Section to parametrize the atrial blood pressure
+        // Required parameters initialization are:
+        // heartbeat_duration
+        // atrial.blood_pressure.min
+        // atrial.blood_pressure.max
+        "atrial.blood_pressure": {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "heartbeat_duration",
+            "alpha": "diastole_scaling_factor",
+            "reference_function": [
+                [0.0, "atrial.blood_pressure.max"],
+                [0.02, "atrial.blood_pressure.max"],
+                [0.07, "atrial.blood_pressure.min"],
+                [0.84, "atrial.blood_pressure.min"],
+                [0.9, "atrial.blood_pressure.max"]
+            ],
+            "phases": [1, 1, 0, 1]
+        },
+
+        // valves section
+        "conductance_iso": 5e-12,
+        "valve_atrium.inductance": 1.0e3,
+        "valve_atrium.conductance": 9e-06,
+        "valve_arterial.inductance": 3.0e4,
+        "valve_arterial.conductance": 1.3e-05,
+        "capacitance_valve.capacitance": 5e-12,
+        "valve_atrium.scheme_ts_flux": 0.25,
+        "valve_arterial.scheme_ts_flux": 0.25,
+
+        // circulation section
+        "circulation_aorta_proximal.capacitance": 2.0e-10,
+        
+        // initialize the distal capacitance from the distal time constant and resistance (Cc = tc / Rc)
+        // Required parameters initialization is: "circulation_aorta_distal.time_constant"
+        "circulation_aorta_distal.capacitance": {
+            "type": "product",
+            "factors": ["circulation_aorta_distal.time_constant"],
+            "inverses": ["circulation_aorta_distal.resistance"]
+        }
+    }
+}

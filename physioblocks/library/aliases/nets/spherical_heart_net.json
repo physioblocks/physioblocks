@@ -1,0 +1,93 @@
+{
+    "type": "net",
+    "flux_dof_definitions": {"type": "heart_flux_dof_couples"},
+    "nodes": [
+        "cavity",
+        "atrial",
+        "aorta_proximal",
+        "aorta_distal",
+        "venous"
+    ],
+    "blocks": {
+        "cavity": {
+            "type": "spherical_cavity_block",
+            "flux_type": "blood_flow",
+            "disp": "cavity.dynamics.disp",
+            "radius": "heart_radius",
+            "thickness": "heart_thickness",
+            "submodels": {
+                "dynamics": {
+                    "type": "spherical_dynamics",
+                    "fib_deform": "cavity.rheology.fib_deform",
+                    "pressure": "cavity.blood_pressure",
+                    "pressure_external": "pleural.pressure",
+                    "vel": "cavity.velocity_law.vel",
+                    "radius": "heart_radius",
+                    "thickness": "heart_thickness",
+                    "series_stiffness": "cavity.rheology.series_stiffness"
+                },
+                "velocity_law": {
+                    "type": "velocity_law_hht",
+                    "disp": "cavity.dynamics.disp"
+                },
+                "rheology": {
+                    "type": "rheology_fiber_additive",
+                    "disp": "cavity.dynamics.disp",
+                    "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
+                    "radius": "heart_radius",
+                    "submodels": {
+                        "active_law": {
+                            "type": "active_law_macro_huxley_two_moments",
+                            "fib_deform": "cavity.rheology.fib_deform",
+                            "contractility": "heart_contractility"
+                        }
+                    }
+                }
+            },
+            "nodes": {
+                "1": "cavity"
+            }
+        },
+        "valve_atrium": {
+            "type": "valve_rl_block",
+            "flux_type": "blood_flow",
+            "backward_conductance": "conductance_iso",
+            "nodes": {
+                "1": "atrial",
+                "2": "cavity"
+            }
+        },
+        "valve_arterial": {
+            "type": "valve_rl_block",
+            "flux_type": "blood_flow",
+            "backward_conductance": "conductance_iso",
+            "nodes": {
+                "1": "cavity",
+                "2": "aorta_proximal"
+            }
+        },
+        "capacitance_valve": {
+            "type": "c_block",
+            "flux_type": "blood_flow",
+            "nodes": {
+                "1": "cavity"
+            }
+        },
+        "circulation_aorta_proximal": {
+            "type": "rc_block",
+            "flux_type": "blood_flow",
+            "nodes": {
+                "1": "aorta_distal",
+                "2": "aorta_proximal"
+            }
+        },
+        "circulation_aorta_distal": {
+            "type": "rc_block",
+            "flux_type": "blood_flow",
+            "nodes": {
+                "1": "venous",
+                "2": "aorta_distal"
+            }
+        }
+    }
+}

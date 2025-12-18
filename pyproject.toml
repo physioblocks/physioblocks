@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "physioblocks"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "plotly",
+    "pyarrow",
+    "regex"
+]
+description = "Physioblocks allows the simulation of dynamical models of physiological systems"
+readme = "README.md"
+requires-python = ">=3.10"
+license-files = ["COPYING.txt", "COPYING.LESSER.txt"]
+dynamic = ["version", "authors", "license", "copyright"]
+
+[tool.hatch.version]
+path = "physioblocks/__init__.py"
+[tool.hatch.authors]
+path = "physioblocks/__init__.py"
+[tool.hatch.license]
+path = "physioblocks/__init__.py"
+[tool.hatch.copyright]
+path = "physioblocks/__init__.py"
+
+[project.optional-dependencies]
+
+test = [
+    "pytest>=8",
+    "coverage",
+]
+
+doc = [
+    "sphinx",
+    "sphinx_rtd_theme",
+    "sphinxcontrib-tikz"
+]
+
+quality = [
+    "ruff",
+    "mypy"
+]
+
+tox = [
+    "tox>=4",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = [ "tests", ]

@@ -1,0 +1,5 @@
+{
+    "type": "newton_solver",
+    "tolerance": 1e-9,
+    "iteration_max": 10
+}

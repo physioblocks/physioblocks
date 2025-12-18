@@ -1,0 +1,17 @@
+// this comment is starting the file
+{
+    "type": "root_item",
+    "float_value": 1.0,
+    "int_value": 1, // this is a comment
+    "str_value": "one",
+    // "commented_value": "bis"
+    "child" : {
+            // this is also a comment
+            "type": "child_item",
+            "float_value": 2.0,
+            "int_value": 2,
+            "str_value": "two"
+            // "other_commented_value": "ter"
+        }
+}
+// this comment is ending the file

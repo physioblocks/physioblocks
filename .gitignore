@@ -1,0 +1,6 @@
+.DS_Store
+.coverage
+.vscode
+.tox
+.python-version
+__pycache__

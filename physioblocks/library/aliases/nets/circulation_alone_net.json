@@ -1,0 +1,31 @@
+{
+    "type": "net",
+    "flux_dof_definitions": {"type": "heart_flux_dof_couples"},
+    "nodes": [
+        "aorta_proximal",
+        "aorta_distal",
+        "venous"
+    ],
+    "blocks": {
+        "circulation_aorta_proximal": {
+            "type": "rc_block",
+            "flux_type": "blood_flow",
+            "resistance": "aorta_proximal.resistance",
+            "capacitance": "aorta_proximal.capacitance",
+            "nodes": {
+                "1": "aorta_distal",
+                "2": "aorta_proximal"
+            }
+        },
+        "circulation_aorta_distal": {
+            "type": "rc_block",
+            "flux_type": "blood_flow",
+            "resistance": "aorta_distal.resistance",
+            "capacitance": "aorta_distal.capacitance",
+            "nodes": {
+                "1": "venous",
+                "2": "aorta_distal"
+            }
+        }
+    }
+}
