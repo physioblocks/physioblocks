@@ -1,0 +1,7 @@
+\draw (2,5) node[above]{$P_{\text{proximal}}$} to[short, *-*] (0,5) node[above]{Proximal}
+    -- (2,5) to[R=$R_{\text{proximal}}$] (7,5) to[short, -]  (7,5) to (8,5)
+    (10,5) node[above]{$P_{\text{distal}}$} to[short, *-*] (7,5) node[above]{Distal}
+    -- (10,5) to[R=$R_{\text{distal}}$] (15,5) to[short, -] (15, 5)
+    to[short, -*] (15, 5) node[above]{Venous}
+    (2,5) to[C=$C_{\text{proximal}}$] (2,2) node[ground]{}
+    (10,5) to[C=$C_{\text{distal}}$] (10,2) node[ground]{};

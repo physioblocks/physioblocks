@@ -1,0 +1,4 @@
+// Define available flux - dof types couples
+{
+    "blood_flow": "blood_pressure"
+}

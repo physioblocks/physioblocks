@@ -1,0 +1,24 @@
+{
+    "type": "circulation_alone_forward_simulation",
+    "time": {
+        "start": 0.0,
+        "duration": 25.0
+    },
+    "variables_initialization": {
+        "aorta_proximal.blood_pressure": 10760.0,
+        "aorta_distal.blood_pressure": 10760.0
+    },
+    "parameters": {
+        "heart_rate": 60.0, // in beats / min
+        "aorta_proximal.resistance": 7.0e6,
+        "aorta_distal.resistance": 1.1e8,
+        "aorta_distal.time_constant": 2.0,
+        "venous.blood_pressure": 1600.0,
+        "aorta_proximal.blood_flow.min": 0.0,
+        "aorta_proximal.blood_flow.max": 0.5e-3
+
+    },
+    "output_functions":{
+        "aorta_proximal.blood_flow": {"type": "watch_quantity", "quantity": "aorta_proximal.blood_flow"}
+    } 
+}

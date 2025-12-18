@@ -1,0 +1,119 @@
+
+variables:
+  DEBIAN_PYENV_TAG: $CI_REGISTRY_IMAGE:debian-pyenv
+  DEBIAN_LATEX_TAG: $CI_REGISTRY_IMAGE:debian-latex
+
+# Build containers
+build debian pyenv:
+  image: docker:20.10.16
+  stage: .pre
+  tags:
+    - ci.inria.fr
+    - small
+  rules:
+    - changes:
+      - ./docker/pyenv/Dockerfile
+      - ./docker/latex/Dockerfile
+      when: always
+    - when: manual
+      allow_failure: true
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker image build -t $DEBIAN_PYENV_TAG -f ./docker/pyenv/Dockerfile .
+    - docker push $DEBIAN_PYENV_TAG
+
+build debian latex:
+  image: docker:20.10.16
+  stage: .pre
+  tags:
+    - ci.inria.fr
+    - small 
+  rules:
+    - changes:
+      - ./docker/latex/Dockerfile
+      - ./docker/pyenv/Dockerfile
+      when: always
+    - when: manual
+      allow_failure: true
+  needs: ["build debian pyenv"]
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker image build -t $DEBIAN_LATEX_TAG -f ./docker/latex/Dockerfile --build-arg BASE_IMAGE_TAG=$DEBIAN_PYENV_TAG .
+    - docker push $DEBIAN_LATEX_TAG
+
+# Run tests on debian
+test debian:
+  image: $DEBIAN_PYENV_TAG
+  stage: test
+  tags:
+    - ci.inria.fr
+    - small
+  script:
+    - pip install .[tox]
+    - tox
+  artifacts:
+    paths:
+      - htmlcov
+
+# Run reference simulation and trace the comparison with the reference
+test references debian:
+  image: $DEBIAN_PYENV_TAG
+  stage: test
+  tags:
+    - ci.inria.fr
+    - large
+  script:
+    - pip install .
+    - python -m physioblocks.launcher.configure -d ./launcher 
+    - python -m physioblocks.launcher references/circulation_alone_sim.jsonc -d launcher -t --compare tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv -s Circulation
+    - python -m physioblocks.launcher references/spherical_heart_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv -s SphericalHeart
+    - python -m physioblocks.launcher references/spherical_heart_respiration_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv -s SphericalHeartRespiration
+  artifacts:
+    paths:
+      - launcher/simulations
+
+test windows:
+  stage: test
+  tags:
+    - windows
+  script:
+    - pip install .[tox]
+    - tox
+  artifacts:
+    paths:
+      - htmlcov
+
+# Run reference simulation and trace the comparison with the reference
+test references windows:
+  stage: test
+  tags:
+    - windows
+  script:
+    - pip install .
+    - python -m physioblocks.launcher.configure -d ./launcher 
+    - python -m physioblocks.launcher references/circulation_alone_sim.jsonc -d launcher -t --compare tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv -s Circulation
+    - python -m physioblocks.launcher references/spherical_heart_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv -s SphericalHeart
+    - python -m physioblocks.launcher references/spherical_heart_respiration_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv -s SphericalHeartRespiration
+  artifacts:
+    paths:
+      - launcher/simulations
+
+# Build documentation and deploy to Pages
+pages:
+  image: $DEBIAN_LATEX_TAG
+  stage: deploy
+  tags:
+    - ci.inria.fr
+    - large
+  only:
+    - main
+  script:
+    - pip install .[doc]
+    - cd doc
+    - make html
+    - mv build/html ../public/
+  artifacts:
+    paths:
+      - public

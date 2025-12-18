@@ -1,0 +1,37 @@
+requires = ["tox>=4"]
+env_list = ["format", "lint", "type", "coverage", "3.14", "3.13", "3.12", "3.11", "3.10"]
+
+[env.format]
+description = "run formatter"
+skip_install = true
+deps = ["ruff"]
+commands = [["ruff", "format", "--check"]]
+
+[env.lint]
+description = "run linter"
+skip_install = true
+deps = ["ruff"]
+commands = [["ruff", "check"]]
+
+[env.type]
+description = "run type checking"
+deps = ["mypy"]
+commands = [["mypy", "physioblocks",  "--strict", "--ignore-missing-imports"]]
+
+[env.coverage]
+description = "run tests coverage"
+deps = [
+    "pytest>=8",
+    "coverage>=7",
+]
+commands = [
+    ["coverage", "run", "-m", "pytest"], 
+    ["coverage", "html"]
+]
+
+[env_run_base]
+description = "run unit tests"
+deps = [
+    "pytest>=8",
+]
+commands = [["pytest"]]

@@ -1,0 +1,7 @@
+{
+    "type": "forward_simulation",
+    "time": {"type": "default_time"},
+    "solver": {
+        "type": "newton_method_solver"
+    }
+}

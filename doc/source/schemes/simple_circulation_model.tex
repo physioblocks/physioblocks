@@ -1,0 +1,9 @@
+\draw [dotted, red] (1,7) node[anchor=south]{$\text{block}_1$} rectangle (6, 0) ;
+\draw [dotted, red] (8,7) node[anchor=south]{$\text{block}_2$} rectangle (14, 0) ;
+\draw (2,5) node[above]{$P_A$} to[short, *-*, i=$Q_{\text{block}_1 \rightarrow A}$] (0,5) node[above]{$A$}
+    -- (2,5) to[R=$R_A$] (5,5) to[short, -, i=$Q_{\text{block}_1 \rightarrow B}$]  (6,5) to (8,5)
+    (10,5) node[above]{$P_B$} to[short, *-*, i=$Q_{\text{block}_2 \rightarrow B}$] (7,5) node[above]{$B$}
+    -- (10,5) to[R=$R_B$] (13,5) to[short, -, i=$Q_{\text{block}_2 \rightarrow C}$] (14, 5)
+    to[short, -*] (15, 5) node[above]{$C$}
+    (2,5) to[C=$C_A$] (2,2) node[ground]{}
+    (10,5) to[C=$C_B$] (10,2) node[ground]{};

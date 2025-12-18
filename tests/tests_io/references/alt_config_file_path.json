@@ -1,0 +1,11 @@
+{
+    "float_value": 1.0,
+    "int_value": 1,
+    "str_value": "one",
+    "child" : {
+            "type": "child_item",
+            "float_value": 2.0,
+            "int_value": 2,
+            "str_value": "two"
+        }
+}

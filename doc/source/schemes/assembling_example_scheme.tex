@@ -1,0 +1,71 @@
+% Block Def
+\def \blockSizeX{6}
+\def \blockSizeY{6}
+
+% ---- Block A
+\def \blockACenterX{-6}
+\def \blockACenterY{0.0}
+
+% ---- Block B
+\def \blockBCenterX{6}
+\def \blockBCenterY{0.0}
+
+% Model Components Def
+\def \modelComponentSizeX{0.75*\blockSizeX}
+\def \modelComponentSizeY{0.3*\blockSizeY}
+
+% Node Def
+\def \nodeRadius{0.2}
+\def \nodeCenterX{0.0}
+\def \nodeCenterY{0}
+
+% System Def
+\def \systemCenterX{14}
+\def \systemCenterY{0.0}
+\def \systemSizeX{3}
+\def \systemSizeY{1}
+
+
+\begin{tikzpicture}
+% ---- Nodes circles
+% ---- node
+\draw [thick] (\nodeCenterX, \nodeCenterY) circle [radius = \nodeRadius] node [anchor=north, yshift = -10] {\bf Node};
+\draw (\nodeCenterX, \nodeCenterY) node [anchor=south, yshift = 10] {\bf DOF};
+
+
+% ---- Blocks
+
+% ---- Block A
+\filldraw[rounded corners, fill=green!30] (\blockACenterX - \blockSizeX / 2, \blockACenterY - \blockSizeY / 2) rectangle (\blockACenterX + \blockSizeX / 2, \blockACenterY + \blockSizeY / 2);
+\draw (\blockACenterX, \blockACenterY) node[anchor=south, yshift=0.35*\blockSizeY cm] {\bf Block A};
+% ---- Model Component 1
+\filldraw[rounded corners, fill=green!30] (\blockACenterX - \blockSizeX / 2.5, \blockACenterY) rectangle (\blockACenterX + \blockSizeX / 2.5, - 0.5* \blockACenterY + \modelComponentSizeY);
+\node[align=left] at (\blockACenterX, \blockACenterY + 1)  {\textbf{Model Component 1}\\\quad equation 1};
+% ---- Model Component 2
+\filldraw[rounded corners, fill=green!30] (\blockACenterX - \blockSizeX / 2.5, \blockACenterY - 0.5 * \blockSizeY + 0.5) rectangle (\blockACenterX + \blockSizeX / 2.5, - 0.5* \blockSizeY + 0.5 + \modelComponentSizeY);
+\node[align=left] at (\blockACenterX, \blockACenterY - 1.5)  {\textbf{Model Component 2}\\\quad equation 2};
+
+% ---- Block B
+\filldraw[rounded corners, fill=red!30] (\blockBCenterX - \blockSizeX / 2, \blockBCenterY - \blockSizeY / 2) rectangle (\blockBCenterX + \blockSizeX / 2, \blockBCenterY + \blockSizeY / 2);
+\draw (\blockBCenterX, \blockBCenterY) node[anchor=south, yshift=0.35*\blockSizeY cm] {\bf Block B};
+% ---- Model Component 3
+\filldraw[rounded corners, fill=red!30] (\blockBCenterX - \blockSizeX / 2.5, \blockBCenterY) rectangle (\blockBCenterX + \blockSizeX / 2.5, - 0.5* \blockBCenterY + \modelComponentSizeY);
+\node[align=left] at (\blockBCenterX, \blockACenterY + 1)  {\textbf{Model Component 3}\\\quad equation 3};
+
+% ---- Flux
+\draw [very thick][->](\blockACenterX + 0.55*\blockSizeX, 0) node [anchor=south, xshift=30]{flux 1} -- (\nodeCenterX - 1.5*\nodeRadius , 0) ;
+\draw [very thick][->] (\blockBCenterX - 0.55*\blockSizeX, 0) node [anchor=south, xshift=-30]{flux 2} -- (\nodeCenterX + 1.5*\nodeRadius , 0);
+
+% ---- Assembled System
+% ---- Arrow
+\draw[-{Triangle[width=40pt,length=20pt]}, line width=15pt](\blockBCenterX + 0.5*\blockSizeX + 0.5, \blockBCenterY) -- ( \systemCenterX - 2, \systemCenterY);
+% ---- Boxes
+\filldraw[color=green!30, fill=green!30] (\systemCenterX - 0.5*\systemSizeX, \systemCenterY - \systemSizeY / 2 + 0.5) rectangle (\systemCenterX + 0.5*\systemSizeX, \systemCenterY + \systemSizeY);
+\filldraw[color=green!30, fill=green!30] (\systemCenterX - 0.5*\systemSizeX, \systemCenterY - \systemSizeY / 2) rectangle (\systemCenterX - 0.2, \systemCenterY + \systemSizeY);
+\filldraw[color=red!30, fill=red!30] (\systemCenterX - 0.5*\systemSizeX, \systemCenterY - 0.5) rectangle (\systemCenterX + 0.5*\systemSizeX, \systemCenterY - \systemSizeY);
+\filldraw[color=red!30, fill=red!30] (\systemCenterX + 0.2, \systemCenterY - \systemSizeY / 2) rectangle (\systemCenterX + 0.5*\systemSizeX, \systemCenterY );
+% ---- System
+\node[align=center] at (\systemCenterX - 0.25, \systemCenterY + 1.5) {\textbf{System}};
+% ---- Equations
+\node[align=left] at (\systemCenterX, \systemCenterY) {equation 1 \\ equation 2 \\ flux 1 + flux 2 \\ equation 3};
+\end{tikzpicture}

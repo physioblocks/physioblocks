@@ -1,0 +1,55 @@
+{
+    "type": "default_forward_simulation",
+    "net": {
+        "type": "circulation_alone_net",
+        "boundaries_conditions": {
+            "aorta_proximal": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_flow",
+                    "condition_id": "aorta_proximal.blood_flow"
+                }
+            ],
+            "venous": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "venous.blood_pressure"
+                }
+            ]
+        }
+    },
+    "variables_magnitudes": {
+        "aorta_proximal.blood_pressure":1e5,
+        "aorta_distal.blood_pressure":1e5
+    },
+    "parameters": {
+        "heartbeat_duration": {"type": "product", "factors": [60.0] , "inverses": ["heart_rate"]},
+        "aorta_proximal.capacitance": 2.0e-10,      
+        "aorta_proximal.blood_flow": {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "heartbeat_duration",
+            "alpha": 0.8,
+            "reference_function": [
+                [0.0, "aorta_proximal.blood_flow.min"],
+                [0.075, "aorta_proximal.blood_flow.min"],
+                [0.134, "aorta_proximal.blood_flow.max"],
+                [0.142, "aorta_proximal.blood_flow.max"],
+                [0.281, "aorta_proximal.blood_flow.min"],
+                [0.9, "aorta_proximal.blood_flow.min"]
+            ],
+            "phases": [0, 0, 1, 1, 0]
+
+        },
+        // initialize the distal capacitance from the distal time constant and resistance (Cc = tc / Rc)
+        // Required parameters initialization is: "aorta_distal.time_constant"
+        "aorta_distal.capacitance": {
+            "type": "product",
+            "factors": ["aorta_distal.time_constant"],
+            "inverses": ["aorta_distal.resistance"]
+        }
+    },
+    "solver": {
+        "iteration_max": 2 // This problem is linear
+    }
+}

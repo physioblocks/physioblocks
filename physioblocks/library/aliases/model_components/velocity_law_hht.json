@@ -1,0 +1,5 @@
+{
+    "type": "model_description",
+    "model_type": "velocity_law_hht",
+    "time": "time"
+}

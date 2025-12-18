@@ -1,0 +1,73 @@
+{
+    "type": "SimulationType",
+    "time": {
+        "type": "time",
+        "start": 0.0,
+        "duration": 0.001,
+        "step_size": 0.001,
+        "min_step": 6.25e-5
+    },
+    "net": {
+        "type": "net",
+        "flux_dof_definitions":{"flux_type": "potential_type"},
+        "nodes": [
+            "node_a",
+            "node_b"
+        ],
+        "blocks": {
+            "block_a": {
+                "type": "block_description",
+                "model_type": "BlockType",
+                "flux_type": "flux_type",
+                "parameters": {
+                    "potential_id": "block_a.potential_id"
+                },
+                "nodes": {
+                    "0": "node_a",
+                    "1": "node_b"
+                }
+            }
+        },
+        "boundaries_conditions": {
+            "node_a": [
+                {
+                    "type":"condition",
+                    "condition_type": "flux_type",
+                    "condition_id": "inlet_flux_condition"
+                }
+            ],
+            
+            "node_b": [
+                {
+                    "type":"condition",
+                    "condition_type": "potential_type",
+                    "condition_id": "block_a.potential_id"
+                }
+            ]
+        }
+    },
+    "variables_initialization": {
+        "node_a.potential_type": 0.0
+    },
+    "variables_magnitudes":{
+        "node_a.potential_type": 1.1
+    },
+    "parameters": {
+        "inlet_flux_condition": {
+            "type": "FunctionType"
+        },
+        "block_a.potential_id": 0.0,
+        "scalar": 0.0,
+        "vector": [0.0, 0.0, 0.0]
+    },
+    "output_functions":{
+        "output_id": {
+            "type": "FunctionType"
+        }
+    },
+    "solver": {
+        "type": "SolverType",
+        "tolerance": 1.0e-9,
+        "iteration_max": 10
+    }
+}

@@ -1,0 +1,249 @@
+
+\def \ellipseCenterX{-10}
+\def \ellipseCenterY{2}
+\def \ellipseLargeRadius{3}
+\def \ellipseSmallRadius{0.45}
+
+\def \thickness{8.118574609602e-03}
+
+\def \circleOneCenterX{0.5}
+\def \circleOneCenterY{2}
+\def \circleOneRadius{0.1}
+\def \zoomX{-8.5}
+\def \zoomY{4.6}
+\def \zoomradius{0.1}
+
+\def \circleTwoCenterX{-3.7}
+\def \circleTwoCenterY{2}
+\def \circleTwoRadius{0.1}
+
+\def \aortaCenterOneX{1.5}
+\def \aortaCenterOneY{2}
+
+\def \Cx{1.5}
+\def \Cy{2}
+
+\def \aortaCenterTwoX{6.35}
+\def \aortaCenterTwoY{2}
+\def \aortabigRadius{0.4}
+\def \aortasmallRadius{0.15}
+\def \Rad{0.8} % sphere radius
+\def \Len{6} % elevation angle
+\def \rvec{2.6} % Radius of the inner sphere
+\def \tvec{0.4} % Thickness
+
+\tikzstyle{doublefleche}=[<->,>=latex,thin]
+\begin{tikzpicture}
+	
+% ---- Blocks boxes
+% ---- Cavity
+\filldraw[rounded corners, color=blue!30] (-14.5, -1.5) rectangle (-6.5, 12.5);
+% ---- Valve 1
+\filldraw[rounded corners, color=green!30] (-5.5, 4.5) rectangle (-2, 9) (-4.75, 3) rectangle (-2.75, 9);
+% ---- Valve 2
+\filldraw[rounded corners, color=green!30] (-1.25, 0.5) rectangle (2.25, 3.5) (-2.5, 1.25) rectangle (2.25, 2.75);
+% ---- Capacitance
+\filldraw[rounded corners, color=red!30] (-4.5, -1) rectangle (-2.5, 1.5);
+% ---- RC 1
+\filldraw[rounded corners, color=yellow!30] (2.5, -1) rectangle (4.25, 1.5) (3.75, 1.25) rectangle (5.25, 3);
+% ---- RC 2
+\filldraw[rounded corners, color=yellow!30] (5.5, -1) rectangle (7, 1.5) (6.5, 1.25) rectangle (8.25, 3);
+
+
+% % ---- sphere
+\coordinate (ellipseCenter) at (\ellipseCenterX, \ellipseCenterY);
+\coordinate (circleOneCenter) at (\circleOneCenterX, \circleOneCenterY);
+\coordinate (circleTwoCenter) at (\circleTwoCenterX, \circleTwoCenterY);
+\coordinate (zoomContractionCenter) at (\zoomX, \zoomY);
+\coordinate (aortaOneCenter) at (\aortaCenterOneX, \aortaCenterOneY);
+\coordinate (aortaTwoCenter) at (\aortaCenterTwoX, \aortaCenterTwoY);
+
+\draw[color=black,fill=blue!30] (ellipseCenter) circle (\rvec+\tvec);
+\draw[color=black,dotted,fill=blue!30, opacity = 1] (ellipseCenter) circle (\rvec);
+\draw [->] (ellipseCenter) -- ({\ellipseCenterX-\rvec-(\tvec/2)}, \ellipseCenterY) node[above,xshift = 35 pt, yshift = -0.5 pt] {R};
+\draw [dashed] (ellipseCenter) circle ({\rvec + (\tvec/2)});
+\draw [<->] ({\ellipseCenterX + \rvec}, \ellipseCenterY) -- ({\ellipseCenterX+\rvec+\tvec}, \ellipseCenterY) node[above,xshift = -3.5 pt] {d};
+\draw [dashed] (ellipseCenter) circle [x radius = (\ellipseLargeRadius), y radius = \ellipseSmallRadius] ;
+	
+
+% % ---- atrial valve
+\draw (-3.7, 2) -- (-3.7, 2.7);
+\draw(-3.7, 2.7) node[currarrow, rotate=-90] {} node[right] {$Q_{at}$};
+\draw (-3.7, 2.7) to[L, l=$L_{at}$] (-3.7, 4.7);
+\draw(-4.3, 4.7)--(-3.1, 4.7); 
+\draw(-4.3, 4.7)--(-4.3, 4.9); 
+\draw (-4.3, 4.9) to[empty diode] (-4.3, 5.9);
+\draw (-4.3, 5.9) to[R, l = $K_{iso}$] (-4.3,7.8);
+\draw(-4.3, 7.8)--(-3.1, 7.8); 
+\draw(-3.7, 7.8)--(-3.7, 8.0) node[above,yshift = 4 pt] {$P_{at}$}; 
+\draw(-3.1, 7.8)--(-3.1, 7.6); 
+\draw (-3.1, 7.6) to[empty diode] (-3.1, 6.6);
+\draw (-3.1, 6.6) to[R, l = $K_{at}$] (-3.1,4.7);
+
+
+% ---- arterial valve
+\draw (-3.7, 2) -- (-3., 2);
+\draw(-3., 2) node[currarrow] {} node[above] {$Q_{ar}$};
+\draw (-3., 2) to[L, l=$L_{ar}$] (-1., 2);
+\draw (-1., 2.6) -- (-1., 1.4);
+\draw (-1., 2.6) to[empty diode] (0.2, 2.6);
+\draw (0.2, 2.6) to[R, l = $K_{ar}$] (2.1,2.6);
+\draw (-1., 1.4) to[R, l = $K_{iso}$] (0.9,1.4);
+\draw (2.1, 1.4) to[empty diode] (0.9, 1.4);
+\draw (2.1, 2.6) -- (2.1, 1.4);
+\draw (2.1, 2) -- (3.2, 2.0);
+
+
+% % ---- ventricle node
+\draw(-7, 2)--(-3.7, 2);
+\draw [solid, fill=white] (circleTwoCenter) circle [x radius = \circleTwoRadius, y radius = \circleTwoRadius, fill=white] node[below,xshift = 8 pt] {$P_{{v}}$};
+\draw (-3.7,1.9)  to[C,l=$C_{mi}$] (-3.7,0) ;
+\draw (-3.7,0)  node[ground] {} (-3.7,2) ;
+
+
+% % ---- Windkessel
+\draw (3.2, 2.0)  to[C,l=$C_{p}$] (3.2, 0) ;
+\draw (3.2, 0)  node[ground] {} (3.2, 2) ;
+\draw (3.2, 2) to[R, l = $R_p$] (6.0, 2) to[C,l=$C_d$] (6.0,0);
+\draw (6.0,0) node[ground] {} (6.0,2) ;
+\draw (6.0,2) to[R, l = $R_{d}$] (8.8, 2);
+\draw [solid, fill=white] (6.0, 2.0) circle [x radius = \circleOneRadius, y radius = \circleOneRadius] node[above,yshift = 4 pt] {$P_{d}$};
+\draw [solid, fill=white] (3.2, 2.0) circle [x radius = \circleOneRadius, y radius = \circleOneRadius] node[above,yshift = 4 pt] {$P_{p}$};
+\draw[solid, fill=white] (8.8, 2) circle [x radius = \circleOneRadius, y radius = \circleOneRadius] node[above,yshift = 4 pt] {$P_{ve}$};
+
+
+% % ---- rheology
+\draw [] (zoomContractionCenter) circle (\zoomradius);
+\draw [dashed](\zoomX, {\zoomY+\zoomradius}) -- ({\zoomX}, 6.5);
+
+\begin{scope}[xshift=-2.5cm]
+
+	\draw [dashed] (-11.2, 6.5) --(-4.6,6.5);
+	\draw [dashed] (-11.2, 6.5) --(-11.2, 11.7);
+	\draw [dashed] (-11.2, 11.7) --(-4.6,11.7);
+	\draw [dashed] (-4.6, 6.5) --(-4.6,11.7);
+
+	\def \a{0.7} %0.7
+	\def \c{2.5} %2.5
+	\def \d{(\c-\a)}
+	\def \e{0.9} %0.9
+	\def \rad{0.05} %0.05
+	
+	% definition of the spring size
+	\def \springAmp{5}
+	\def \springFibrePreLength{0.5}
+	
+	% definition of dashpot constant
+	\def \dashHeight{0.6}
+	\def \dashWidth{0.35}
+	
+	% Parameters for the motors
+	\def \t{0.27} %Length of the thin part
+	
+	% Coordinates of the points
+	\coordinate (A) at (-11,9.5) ;
+	\coordinate (B) at (-11+\a,9.5);
+	\coordinate (C) at (-11+\a,9.5+\e);
+	\coordinate (D) at ({-11+\a+\c},9.5+\e);
+	\coordinate (E) at ({-11+\a+\c},{11.3});
+	\coordinate (F) at ({-11+\a+\c+\d},{11.3});
+	\coordinate (G) at ({-11+\a+\c},9.5);
+	\coordinate (H) at ({-11+\a+\c+\d},9.5); %\a+\c+\d
+	\coordinate (I) at ({-11+\a+\c+\d},{9.5+\e});
+	\coordinate (J) at ({-11+\a+\c+\d+\springFibrePreLength},{9.5+\e});
+	\coordinate (K) at ({-11+\a},{9.5-\e});
+	\coordinate (L) at ({-11+\a+\c+\d+\springFibrePreLength},{9.5-\e});
+	\coordinate (M) at ({-11+\a},{7.25});
+	\coordinate (N) at ({-11+\a+\c+\d+\springFibrePreLength},{7.25});
+	\coordinate (O) at ({-11+\a+\c+\d+\springFibrePreLength},9.5);
+	\coordinate (P) at ({-11+\a+\c+\d+\springFibrePreLength+\a},9.5);
+	
+	\coordinate (R) at ({-11+\a},8.15);
+	\coordinate (S) at ({-11+\a+\c+\d+\springFibrePreLength},8.15);
+	
+	
+	% \Definition of the mathematical variables
+	\path  (C)--(D) node[midway, above, yshift=5pt] {\( k_{s} \)};
+	\path  (E)--(F) node[midway, below, yshift=-8pt] {\( \mu \)};
+	\path  (G)--(H) node[midway, above, yshift=8pt] {\( \tau_{c},k_c \)};
+	\path  (K)--(L) node[midway, above, yshift=5pt] {\( \mathcal{W}_p,\mathcal{W}_v \)};
+	\path  (M)--(N) node[midway, below, yshift=-8pt] {\( \eta \)};
+	
+	% Indication of the nodes by circles
+	\draw[fill = black] (A) circle (\rad);
+	\draw[fill = black] (P) circle (\rad);
+	\draw[fill = black] (P) circle (\rad);
+	
+	% Draw Simple lines
+	\draw (A)--(B)--(C) 
+	(B)--(K)--(M)
+	(E)--(D)--(G)
+	(F)--(I)--(H)
+	(I)--(J)--(N)
+	(O)--(P);
+	
+	% draw the springs
+	\draw[
+		decorate,
+		decoration = {zigzag,pre length = \springFibrePreLength cm,post length=\springFibrePreLength cm,amplitude=\springAmp}
+	]
+	(C)--(D);
+	
+	\draw[
+		decorate,
+		decoration = {zigzag,pre length = 1.5cm,post length=1.5cm,amplitude=\springAmp}
+	]
+	(K)--(L);
+	
+	% Dashpots
+	% 1D branch
+	\path (E) -- (F) coordinate[midway] (dash1D);
+	\draw (dash1D) ++ ({\dashWidth/2},{\dashHeight/2})
+	--++ ({-\dashWidth},0)
+	--++ (0,{-\dashHeight})
+	--++ ({\dashWidth},0);
+	\draw (dash1D) ++ ({-\dashWidth/2},0) --(E)
+	(dash1D) -- (F)
+	(dash1D) ++ (0,{\dashHeight/4}) --++ (0,{-\dashHeight/2});
+	% 3D branch
+	\path (M) -- (N) coordinate[midway] (dash3D);
+	\draw (dash3D) ++ ({\dashWidth/2},{\dashHeight/2})
+	--++ ({-\dashWidth},0)
+	--++ (0,{-\dashHeight})
+	--++ ({\dashWidth},0);
+	\draw (dash3D) ++ ({-\dashWidth/2},0) --(M)
+	(dash3D) -- (N)
+	(dash3D) ++ (0,{\dashHeight/4}) --++ (0,{-\dashHeight/2});
+
+	% Contractile element
+	% Function to draw a myosin head
+	% usage \tete{Initial point(myosin filament)}{second point (actin filament)}{angle of the thin part (the tail)}
+	\newcommand{\tete}[3]{
+	\draw #1 --++ (#3:\t);
+	\draw[ultra thick] #1 ++ (#3:\t) -- #2; %
+	}
+	
+	% draw the sarcomere
+	\draw (G) --++ ({\d/4},0) --++ (0,{\a/2}) coordinate (myo) --++ ({\d/2},0);
+	\draw (H) --++ ({-0.6*\d},0) coordinate (act);
+	
+	% Pisition of motors on myosin filament
+	\path (myo) ++ ({\d/7},0) coordinate (myo1) 
+	++ ({\d/10},0) coordinate (myo2) 
+	++ ({\d/10},0) coordinate (myo3) 
+	++ ({\d/10},0) coordinate (myo4) ;
+	% Pisition of actin binding sites
+	\path (act) ++ ({\d/20},0) coordinate (act1) 
+	++ ({\d/10},{\a/6}) coordinate (act2) 
+	++ ({\d/10},{-\a/6}) coordinate (act3) 
+	++ ({\d/10},{\a/6}) coordinate (act4) ;
+	
+	% draw motors
+	\tete{(myo1)}{(act1)}{-45};
+	\tete{(myo2)}{(act2)}{-30};
+	\tete{(myo3)}{(act3)}{-45};
+	\tete{(myo4)}{(act4)}{-30};
+
+\end{scope}
+	
+\end{tikzpicture}

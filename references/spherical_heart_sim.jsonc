@@ -1,0 +1,29 @@
+{
+    "type": "spherical_heart_forward_simulation",
+    "time": {
+        "start": 0.0,
+        "duration": 25.0
+    },
+    "variables_initialization": {
+        "cavity.blood_pressure": "atrial.blood_pressure.max", // Initialization with an open atrial valve
+        "aorta_proximal.blood_pressure": 10760.0,
+        "aorta_distal.blood_pressure": 10760.0
+    },
+    "parameters": {
+        "heart_radius": 0.0340,
+        "heart_thickness": 0.0113,
+        "heart_contractility": 90000.0,
+        "heart_rate": 60.0, // in beats / min
+        "venous.blood_pressure": 1600.0,
+        "atrial.blood_pressure.min": 450.0,
+        "atrial.blood_pressure.max": 900.0,
+        "circulation_aorta_proximal.resistance": 7.0e6,
+        "circulation_aorta_distal.resistance": 1.1e8,
+        "circulation_aorta_distal.time_constant": 2.0,
+        "cavity.dynamics.hyperelastic_cst": [444.0, 2.9, 69.0, 6.5]
+    },
+    "output_functions": {
+        "atrial.blood_pressure": {"type": "watch_quantity", "quantity": "atrial.blood_pressure"},
+        "active_law.activation": {"type": "watch_quantity", "quantity": "cavity.rheology.active_law.activation"}
+    }
+}

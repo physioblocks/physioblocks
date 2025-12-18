@@ -1,0 +1,55 @@
+{
+    "type": "spherical_heart_forward_simulation",
+    "time": {
+        "start": 0.123,
+        "duration": 1.8
+    },
+    "variables_initialization": {
+        "cavity.blood_pressure": 938.0,
+        "aorta_proximal.blood_pressure": 9498.0,
+        "aorta_distal.blood_pressure": 9514.0,
+        "valve_atrium.flux": 0.005,
+        "valve_arterial.flux": 0.006,
+        "cavity.dynamics.disp": 0.011,
+        "cavity.velocity_law.vel": 0.23,
+        "cavity.velocity_law.accel": 0.035,
+        "cavity.rheology.fib_deform": 0.004,
+        "cavity.rheology.active_law.active_stiffness": 11.3,
+        "cavity.rheology.active_law.active_energy_sqrt": 2.52,
+        "cavity.rheology.active_law.active_tension_discr": 7.905
+    },
+    "variables_magnitudes": {
+        "valve_atrium.flux": 1.8e-3,
+        "valve_arterial.flux": 1.9e-3,
+        "cavity.dynamics.disp": 0.013,
+        "cavity.rheology.fib_deform": 0.14,
+        "cavity.velocity_law.vel": 0.12,
+        "cavity.velocity_law.accel": 1.1,
+        "aorta_proximal.blood_pressure": 10006,
+        "aorta_distal.blood_pressure": 10007,
+        "cavity.blood_pressure": 10005,
+        "cavity.rheology.active_law.active_stiffness": 11.2,
+        "cavity.rheology.active_law.active_energy_sqrt": 2.33,
+        "cavity.rheology.active_law.active_tension_discr": 7.901
+    },
+    "parameters": {
+        "heart_radius": 0.02873797,
+        "heart_thickness": 0.009875603,
+        "heart_contractility": 68250.0,
+        "heart_rate": 78.4,
+        "venous.blood_pressure": 500.0,
+        "pressure_pleural": 432.1,
+        "scheme_ts_pressure_pleural": 0.05,
+        "atrial.blood_pressure.min": 463.2,
+        "atrial.blood_pressure.max": 986.47,
+        "circulation_aorta_proximal.resistance": 15397200.0,
+        "circulation_aorta_distal.resistance": 163416400.0,
+        "circulation_aorta_distal.time_constant": 2.04,
+        "cavity.dynamics.hyperelastic_cst": [
+            638.4135,
+            2.3724,
+            99.12522,
+            5.5326
+        ]
+    }
+}
