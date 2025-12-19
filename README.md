@@ -29,8 +29,54 @@ __Level 3:__ Write and add models to the library: Python
 * Declare the quantities to use in the model
 * Write the fluxes and equations
 
-## Installation
+## Documentation
 
-Clone the repository. Then from the cloned directory:
+Here are the links to the sections of the [full documentation](https://physioblocks.gitlabpages.inria.fr/physioblocks/):
+* [Installation](https://physioblocks.gitlabpages.inria.fr/physioblocks/installation.html)
+* [User Guide](https://physioblocks.gitlabpages.inria.fr/physioblocks/user_guide.html)
+* [Library](https://physioblocks.gitlabpages.inria.fr/physioblocks/library.html)
+* [API Reference](https://physioblocks.gitlabpages.inria.fr/physioblocks/api_reference.html)
 
-    pip install -e .
+## Quick start
+
+Complete instructions are available in the [documentation](https://physioblocks.gitlabpages.inria.fr/physioblocks/). This instructions will enable you to launch a reference simulation.
+
+### Installation
+
+This project requires a recent version of python installed.
+Then: 
+* Clone or download PhysioBlocks.
+* With `$PHYSIOBLOCKS_PACKAGE_PATH$` the cloned repository:
+```
+    cd $PHYSIOBLOCKS_PACKAGE_PATH$
+    pip install .
+```
+
+### Configuration
+
+To configure PhysioBlocks Launcher:
+
+```
+# Create an empty folder where you want to store simulations results.
+mkdir $LAUNCHER_FOLDER_PATH$
+
+# Configure the folder
+python -m physioblocks.launcher.configure -d $LAUNCHER_FOLDER_PATH$ -v
+```
+
+### Launch a simulation
+
+With a Launcher folder configured:
+
+```
+# Move to your configured launcher folder
+cd $LAUNCHER_FOLDER_PATH$
+
+#  Launch a reference simulation
+python -m physioblocks.launcher $PHYSIOBLOCKS_PACKAGE_PATH$/references/spherical_heart_sim.jsonc -v -t
+
+# This can take some time.
+```
+
+
+Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/Z` series folder.
