@@ -1,3 +1,7 @@
+.. SPDX-FileCopyrightText: Copyright INRIA
+..
+.. SPDX-License-Identifier: LGPL-3.0-only
+..
 .. Copyright INRIA
 ..
 .. This file is part of PhysioBlocks, a library mostly developed by the
