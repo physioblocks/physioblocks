@@ -100,3 +100,6 @@ LAUNCHER_CONFIGURATION_LIBRARIES_ID = "libraries"
 
 LAUNCHER_CONFIGURATION_ALIAS_ID = "aliases"
 """name of the aliases item in the configuration"""
+
+PHYSIOBLOCKS_REFERENCES_PATH = "references"
+"""Relative path to the references folder"""

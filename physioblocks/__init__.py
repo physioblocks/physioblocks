@@ -26,7 +26,7 @@
 
 """Physioblocks package definition"""
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __copyright__ = "INRIA"
 __license__ = "LGPL-3.0-only"
 __authors__ = [

@@ -28,4 +28,4 @@ RUN pyenv install 3.10 \
     && pyenv install 3.12 \
     && pyenv install 3.13 \
     && pyenv install 3.14 \
-    && pyenv global 3.10 3.11 3.12 3.12 3.13
+    && pyenv global 3.10 3.11 3.12 3.12 3.13 3.14
