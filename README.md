@@ -45,11 +45,8 @@ Complete instructions are available in the [documentation](https://physioblocks.
 
 This project requires a recent version of python installed.
 Then: 
-* Clone or download PhysioBlocks.
-* With `$PHYSIOBLOCKS_PACKAGE_PATH$` the cloned repository:
 ```
-    cd $PHYSIOBLOCKS_PACKAGE_PATH$
-    pip install .
+    pip install physioblocks
 ```
 
 ### Configuration
@@ -73,10 +70,10 @@ With a Launcher folder configured:
 cd $LAUNCHER_FOLDER_PATH$
 
 #  Launch a reference simulation
-python -m physioblocks.launcher $PHYSIOBLOCKS_PACKAGE_PATH$/references/spherical_heart_sim.jsonc -v -t
+python -m physioblocks.launcher references/spherical_heart_sim.jsonc -v -t -s QuickStart
 
 # This can take some time.
 ```
 
 
-Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/Z` series folder.
+Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/QuickStart` series folder.

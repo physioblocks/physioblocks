@@ -25,6 +25,8 @@
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
 import json
+import logging
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -40,9 +42,12 @@ from physioblocks.launcher.constants import (
     LAUNCHER_SERIES_DIR_NAME,
     LAUNCHER_USER_ALIASES_DIR_NAME,
     LAUNCHER_USER_LIBRARY_DIR_NAME,
+    PHYSIOBLOCKS_REFERENCES_PATH,
 )
 from physioblocks.launcher.series import SimulationInfo
 from physioblocks.utils.dynamic_import_utils import import_libraries
+
+_logger = logging.getLogger(__name__)
 
 
 def create_simulation_folder_path(series_path: Path, info: SimulationInfo) -> Path:
@@ -118,6 +123,25 @@ def setup_launcher_directory(launcher_dir_path: Path) -> None:
     # create a empty log file
     launcher_log_file_path = launcher_dir_path / LAUNCHER_LOG_FILE_NAME
     launcher_log_file_path.touch()
+
+    # copy simulations references from python package.
+    physioblocks_references_folder_path = (
+        Path(physioblocks.__file__).parent / PHYSIOBLOCKS_REFERENCES_PATH
+    )
+    launcher_references_folder_path = launcher_dir_path / PHYSIOBLOCKS_REFERENCES_PATH
+    if physioblocks_references_folder_path.exists() is True:
+        shutil.copytree(
+            physioblocks_references_folder_path,
+            launcher_references_folder_path,
+            dirs_exist_ok=False,
+        )
+    else:
+        _logger.warning(
+            str.format(
+                "No references configuration folder at: {0}",
+                str(physioblocks_references_folder_path),
+            )
+        )
 
     # create the user library directory
     launcher_user_library_dir_path = launcher_dir_path / LAUNCHER_USER_LIBRARY_DIR_NAME

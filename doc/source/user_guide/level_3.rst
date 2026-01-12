@@ -32,7 +32,8 @@ Level 3
 
 In this chapter will learn how to write new **Blocks** and **ModelComponents**.
 
-We will first present the PhysioBlocks objects and main concepts for writing **Fluxes**, **Internal Equations** and **Saved Quantities**.
+First, we will present how to install optional tools to test the source code.
+We will then present the PhysioBlocks objects and main concepts for writing **Fluxes**, **Internal Equations** and **Saved Quantities**.
 We will then use the :class:`~physioblocks.library.blocks.capacitances.RCRBlock` implemented in the PhysioBlocks library to provide an example for each object.
 Finally, we will see how to make the block available for use in **Nets and Simulation Configurations**.
 
@@ -40,6 +41,7 @@ Finally, we will see how to make the block available for use in **Nets and Simul
    :glob:
    :maxdepth: 2
 
+   level_3/specific_installations
    level_3/overview
    level_3/block_definition
    level_3/block_configuration

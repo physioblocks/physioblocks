@@ -13,9 +13,29 @@ dependencies = [
     "regex"
 ]
 description = "Physioblocks allows the simulation of dynamical models of physiological systems"
+keywords = [
+    "dynamical systems",
+    "block diagram",
+    "physiology",
+    "cardiovascular modeling"
+]
 readme = "README.md"
 requires-python = ">=3.10"
-license-files = ["COPYING.txt", "COPYING.LESSER.txt"]
+license-files = ["licenses/GPL-3.0-only.txt", "licenses/LGPL-3.0-only.txt"]
+classifiers = [
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Intended Audience :: Science/Research"
+]
 dynamic = ["version", "authors", "license", "copyright"]
 
 [tool.hatch.version]
@@ -27,28 +47,25 @@ path = "physioblocks/__init__.py"
 [tool.hatch.copyright]
 path = "physioblocks/__init__.py"
 
+[tool.hatch.build.targets.wheel]
+only-include = ["physioblocks", "references"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+"references" = "physioblocks/references"
+
 [project.optional-dependencies]
-
-test = [
-    "pytest>=8",
-    "coverage",
-]
-
-doc = [
-    "sphinx",
-    "sphinx_rtd_theme",
-    "sphinxcontrib-tikz"
-]
-
-quality = [
-    "ruff",
-    "mypy"
-]
-
-tox = [
-    "tox>=4",
-]
+test = ["pytest>=8", "coverage"]
+doc = ["sphinx", "sphinx_rtd_theme", "sphinxcontrib-tikz"]
+quality = ["ruff", "mypy"]
+tox = ["tox>=4"]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"
 testpaths = [ "tests", ]
+
+[project.urls]
+Homepage = "https://github.com/physioblocks/physioblocks"
+Documentation = "https://physioblocks.gitlabpages.inria.fr/physioblocks/"
+Issues = "https://github.com/physioblocks/physioblocks/issues"
+Discussions = "https://github.com/physioblocks/physioblocks/discussions"
