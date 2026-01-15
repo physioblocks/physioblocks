@@ -76,4 +76,7 @@ python -m physioblocks.launcher references/spherical_heart_sim.jsonc -v -t -s Qu
 ```
 
 
-Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/QuickStart` series folder.
+Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/QuickStart` series folder:
+* the csv file contains the simulation results.
+* the html allows you to visualize the results.
+* the log and json files are here for debug purposes.
