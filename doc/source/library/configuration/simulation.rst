@@ -133,6 +133,13 @@ Solvers Configuration
 
 Description of available configuration item to build :class:`~physioblocks.simulation.solvers.AbstractSolver` object from a configuration file.
 
+
+Linear Solver
+-------------
+
+* **Class:** :class:`~physioblocks.simulation.solvers.LinearSolver`
+* **Type name:** ``linear_solver``
+
 Newton Solver
 -------------
 

@@ -28,9 +28,10 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
+from numpy.linalg import LinAlgError
 
 from physioblocks.computing.assembling import EqSystem
-from physioblocks.simulation.solvers import AbstractSolver, NewtonSolver
+from physioblocks.simulation.solvers import AbstractSolver, LinearSolver, NewtonSolver
 from physioblocks.simulation.state import State
 
 
@@ -68,6 +69,12 @@ def mock_gradient():
     )
 
 
+def mock_singular_gradient():
+    return np.array(
+        [[0, 0], [0, 0]],
+    )
+
+
 @pytest.fixture
 def system() -> EqSystem:
     return EqSystem(2)
@@ -92,6 +99,31 @@ class TestAbstractSolver:
         solver_mag = AbstractSolver(1e-12, 2)
         assert solver_mag.iteration_max == 2
         assert solver_mag.tolerance == pytest.approx(1e-12)
+
+
+class TestLinearSolver:
+    @patch.multiple(
+        EqSystem,
+        compute_residual=Mock(return_value=mock_residual_converge()),
+        compute_gradient=Mock(return_value=mock_gradient()),
+    )
+    def test_run(self, state, system):
+        solver = LinearSolver()
+        sol = solver.solve(state, system)
+
+        assert sol.converged is True
+        assert sol.x == pytest.approx([0, 0])
+
+    @patch.multiple(
+        EqSystem,
+        compute_residual=Mock(return_value=mock_residual_converge()),
+        compute_gradient=Mock(return_value=mock_singular_gradient()),
+    )
+    def test_singular_matrix(self, state, system):
+        solver = LinearSolver()
+
+        with pytest.raises(LinAlgError):
+            solver.solve(state, system)
 
 
 class TestNewtonSolver:

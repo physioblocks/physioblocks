@@ -49,7 +49,5 @@
             "inverses": ["aorta_distal.resistance"]
         }
     },
-    "solver": {
-        "iteration_max": 2 // This problem is linear
-    }
+    "solver": {"type": "linear_solver"}
 }

@@ -89,8 +89,7 @@ Solver
 
 This field define the solver implementation used to run a single simulation step.
 
-For now, only the :class:`~physioblocks.simulation.solvers.NewtonSolver` object is implemented in the current API.
-Its ``type`` is found in the :ref:`configuration section <library_configuration_simulation_solvers>` of the library
+The ``type`` parameters of available solver are found in the :ref:`configuration section <library_configuration_simulation_solvers>` of the library.
 
 .. code:: json
 
@@ -111,6 +110,7 @@ In this case, we set two parameters to the solver:
     Concerning our simple example the problem is **linear**, so a **Newton method is not adapted**.
     Still, we should be able to solve the system in two iterations, so ``iteration_max`` is set to 2.
 
+    A better choice would have been the ``linear_solver``, but we wanted to show the Newton solver in the example because it will be useful for most nets.
 
 Time
 ^^^^
@@ -135,7 +135,7 @@ It needs :
     }
 
 Here we set a 30 seconds simulation starting at 0.0.
-The simulation gives the state each 1ms and can divide a time step in parts of minimum lenght 62.5us before considering it can not solve the global system for the step.
+The simulation gives the state each 1ms and can divide a time step in parts of minimum length 62.5us before considering it can not solve the global system for the step.
 
 Net
 ^^^
