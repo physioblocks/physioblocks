@@ -114,6 +114,36 @@ class AbstractSolver(ABC):
         """
 
 
+LINEAR_SOLVER = "linear_solver"
+
+
+@register_type(LINEAR_SOLVER)
+class LinearSolver(AbstractSolver):
+    """
+    Implementation of the :class:`~.AbstractSolver` class for linear problems.
+    """
+
+    def solve(
+        self,
+        state: State,
+        system: EqSystem,
+        magnitudes: dict[str, float] | None = None,
+    ) -> Solution:
+        """
+        Solve the equation system directly
+
+        :return: the solution
+        :rtype: Solution
+        """
+        res = system.compute_residual()
+        grad = system.compute_gradient()
+
+        xn = np.linalg.solve(grad, res)
+        x = state.state_vector - xn
+
+        return Solution(x, True)
+
+
 # Type id for the Newton Solver
 NEWTON_SOLVER_TYPE_ID = "newton_solver"
 
