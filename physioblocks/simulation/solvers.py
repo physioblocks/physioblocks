@@ -81,31 +81,8 @@ class AbstractSolver(ABC):
         self.tolerance = tolerance
         self.iteration_max = iteration_max
 
-    def _get_state_magnitude(
-        self, state: State, magnitudes: dict[str, float] | None = None
-    ) -> NDArray[np.float64]:
-        if magnitudes is None:
-            return np.ones(
-                state.size,
-            )
-
-        mag_dict = {}
-        for var_mag_key, var_mag_value in magnitudes.items():
-            var_index = state.get_variable_index(var_mag_key)
-            mag_dict[var_index] = var_mag_value
-        sorted_mag = sorted(mag_dict.items())
-        state_mag_list = [x[1] for x in sorted_mag]
-        return np.array(
-            state_mag_list,
-        )
-
     @abstractmethod
-    def solve(
-        self,
-        state: State,
-        system: EqSystem,
-        magnitudes: dict[str, float] | None = None,
-    ) -> Solution:
+    def solve(self, state: State, system: EqSystem) -> Solution:
         """
         Child classes have to override this method
 
@@ -123,12 +100,7 @@ class LinearSolver(AbstractSolver):
     Implementation of the :class:`~.AbstractSolver` class for linear problems.
     """
 
-    def solve(
-        self,
-        state: State,
-        system: EqSystem,
-        magnitudes: dict[str, float] | None = None,
-    ) -> Solution:
+    def solve(self, state: State, system: EqSystem) -> Solution:
         """
         Solve the equation system directly
 
@@ -196,12 +168,7 @@ class NewtonSolver(AbstractSolver):
         grad_rescaled = gradient * grad_mag_inv
         return res_rescaled, grad_rescaled
 
-    def solve(
-        self,
-        state: State,
-        system: EqSystem,
-        magnitudes: dict[str, float] | None = None,
-    ) -> Solution:
+    def solve(self, state: State, system: EqSystem) -> Solution:
         """
         Solve the equation system using the Newton method.
 
@@ -213,15 +180,16 @@ class NewtonSolver(AbstractSolver):
             try:
                 i = 0
                 # initialize residual and magnitude
-                state_mag = self._get_state_magnitude(state, magnitudes)
                 res = np.ones(state.state_vector.shape)
 
                 # step 0 outside ou the loop to compute the residual and gradient
                 # magnitude
                 res, grad = self._compute_residual_and_gradient(system)
-                res_mag_inv, grad_mag_inv = self._compute_res_grad_mag(grad, state_mag)
+                res_mag_inv, grad_mag_inv = self._compute_res_grad_mag(
+                    grad, state.state_magnitudes
+                )
                 res, grad = self._rescale_res_grad(res, res_mag_inv, grad, grad_mag_inv)
-                x = self._compute_new_state(state, res, grad, state_mag)
+                x = self._compute_new_state(state, res, grad, state.state_magnitudes)
                 state.update_state_vector(x)
 
                 # Begin loop at iteration 1 (0 already done)
@@ -234,7 +202,9 @@ class NewtonSolver(AbstractSolver):
                     res, grad = self._rescale_res_grad(
                         res, res_mag_inv, grad, grad_mag_inv
                     )
-                    x = self._compute_new_state(state, res, grad, state_mag)
+                    x = self._compute_new_state(
+                        state, res, grad, state.state_magnitudes
+                    )
                     state.update_state_vector(x)
                     i += 1
 

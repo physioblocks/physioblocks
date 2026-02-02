@@ -28,7 +28,7 @@
 Define the **State** that holds simulation variables.
 """
 
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Mapping, Sized
 from pprint import pformat
 from typing import Any
 
@@ -53,8 +53,12 @@ class State:
     _variables: dict[str, Quantity[Any]]
     """The variables ids and quantities values"""
 
+    _magnitudes: dict[str, Any]
+    """The variables magnitudes"""
+
     def __init__(self) -> None:
         self._variables = {}
+        self._magnitudes = {}
 
     @property
     def size(self) -> int:
@@ -77,6 +81,16 @@ class State:
         return self._variables.copy()
 
     @property
+    def magnitudes(self) -> dict[str, Any]:
+        """
+        Get a mapping of variables names and magnitudes.
+
+        :return: the variables names and magnitudes.
+        :rtype: dict[str, Quantity]
+        """
+        return self._magnitudes.copy()
+
+    @property
     def state_vector(self) -> NDArray[np.float64]:
         """
         Get the vector of the ``new`` values of the state variable quantities.
@@ -91,8 +105,23 @@ class State:
         else:
             return np.array([])
 
-    def __array__(self) -> NDArray[Any]:
-        return self.state_vector
+    @property
+    def state_magnitudes(self) -> NDArray[np.float64]:
+        """
+        Get the state variables magnitudes.
+
+        :return: the state variables magnitudes
+        :rtype: NDArray[np.float64]
+        """
+        if len(self._variables) > 0:
+            return np.concatenate(
+                [self._magnitudes[var_id] for var_id in self._variables], axis=None
+            )
+        else:
+            return np.array([])
+
+    def __array__(self, *args: Any, **kwargs: Any) -> NDArray[Any]:
+        return np.array(self.state_vector, *args, **kwargs)
 
     def __getitem__(self, var_id: str) -> Quantity[Any]:
         """
@@ -311,7 +340,7 @@ class State:
                 quantity_part = x[var_index : var_index + quantity.size]
                 func(quantity, quantity_part)
 
-    def add_variable(self, var_id: str, var_value: Any) -> None:
+    def add_variable(self, var_id: str, var_value: Any, magnitude: Any = None) -> None:
         """
         Add a variable to the state.
 
@@ -328,6 +357,21 @@ class State:
         quantity = var_value if isinstance(var_value, Quantity) else Quantity(var_value)
         self._variables[var_id] = quantity
 
+        if magnitude is not None:
+            if quantity.size == 1 and isinstance(magnitude, float):
+                self._magnitudes[var_id] = magnitude
+            elif isinstance(magnitude, float):
+                self._magnitudes[var_id] = [magnitude] * quantity.size
+            elif isinstance(magnitude, Sized) and len(magnitude) == quantity.size:
+                self._magnitudes[var_id] = magnitude
+            else:
+                raise ValueError("Variable and magnitude sizes mismatch")
+        else:
+            if quantity.size == 1:
+                self._magnitudes[var_id] = 1.0
+            else:
+                self._magnitudes[var_id] = [1.0] * quantity.size
+
     def remove_variable(self, var_id: str) -> None:
         """
         Remove a variable from the state
@@ -338,3 +382,22 @@ class State:
         # remove the variable
         if var_id in self._variables:
             self._variables.pop(var_id)
+
+        if var_id in self._magnitudes:
+            self._magnitudes.pop(var_id)
+
+    def set_variables_magnitudes(self, magnitudes: dict[str, Any]) -> None:
+        """
+        Update all the state variables magnitudes.
+
+        :param magnitudes: the state variables magnitudes
+        :type magnitudes: dict[str, Any]
+
+        :raise KeyError: Raise a KeyError if one or more of the magnitude parameters key
+          is not in the state.
+        """
+
+        if set(magnitudes.keys()).issubset(self._variables.keys()) is False:
+            difference = set(magnitudes.keys()).difference(self._variables.keys())
+            raise KeyError(str.format("State has no variables named {0}.", difference))
+        self._magnitudes.update(magnitudes)

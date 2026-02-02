@@ -144,10 +144,16 @@ Let's see an example for the RCR Block:
     state["pressure_2"] = ref_block.pressure_2
 
     # Provide the variables magnitudes
-    magnitudes = np.array([1e4, 1e4, 1e4])
+    state.set_variables_magnitudes(
+        {
+            "pressure_1": 1e4,
+            "pressure_mid": 1e4,
+            "pressure_2": 1e4,
+        }
+    )
 
     # call the test function
-    assert gradient_test_from_model(ref_rcr_block, state, magnitudes)
+    assert gradient_test_from_model(ref_rcr_block, state)
 
 
 Test a single expression
@@ -182,7 +188,13 @@ From our previous example, let's only test the flux at node 0:
     state["pressure_2"] = ref_block.pressure_2
 
     # Provide the variables magnitude
-    magnitudes = np.array([1e4, 1e4, 1e4])
+    state.set_variables_magnitudes(
+        {
+            "pressure_1": 1e4,
+            "pressure_mid": 1e4,
+            "pressure_2": 1e4,
+        }
+    )
 
     # call the test function
-    assert gradient_test_from_expression(RCRBlock.fluxes_expressions[0].expression, state, magnitudes)
+    assert gradient_test_from_expression(RCRBlock.fluxes_expressions[0].expression, state)

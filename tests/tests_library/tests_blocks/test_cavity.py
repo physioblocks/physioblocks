@@ -24,7 +24,6 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
 import pytest
 
 from physioblocks.computing.quantities import Quantity
@@ -51,12 +50,10 @@ class TestSphericalCavityBlock:
         state["disp"] = ref_block.disp
 
         ref_block.time.update(0.001)
-        magnitudes = np.array([0.01])
         ref_block.initialize()
 
         assert gradient_test_from_expression(
             SphericalCavityBlock.fluxes_expressions[1].expression,
             ref_block,
             state,
-            magnitudes,
         )

@@ -50,14 +50,14 @@ def test_circulation_alone_ref():
     sim_config = read_json(circulation_alone_path)
     sim_config = unwrap_aliases(sim_config)
     sim: ForwardSimulation = load(sim_config)
-    sim.time_manager.duration = 0.5  # Shorten simulation time to avoid test too long
+    sim.time_manager.duration = 5.0  # Shorten simulation time to avoid test too long
     results = sim.run()
 
     ref_df = read_reference(reference_path)
     ref_df = ref_df.set_index(TIME_QUANTITY_ID)
 
     matching_ids = {data_id: data_id for data_id in results[0] if data_id != "time"}
-    tol_factors = copy(sim.magnitudes)
+    tol_factors = copy(sim.state.magnitudes)
     tol_factors["aorta_proximal.blood_flow"] = 1.0e-6
 
     results_df = pd.DataFrame(results)

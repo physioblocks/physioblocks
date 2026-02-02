@@ -88,11 +88,6 @@ def state() -> State:
     return state
 
 
-@pytest.fixture
-def magnitudes() -> dict[str, float]:
-    return {"x0": 1.0, "x1": 2.0}
-
-
 class TestAbstractSolver:
     @patch.multiple(AbstractSolver, __abstractmethods__=set())
     def test_constructor(self):
@@ -132,9 +127,9 @@ class TestNewtonSolver:
         compute_residual=Mock(return_value=mock_residual_converge()),
         compute_gradient=Mock(return_value=mock_gradient()),
     )
-    def test_converge(self, state, system, magnitudes):
+    def test_converge(self, state, system):
         solver = NewtonSolver(1e-9, 10)
-        sol = solver.solve(state, system, magnitudes)
+        sol = solver.solve(state, system)
         assert sol.converged is True
         assert sol.x == pytest.approx([0, 0])
 
@@ -143,9 +138,9 @@ class TestNewtonSolver:
         compute_residual=Mock(return_value=mock_residual_dont_converge()),
         compute_gradient=Mock(return_value=mock_gradient()),
     )
-    def test_dont_converge_sol(self, state, system, magnitudes):
+    def test_dont_converge_sol(self, state, system):
         solver = NewtonSolver(1e-9, 10)
-        sol = solver.solve(state, system, magnitudes)
+        sol = solver.solve(state, system)
         assert sol.converged is False
 
     @patch.multiple(
@@ -153,9 +148,9 @@ class TestNewtonSolver:
         compute_residual=Mock(return_value=mock_residual_nan()),
         compute_gradient=Mock(return_value=mock_gradient()),
     )
-    def test_dont_converge_nan(self, state, system, magnitudes):
+    def test_dont_converge_nan(self, state, system):
         solver = NewtonSolver(1e-9, 10)
-        sol = solver.solve(state, system, magnitudes)
+        sol = solver.solve(state, system)
         assert sol.converged is False
 
     @patch.multiple(
@@ -163,7 +158,7 @@ class TestNewtonSolver:
         compute_residual=Mock(return_value=mock_residual_inf()),
         compute_gradient=Mock(return_value=mock_gradient()),
     )
-    def test_dont_converge_inf(self, state, system, magnitudes):
+    def test_dont_converge_inf(self, state, system):
         solver = NewtonSolver(1e-9, 10)
-        sol = solver.solve(state, system, magnitudes)
+        sol = solver.solve(state, system)
         assert sol.converged is False

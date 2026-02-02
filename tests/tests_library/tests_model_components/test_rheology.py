@@ -24,7 +24,6 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
 import pytest
 
 from physioblocks.computing.quantities import Quantity
@@ -57,6 +56,5 @@ class TestRheologyFiberAdditiveModelComponent:
         state["active_tension_discr"] = ref_model.active_tension_discr
 
         ref_model.time.update(0.001)
-        magnitudes = np.array([0.14, 0.015, 1999.3])
 
-        assert gradient_test_from_model(ref_model, state, magnitudes)
+        assert gradient_test_from_model(ref_model, state)

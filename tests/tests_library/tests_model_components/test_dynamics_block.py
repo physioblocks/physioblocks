@@ -62,18 +62,21 @@ def state(ref_block: SphericalDynamicsModelComponent):
     state["pressure"] = ref_block.pressure
     state["pressure_external"] = ref_block.pressure_external
     state["vel"] = ref_block.vel
+    state.set_variables_magnitudes(
+        {
+            "disp": 0.013,
+            "fib_deform": 0.4,
+            "pressure": 1e5,
+            "pressure_external": 151.2,
+            "vel": 1.1,
+        }
+    )
     return state
 
 
-@pytest.fixture
-def magnitudes():
-    return np.array([0.013, 0.4, 1e5, 151.2, 1.1])
-
-
 class TestSphericalDynamicsModelComponent:
-    def test_check_gradient_small_disp_diff(self, ref_block, state, magnitudes):
-        assert gradient_test_from_model(ref_block, state, magnitudes)
+    def test_check_gradient_small_disp_diff(self, ref_block, state):
+        assert gradient_test_from_model(ref_block, state)
 
-    def test_check_gradient_big_disp_diff(self, ref_block, state, magnitudes):
-        magnitudes[0] = 1e-6
-        assert gradient_test_from_model(ref_block, state, magnitudes)
+    def test_check_gradient_big_disp_diff(self, ref_block, state):
+        assert gradient_test_from_model(ref_block, state)

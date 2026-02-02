@@ -24,7 +24,6 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
 import pytest
 
 from physioblocks.computing.quantities import Quantity
@@ -57,18 +56,14 @@ def state(ref_block: ValveRLBlock):
     state["pressure_1"] = ref_block.pressure_1
     state["pressure_2"] = ref_block.pressure_2
     state["flux"] = ref_block.flux
+    state.set_variables_magnitudes({"pressure_1": 1e4, "pressure_2": 1e4, "flux": 1e-3})
     return state
 
 
-@pytest.fixture
-def magnitudes():
-    return np.array([1e5, 1e5, 1e-3])
-
-
 class TestValveRLBlock:
-    def test_check_gradient(self, ref_block: ValveRLBlock, state: State, magnitudes):
-        assert gradient_test_from_model(ref_block, state, magnitudes)
+    def test_check_gradient(self, ref_block: ValveRLBlock, state: State):
+        assert gradient_test_from_model(ref_block, state)
 
-    def test_check_gradient_flux_neg(self, ref_block: ValveRLBlock, state, magnitudes):
+    def test_check_gradient_flux_neg(self, ref_block: ValveRLBlock, state):
         ref_block.flux.initialize(-0.0011)
-        assert gradient_test_from_model(ref_block, state, magnitudes)
+        assert gradient_test_from_model(ref_block, state)

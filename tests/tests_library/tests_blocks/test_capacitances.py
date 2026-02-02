@@ -24,7 +24,6 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
 import pytest
 
 from physioblocks.computing.quantities import Quantity
@@ -48,9 +47,8 @@ class TestCBlock:
         state = State()
         state["pressure"] = ref_c_block.pressure
         ref_c_block.time.update(0.001)
-        magnitudes = np.array([1e5])
 
-        assert gradient_test_from_model(ref_c_block, state, magnitudes)
+        assert gradient_test_from_model(ref_c_block, state)
 
 
 @pytest.fixture
@@ -71,9 +69,7 @@ class TestRCBlock:
         state["pressure_2"] = ref_rc_block.pressure_2
         ref_rc_block.time.update(0.001)
 
-        magnitudes = np.array([1e5, 1e5])
-
-        assert gradient_test_from_model(ref_rc_block, state, magnitudes)
+        assert gradient_test_from_model(ref_rc_block, state)
 
 
 @pytest.fixture
@@ -97,6 +93,4 @@ class TestRCRBlock:
         state["pressure_2"] = ref_rcr_block.pressure_2
         ref_rcr_block.time.update(0.001)
 
-        magnitudes = np.array([1e4, 1e4, 1e4])
-
-        assert gradient_test_from_model(ref_rcr_block, state, magnitudes)
+        assert gradient_test_from_model(ref_rcr_block, state)
