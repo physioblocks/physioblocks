@@ -38,11 +38,8 @@ PARAMETERS_ID = "parameters"
 # Definition of the flux-dof types couples
 FLUX_DOF_DEFINITION_ID = "flux_dof_definitions"
 
-
-# Magnitudes
-
-# The variable magnitude item label in the configuration
-MAGNITUDES = "magnitudes"
+# Options label for specific simulation types
+SIMULATION_OPTIONS = "simulation_options"
 
 # The variable magnitude item label in the configuration
 VARIABLES_MAGNITUDES = "variables_magnitudes"
