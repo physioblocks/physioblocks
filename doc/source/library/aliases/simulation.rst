@@ -94,7 +94,7 @@ Parameters
         * ``proximal``: blood flow boundary condition
         * ``venous``: blood pressure boundary condition
 
-    * Sets default parameters, magnitudes. Especially:
+    * Sets default parameters, variables and magnitudes. Especially:
 
         * ``aorta_proximal.blood_flow`` is a periodic function needing a min and max value.
         * ``heart_rate`` parameter is introduced to set the function periodicity.

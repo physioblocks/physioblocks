@@ -35,7 +35,6 @@ from typing import Any
 from physioblocks.configuration.base import Configuration, ConfigurationError
 from physioblocks.configuration.constants import (
     INIT_VARIABLES_ID,
-    MAGNITUDES,
     NET_ID,
     OUTPUTS_FUNCTIONS_ID,
     PARAMETERS_ID,
@@ -86,16 +85,10 @@ def load_simulation_config(
         if SOLVER_ID in config:
             solver = load(config[SOLVER_ID])
 
-        # magnitudes
-        magnitudes = None
-        if VARIABLES_MAGNITUDES in config:
-            magnitudes = load(config[VARIABLES_MAGNITUDES])
-
         sim_factory = SimulationFactory(
             configuration_type,
             solver,
             net,
-            simulation_options={MAGNITUDES: magnitudes},
         )
 
         configuration_object = sim_factory.create_simulation()
@@ -147,7 +140,7 @@ def save_simulation_config(
                 type(variable_init_values).__name__,
             )
         )
-    sim_config[VARIABLES_MAGNITUDES] = save(simulation.magnitudes)
+    sim_config[VARIABLES_MAGNITUDES] = save(simulation.state.magnitudes)
 
     # Parameters
     # Get quantities
@@ -225,6 +218,11 @@ def _configure_simulation(
         configuration_object=simulation.state,
         configuration_references=simulation.quantities,
     )
+
+    # magnitudes
+    if VARIABLES_MAGNITUDES in config:
+        magnitudes = load(config[VARIABLES_MAGNITUDES])
+        simulation.state.set_variables_magnitudes(magnitudes)
 
     references.update(simulation.quantities)
     references.update(simulation.models)

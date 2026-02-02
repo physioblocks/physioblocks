@@ -52,6 +52,7 @@ class TestState:
     def test_constructor(self):
         state = State()
         assert state.size == 0
+        assert state.state_vector.size == 0
 
     def test_variables(self, scalar, vector):
         state = State()
@@ -62,6 +63,8 @@ class TestState:
         assert state.get_variable_index(_X0_ID) == 0
         assert state.get_variable_size(_X0_ID) == 1
         assert state.get_variable_id(0) == _X0_ID
+        assert state.variables[_X0_ID] == pytest.approx(scalar)
+        assert state.get(_X0_ID) == pytest.approx(scalar)
 
         message = str.format("No variable at index {0}", 1)
         with pytest.raises(KeyError, match=message):
@@ -93,6 +96,10 @@ class TestState:
         with pytest.raises(KeyError, match=error_message):
             state.add_variable(_X0_ID, scalar)
 
+        error_message = str.format("State has no variable variable named {0}.", _X1_ID)
+        with pytest.raises(KeyError, match=error_message):
+            state.get_variable_index(_X1_ID)
+
     def test_set_variable_quantity(self, scalar: float, vector: NDArray[np.float64]):
         state = State()
         state[_X0_ID] = Quantity(scalar)
@@ -107,6 +114,21 @@ class TestState:
 
         with pytest.raises(KeyError):
             state["unregistered"]
+
+    def test_update_variable_quantity(self, scalar: float):
+        state = State()
+        state[_X0_ID] = Quantity(scalar)
+        state[_X1_ID] = Quantity(scalar)
+        new_state_values = {
+            _X0_ID: 2.0,
+            _X1_ID: 3.0,
+            _X2_ID: 4.0,
+        }
+        state.update(new_state_values)
+        assert _X2_ID in state
+        assert state[_X0_ID] == pytest.approx(2.0)
+        assert state[_X1_ID] == pytest.approx(3.0)
+        assert state[_X2_ID] == pytest.approx(4.0)
 
     def test_state_vector(self, scalar: float, vector: NDArray[np.float64]):
         state = State()
@@ -138,12 +160,17 @@ class TestState:
         assert state[_X1_ID].new == pytest.approx(update_ref[1:3])
         assert state[_X1_ID].current == pytest.approx(init_ref[1:3])
 
+        state.reset_state_vector()
+        assert np.array(state) == pytest.approx(init_ref)
+
         state.set_state_vector(set_ref)
         assert state.state_vector == pytest.approx(set_ref)
         assert state[_X0_ID].new == pytest.approx(set_ref[0])
         assert state[_X0_ID].current == pytest.approx(set_ref[0])
         assert state[_X1_ID].new == pytest.approx(set_ref[1:3])
         assert state[_X1_ID].current == pytest.approx(set_ref[1:3])
+
+        assert np.array(state) == pytest.approx(set_ref)
 
         wrong_size_vector = np.zeros(
             shape=5,
@@ -153,3 +180,63 @@ class TestState:
 
         with pytest.raises(ValueError):
             state.set_state_vector(wrong_size_vector)
+
+    def test_state_iter(self):
+        state = State()
+        state.add_variable(_X0_ID, 0.0)
+        state.add_variable(_X1_ID, 0.0)
+        state.add_variable(_X2_ID, 0.0)
+        for var_id in state:
+            assert var_id in [_X0_ID, _X1_ID, _X2_ID]
+
+    def test_add_default_variable_magnitude(self):
+        state = State()
+
+        assert state.state_magnitudes.size == 0
+
+        state.add_variable(_X0_ID, 0.002)
+        state.add_variable(_X1_ID, [1.3, 10.5])
+        assert state.state_magnitudes == pytest.approx(np.ones(3))
+
+    def test_add_variable_magnitude(self):
+        state = State()
+        scalar_var_mag = 1e-3
+        vector_var_mag = [1.0, 10.0]
+        state.add_variable(_X0_ID, 0.002, scalar_var_mag)
+        state.add_variable(_X1_ID, [1.3, 10.5], vector_var_mag)
+        state.add_variable(_X2_ID, [105.3, 503.0], scalar_var_mag)
+
+        assert state.state_magnitudes[0] == pytest.approx(scalar_var_mag)
+        assert state.state_magnitudes[1:3] == pytest.approx(vector_var_mag)
+        assert state.state_magnitudes[3:5] == pytest.approx([scalar_var_mag] * 2)
+
+    def test_set_variable_magnitude(self):
+        state = State()
+        state.add_variable(_X0_ID, 0.002)
+        state.add_variable(_X1_ID, [0.3, 0.04])
+
+        new_mag = {_X0_ID: 1e-3, _X1_ID: [0.1, 0.01]}
+        state.set_variables_magnitudes(new_mag)
+        assert state.state_magnitudes == pytest.approx(
+            [new_mag[_X0_ID], *new_mag[_X1_ID]]
+        )
+
+    def test_add_variable_error(self):
+        state = State()
+        with pytest.raises(ValueError, match="Variable and magnitude sizes mismatch"):
+            state.add_variable(_X0_ID, 1.0, [1.0, 1.0])
+
+        with pytest.raises(ValueError, match="Variable and magnitude sizes mismatch"):
+            state.add_variable(_X1_ID, [2.0, 3.0, 4.0], [1.0, 1.0])
+
+    def test_set_magnitude_errors(self):
+        state = State()
+        state.add_variable(_X0_ID, 0.002)
+        state.add_variable(_X1_ID, [0.3, 0.04])
+
+        new_mag = {_X0_ID: 1e-3, _X1_ID: [0.1, 0.01], _X2_ID: 1.0}
+        with pytest.raises(
+            KeyError,
+            match=str.format("State has no variables named {0}.", set([_X2_ID])),
+        ):
+            state.set_variables_magnitudes(new_mag)

@@ -77,22 +77,16 @@ def gradient_test_from_file(config_file_path: str) -> bool:
     :param config_file_path: the file path to the simulation configuration file.
     :type config_file_path: str
 
-    :return: True if the gradient test is successfull, false otherwise.
+    :return: True if the gradient test is successful, false otherwise.
     """
     configuration = read_json(config_file_path)
     configuration = unwrap_aliases(configuration)
     sim: AbstractSimulation = load(configuration)
     sim._initialize()  # noqa SLF001
-    return gradient_test(
-        sim.eq_system,
-        sim.state,
-        sim.solver._get_state_magnitude(sim.state, sim.magnitudes),  # noqa: SLF001
-    )
+    return gradient_test(sim.eq_system, sim.state)
 
 
-def gradient_test_from_model(
-    model: ModelComponent, state: State, state_magnitude: NDArray[np.float64]
-) -> bool:
+def gradient_test_from_model(model: ModelComponent, state: State) -> bool:
     """
     Create an equation system for the given block only and perform a gradient test.
 
@@ -106,10 +100,7 @@ def gradient_test_from_model(
     :param state: the state used to determine the variables in the model.
     :type state: str
 
-    :param state_magnitude: the state variables magnitudes
-    :type state_magnitude: str
-
-    :return: True if the gradient test is successfull, false otherwise.
+    :return: True if the gradient test is successful, false otherwise.
     """
     line_index = 0
     expressions = setup.SystemExpressions()
@@ -124,14 +115,11 @@ def gradient_test_from_model(
 
     eq_system = setup.build_eq_system(expressions, state)
     model.initialize()
-    return gradient_test(eq_system, state, state_magnitude)
+    return gradient_test(eq_system, state)
 
 
 def gradient_test_from_expression(
-    expr: Expression,
-    expr_params: Any,
-    state: State,
-    state_magnitude: NDArray[np.float64],
+    expr: Expression, expr_params: Any, state: State
 ) -> bool:
     """
     Create an equation system for the given expression only and perform a gradient test.
@@ -145,20 +133,15 @@ def gradient_test_from_expression(
     :param state: the state used to determine the variables in the expression.
     :type state: str
 
-    :param state_magnitude: the state variables magnitudes
-    :type state_magnitude: str
-
-    :return: True if the gradient test is successfull, false otherwise.
+    :return: True if the gradient test is successful, false otherwise.
     :rtype: bool
     """
 
     eq_system = setup.build_eq_system([(0, expr, expr_params)], state)
-    return gradient_test(eq_system, state, state_magnitude)
+    return gradient_test(eq_system, state)
 
 
-def gradient_test(
-    eq_system: EqSystem, state: State, state_magnitude: NDArray[np.float64]
-) -> bool:
+def gradient_test(eq_system: EqSystem, state: State) -> bool:
     """
     Test the computed gradient for the equation system by comparing it to
     a gradient estimated with finite differences.
@@ -170,9 +153,6 @@ def gradient_test(
     :param state: system state
     :type state: State
 
-    :param state_magnitude: the state variables magnitudes
-    :type state_magnitude: str
-
     :return: True if the estimated and computed gradient meet tolerance,
       False otherwise.
     """
@@ -180,9 +160,9 @@ def gradient_test(
     _logger.info(str.format("State:{0}{1}", linesep, state))
     _logger.info(str.format("System:{0}{1}", linesep, eq_system))
 
-    new_state = state.state_vector + _NEW_STATE_SHIFT_FACTOR * state_magnitude
+    new_state = state.state_vector + _NEW_STATE_SHIFT_FACTOR * state.state_magnitudes
 
-    shift_1 = _SHIFT_FACTOR * state_magnitude
+    shift_1 = _SHIFT_FACTOR * state.state_magnitudes
     state.update_state_vector(new_state)
 
     res = eq_system.compute_residual()

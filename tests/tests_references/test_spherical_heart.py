@@ -70,7 +70,7 @@ def test_spherical_heart_ref():
 
     matching_ids = {data_id: data_id for data_id in results[0] if data_id != "time"}
 
-    tol_factors = copy(sim.magnitudes)
+    tol_factors = sim.state.magnitudes
     tol_factors["cavity.volume"] = 1.0e-3
     tol_factors["atrial.blood_pressure"] = 1.0e2
     tol_factors["active_law.activation"] = 1.0
@@ -100,7 +100,7 @@ def test_spherical_heart_respiration_ref():
     ref_df = ref_df.set_index(TIME_QUANTITY_ID)
 
     matching_ids = {data_id: data_id for data_id in results[0] if data_id != "time"}
-    tol_factors = copy(sim.magnitudes)
+    tol_factors = copy(sim.state.magnitudes)
     tol_factors["cavity.volume"] = 1.0e-3
     tol_factors["atrial.blood_pressure"] = 1.0e2
     tol_factors["active_law.activation"] = 1.0

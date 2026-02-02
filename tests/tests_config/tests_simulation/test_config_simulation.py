@@ -186,7 +186,9 @@ def simulation_reference(net_reference: Net, ref_flux_expressions, ref_nodes):
     ):
         factory = SimulationFactory(AbstractSimulation, AbstractSolver(), net_reference)
         sim = factory.create_simulation()
-        sim.magnitudes = {str.format("{0}.{1}", NODE_A_ID, DOF_TYPE_ID): 1.1}
+        sim.state.set_variables_magnitudes(
+            {str.format("{0}.{1}", NODE_A_ID, DOF_TYPE_ID): 1.1}
+        )
         sim.register_timed_parameter_update(INLET_FLUX_CONDITION_ID, AbstractFunction())
         sim.register_output_function(OUTPUT_ID, AbstractFunction())
         sim.parameters[VECTOR_ID] = 3 * [0.0]

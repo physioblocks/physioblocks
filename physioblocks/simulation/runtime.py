@@ -96,9 +96,6 @@ class AbstractSimulation(ABC):
 
     :param eq_system: the equation system to solve at each time step
     :type eq_system: EqSystem
-
-    :param magnitudes: magnitude of the state variables
-    :type magnitudes: dict[str, float]
     """
 
     def __init__(
@@ -111,7 +108,6 @@ class AbstractSimulation(ABC):
         models: dict[str, ModelComponent],
         solver: AbstractSolver,
         eq_system: EqSystem,
-        magnitudes: dict[str, float] | None = None,
     ):
         self.factory = factory
         self.state = state
@@ -121,9 +117,6 @@ class AbstractSimulation(ABC):
         self.time_manager = time_manager
         self.solver = solver
         self.eq_system = eq_system
-        if magnitudes is None:
-            magnitudes = {}
-        self.magnitudes = self._check_magnitudes(magnitudes, state)
         self._timed_updates: dict[str, AbstractFunction] = {}
         self._output_functions_updates: dict[str, AbstractFunction] = {}
 
@@ -272,33 +265,6 @@ class AbstractSimulation(ABC):
         self.time_manager.time.initialize(self.time_manager.start)
         self.state.set_state_vector(self._initial_state)
 
-    def _check_magnitudes(
-        self, magnitudes: dict[str, float], state: State
-    ) -> dict[str, float]:
-        checked_magnitudes = {}
-
-        for variable_id in state:
-            if variable_id not in magnitudes:
-                message = str.format(
-                    "No magnitude initialized for variable {0}. Magnitude set to 1.0",
-                    variable_id,
-                )
-                _logger.warning(message)
-                checked_magnitudes[variable_id] = 1.0
-
-            elif magnitudes[variable_id] == 0.0:
-                message = str.format(
-                    "Magnitude for variable {0} is initialized to 0.0. "
-                    "Replacing with 1.0",
-                    variable_id,
-                )
-                _logger.warning(message)
-                checked_magnitudes[variable_id] = 1.0
-            else:
-                checked_magnitudes[variable_id] = magnitudes[variable_id]
-
-        return checked_magnitudes
-
     @abstractmethod
     def run(self) -> Results:
         """
@@ -406,7 +372,7 @@ class ForwardSimulation(AbstractSimulation):
                 ):
                     self.state.reset_state_vector()
 
-                    sol = self.solver.solve(self.state, self.eq_system, self.magnitudes)
+                    sol = self.solver.solve(self.state, self.eq_system)
 
                     if sol.converged is False:
                         inter_time = 0.5 * self.time_manager.current_step_size

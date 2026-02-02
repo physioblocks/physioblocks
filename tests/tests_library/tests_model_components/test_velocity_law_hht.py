@@ -24,7 +24,6 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
 import pytest
 
 from physioblocks.computing.quantities import Quantity
@@ -55,6 +54,4 @@ class TestVelocityLawHHTModelComponent:
         state["accel"] = ref_block.accel
         ref_block.time.update(0.001)
 
-        magnitudes = np.array([1.0, 1.0, 1.0])
-
-        assert gradient_test_from_model(ref_block, state, magnitudes)
+        assert gradient_test_from_model(ref_block, state)

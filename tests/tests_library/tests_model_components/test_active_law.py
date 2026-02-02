@@ -78,10 +78,5 @@ class TestActiveLawMacroscopicHuxleyTwoMoment:
         state["active_tension_discr"] = ref_block.active_tension_discr
 
         ref_block.time.update(0.001)
-        magnitudes = np.array([0.14, 10.4, 2.48, 12.3])
 
-        assert gradient_test_from_model(
-            ref_block,
-            state,
-            magnitudes,
-        )
+        assert gradient_test_from_model(ref_block, state)

@@ -902,7 +902,9 @@ class SphericalDynamicsModelComponent(ModelComponent):
         eq_system = EqSystem(1)
 
         state = State()
-        state.add_variable(SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID, 1)
+        state.add_variable(
+            SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID, 1, _STATIC_PROBLEM_DISP_MAG
+        )
         state[SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID].initialize(self.disp.current)
 
         static_block = _SphericalDynamicsStaticModelComponent(
@@ -942,11 +944,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
             p_test <= static_block.pressure.current
             and p_test > _STATIC_PROBLEM_MIN_PRESSURE_STEP
         ):
-            sol = solver.solve(
-                state,
-                eq_system,
-                {SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID: _STATIC_PROBLEM_DISP_MAG},
-            )
+            sol = solver.solve(state, eq_system)
 
             if sol.converged is True:
                 state[SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID].initialize(sol.x[0])
