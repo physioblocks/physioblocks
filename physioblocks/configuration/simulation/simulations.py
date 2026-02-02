@@ -38,6 +38,7 @@ from physioblocks.configuration.constants import (
     NET_ID,
     OUTPUTS_FUNCTIONS_ID,
     PARAMETERS_ID,
+    SIMULATION_OPTIONS,
     SOLVER_ID,
     TIME_MANAGER_ID,
     VARIABLES_MAGNITUDES,
@@ -85,10 +86,15 @@ def load_simulation_config(
         if SOLVER_ID in config:
             solver = load(config[SOLVER_ID])
 
+        simulation_options = None
+        if SIMULATION_OPTIONS in config:
+            simulation_options = load(config[SIMULATION_OPTIONS])
+
         sim_factory = SimulationFactory(
             configuration_type,
             solver,
             net,
+            simulation_options=simulation_options,
         )
 
         configuration_object = sim_factory.create_simulation()
