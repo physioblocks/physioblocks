@@ -35,12 +35,12 @@ import numpy as np
 
 from physioblocks.computing import (
     Block,
-    Expression,
     Quantity,
     diff,
     mid_alpha,
     mid_point,
 )
+from physioblocks.computing.models import declares_flux, declares_internal_equation
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -96,7 +96,7 @@ class ValveRLBlock(Block):
             R_{\text{back}}Q \text{ else }
             \end{cases} = 0
 
-    **Discretisation:**
+    **Discretization:**
 
 
         .. math:: Q_1^{{n + \frac{1}{2}}} = - Q^{{n + \frac{1}{2}}}
@@ -145,6 +145,7 @@ class ValveRLBlock(Block):
             / (self.conductance.current + self.backward_conductance.current)
         )
 
+    @declares_internal_equation(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def flux_residual(self) -> Any:
         """
         Compute the residual giving the dynamics on the flux in the valve.
@@ -168,6 +169,7 @@ class ValveRLBlock(Block):
             + q_mid_alpha / conductance
         )
 
+    @flux_residual.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def flux_residual_dflux(self) -> Any:
         """
         Compute the residual partial derivative for ``flux``
@@ -187,6 +189,7 @@ class ValveRLBlock(Block):
             + (0.5 + self.scheme_ts_flux.current) / conductance
         )
 
+    @flux_residual.partial_derivative(VALVE_RL_BLOCK_PRESSURE_1_DOF_ID)
     def flux_residual_dp1(self) -> Any:
         """
         Compute the residual partial derivative for ``pressure_1``
@@ -197,6 +200,7 @@ class ValveRLBlock(Block):
 
         return -0.5
 
+    @flux_residual.partial_derivative(VALVE_RL_BLOCK_PRESSURE_2_DOF_ID)
     def flux_residual_dp2(self) -> Any:
         """
         Compute the residual partial derivative for ``pressure_2``
@@ -207,6 +211,7 @@ class ValveRLBlock(Block):
 
         return 0.5
 
+    @declares_flux(1, VALVE_RL_BLOCK_PRESSURE_1_DOF_ID)
     def flux_1(self) -> Any:
         """
         Compute the block flux at node 1
@@ -217,6 +222,7 @@ class ValveRLBlock(Block):
         """
         return -mid_point(self.flux)
 
+    @flux_1.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def dflux_1_dflux(self) -> Any:
         """
         Compute the block flux at node 1 partial derivative for ``flux``
@@ -227,6 +233,7 @@ class ValveRLBlock(Block):
         """
         return -0.5
 
+    @declares_flux(2, VALVE_RL_BLOCK_PRESSURE_2_DOF_ID)
     def flux_2(self) -> Any:
         """
         Compute the block flux at node 2
@@ -236,6 +243,7 @@ class ValveRLBlock(Block):
         """
         return mid_point(self.flux)
 
+    @flux_2.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def dflux_2_dflux(self) -> Any:
         """
         Compute the block flux at node 2 partial derivative for ``flux``
@@ -244,38 +252,3 @@ class ValveRLBlock(Block):
         :rtype: np.float64
         """
         return 0.5
-
-
-# define the Valve RL internal variable residual expression
-# giving the dynamics on the flux in the valve
-_valve_rl_flux_residual_expr = Expression(
-    1,
-    ValveRLBlock.flux_residual,
-    {
-        VALVE_RL_BLOCK_FLUX_VAR_ID: ValveRLBlock.flux_residual_dflux,
-        VALVE_RL_BLOCK_PRESSURE_1_DOF_ID: ValveRLBlock.flux_residual_dp1,
-        VALVE_RL_BLOCK_PRESSURE_2_DOF_ID: ValveRLBlock.flux_residual_dp2,
-    },
-)
-
-# define the ValveRL flux expression at node 1.
-_valve_rl_flux_1_expr = Expression(
-    1, ValveRLBlock.flux_1, {VALVE_RL_BLOCK_FLUX_VAR_ID: ValveRLBlock.dflux_1_dflux}
-)
-
-# define the ValveRL flux expression at node 2.
-_valve_rl_flux_2_expr = Expression(
-    1,
-    ValveRLBlock.flux_2,
-    {VALVE_RL_BLOCK_FLUX_VAR_ID: ValveRLBlock.dflux_2_dflux},
-)
-
-ValveRLBlock.declares_internal_expression(
-    VALVE_RL_BLOCK_FLUX_VAR_ID, _valve_rl_flux_residual_expr
-)
-ValveRLBlock.declares_flux_expression(
-    1, VALVE_RL_BLOCK_PRESSURE_1_DOF_ID, _valve_rl_flux_1_expr
-)
-ValveRLBlock.declares_flux_expression(
-    2, VALVE_RL_BLOCK_PRESSURE_2_DOF_ID, _valve_rl_flux_2_expr
-)

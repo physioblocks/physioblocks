@@ -31,7 +31,12 @@ from typing import Any
 
 import numpy as np
 
-from physioblocks.computing import Block, Expression, Quantity, diff, mid_point
+from physioblocks.computing import Block, Quantity, diff, mid_point
+from physioblocks.computing.models import (
+    declares_flux,
+    declares_internal_equation,
+    declares_saved_quantity,
+)
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -41,8 +46,8 @@ from physioblocks.simulation import Time
 # Constant for the c block type id
 C_BLOCK_TYPE_ID = "c_block"
 
-# Constant for the c block dof id
-C_BLOCK_PRESSURE_DOF_ID = "pressure"
+# Constant for the c block pressure local id
+C_BLOCK_PRESSURE_ID = "pressure"
 
 
 @register_type(C_BLOCK_TYPE_ID)
@@ -77,6 +82,7 @@ class CBlock(Block):
     time: Time
     """Simulation time"""
 
+    @declares_flux(1, C_BLOCK_PRESSURE_ID)
     def flux(self) -> Any:
         """
         Compute the flux at local node 1
@@ -86,6 +92,7 @@ class CBlock(Block):
         """
         return -self.capacitance.current * diff(self.pressure) * self.time.inv_dt
 
+    @flux.partial_derivative(C_BLOCK_PRESSURE_ID)
     def dflux_dpressure(self) -> Any:
         """
         Compute the flux at local node 1 partial derivative for pressure
@@ -94,12 +101,6 @@ class CBlock(Block):
         :rtype: np.float64
         """
         return -self.capacitance.current * self.time.inv_dt
-
-
-_c_block_flux_expression = Expression(
-    1, CBlock.flux, {C_BLOCK_PRESSURE_DOF_ID: CBlock.dflux_dpressure}
-)
-CBlock.declares_flux_expression(1, C_BLOCK_PRESSURE_DOF_ID, _c_block_flux_expression)
 
 
 # RC BLOCK Definition
@@ -164,6 +165,7 @@ class RCBlock(Block):
     time: Time
     """The simulation time"""
 
+    @declares_flux(1, RC_BLOCK_PRESSURE_1_DOF_ID)
     def flux_1(self) -> Any:
         """
         Computes the outlet flux at local node 1.
@@ -175,6 +177,7 @@ class RCBlock(Block):
         pressure_2 = mid_point(self.pressure_2)
         return (pressure_2 - pressure_1) / self.resistance.current
 
+    @flux_1.partial_derivative(RC_BLOCK_PRESSURE_1_DOF_ID)
     def dflux_1_dpressure_1(self) -> Any:
         """
         Computes the outlet flux at node 1 derivative for pressure_1.
@@ -184,6 +187,7 @@ class RCBlock(Block):
         """
         return -0.5 / self.resistance.current
 
+    @flux_1.partial_derivative(RC_BLOCK_PRESSURE_2_DOF_ID)
     def dflux_1_dpressure_2(self) -> Any:
         """
         Computes the outlet flux at node 1 derivative for pressure_2.
@@ -193,6 +197,7 @@ class RCBlock(Block):
         """
         return 0.5 / self.resistance.current
 
+    @declares_flux(2, RC_BLOCK_PRESSURE_2_DOF_ID)
     def flux_2(self) -> Any:
         """
         Computes the outlet flux at node 2.
@@ -208,6 +213,7 @@ class RCBlock(Block):
             - self.capacitance.current * self.time.inv_dt * dpressure_2
         )
 
+    @flux_2.partial_derivative(RC_BLOCK_PRESSURE_1_DOF_ID)
     def dflux_2_dpressure_1(self) -> Any:
         """
         Computes the outlet flux at node 2 derivative for pressure_1.
@@ -217,6 +223,7 @@ class RCBlock(Block):
         """
         return 0.5 / self.resistance.current
 
+    @flux_2.partial_derivative(RC_BLOCK_PRESSURE_2_DOF_ID)
     def dflux_2_dpressure_2(self) -> Any:
         """
         Computes the outlet flux at node 2 derivative for pressure_2.
@@ -228,29 +235,6 @@ class RCBlock(Block):
             -0.5 / self.resistance.current - self.capacitance.current * self.time.inv_dt
         )
 
-
-# Define the flux expression going in the input node for rc_block
-_rc_block_flux_1_expr = Expression(
-    1,
-    RCBlock.flux_1,
-    {
-        RC_BLOCK_PRESSURE_1_DOF_ID: RCBlock.dflux_1_dpressure_1,
-        RC_BLOCK_PRESSURE_2_DOF_ID: RCBlock.dflux_1_dpressure_2,
-    },
-)
-
-# Define the flux expression going in the output node for rc_block
-_rc_block_flux_2_expr = Expression(
-    1,
-    RCBlock.flux_2,
-    {
-        RC_BLOCK_PRESSURE_1_DOF_ID: RCBlock.dflux_2_dpressure_1,
-        RC_BLOCK_PRESSURE_2_DOF_ID: RCBlock.dflux_2_dpressure_2,
-    },
-)
-
-RCBlock.declares_flux_expression(1, RC_BLOCK_PRESSURE_1_DOF_ID, _rc_block_flux_1_expr)
-RCBlock.declares_flux_expression(2, RC_BLOCK_PRESSURE_2_DOF_ID, _rc_block_flux_2_expr)
 
 # RCR BLOCK Definition
 
@@ -300,7 +284,7 @@ class RCRBlock(Block):
 
             \frac{P_1 - P_{mid}}{R_1} + \frac{P_2 - P_{mid}}{R_2} - C\dot{P}_{mid} = 0
 
-    **Discretisation:**
+    **Discretization:**
 
         .. math::
 
@@ -341,6 +325,7 @@ class RCRBlock(Block):
     time: Time
     """The simulation time"""
 
+    @declares_flux(1, RCR_BLOCK_PRESSURE_1_ID)
     def flux_1(self) -> Any:
         """
         Computes the outlet flux at node 1.
@@ -354,6 +339,7 @@ class RCRBlock(Block):
 
         return (pressure_mid_discr - pressure_1_discr) / self.resistance_1.current
 
+    @flux_1.partial_derivative(RCR_BLOCK_PRESSURE_1_ID)
     def dflux_1_dp_1(self) -> Any:
         """
         Computes the outlet flux at node 1 derivative for pressure_1.
@@ -364,6 +350,7 @@ class RCRBlock(Block):
 
         return -0.5 / self.resistance_1.current
 
+    @flux_1.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def dflux_1_dp_mid(self) -> Any:
         """
         Computes the outlet flux at node 1 derivative for pressure_mid.
@@ -374,6 +361,7 @@ class RCRBlock(Block):
 
         return 0.5 / self.resistance_1.current
 
+    @declares_flux(2, RCR_BLOCK_PRESSURE_2_ID)
     def flux_2(self) -> Any:
         """
         Computes the flux at node 2.
@@ -386,6 +374,7 @@ class RCRBlock(Block):
 
         return (pressure_mid_discr - pressure_2_discr) / self.resistance_2.current
 
+    @flux_2.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def dflux_2_dp_mid(self) -> Any:
         """
         Computes the outlet flux at node 2 derivative for pressure_mid.
@@ -396,6 +385,7 @@ class RCRBlock(Block):
 
         return 0.5 / self.resistance_2.current
 
+    @flux_2.partial_derivative(RCR_BLOCK_PRESSURE_2_ID)
     def dflux_2_dp_2(self) -> Any:
         """
         Computes the outlet flux at node 2 derivative for pressure_2.
@@ -406,6 +396,7 @@ class RCRBlock(Block):
 
         return -0.5 / self.resistance_2.current
 
+    @declares_internal_equation(RCR_BLOCK_PRESSURE_MID_ID)
     def pressure_mid_residual(self) -> Any:
         """
         Compute the residual representing dynamics of the mid node pressure.
@@ -424,6 +415,7 @@ class RCRBlock(Block):
             - self.capacitance.current * self.time.inv_dt * diff(self.pressure_mid)
         )
 
+    @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_1_ID)
     def pressure_mid_residual_dp_1(self) -> Any:
         """
         Compute the residual derivative for pressure_1
@@ -434,6 +426,7 @@ class RCRBlock(Block):
 
         return 0.5 / self.resistance_1.current
 
+    @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_2_ID)
     def pressure_mid_residual_dp_2(self) -> Any:
         """
         Compute the residual derivative for pressure_2
@@ -444,6 +437,7 @@ class RCRBlock(Block):
 
         return 0.5 / self.resistance_2.current
 
+    @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def pressure_mid_residual_dp_mid(self) -> Any:
         """
         Compute the residual derivative for pressure_mid
@@ -458,6 +452,7 @@ class RCRBlock(Block):
             - 0.5 / self.resistance_2.current
         )
 
+    @declares_saved_quantity("volume")
     def compute_volume_stored(self) -> Any:
         """
         Computes volume stored in the capacitance.
@@ -467,50 +462,3 @@ class RCRBlock(Block):
         """
 
         return self.capacitance.current * self.pressure_mid.current
-
-
-# Define the flux expression going in node 1 for rcr block
-_rcr_block_flux_1_expr = Expression(
-    1,
-    RCRBlock.flux_1,
-    {
-        RCR_BLOCK_PRESSURE_1_ID: RCRBlock.dflux_1_dp_1,
-        RCR_BLOCK_PRESSURE_MID_ID: RCRBlock.dflux_1_dp_mid,
-    },
-)
-
-
-# Define the flux expression going in node 2 for rcr block
-_rcr_block_flux_2_expr = Expression(
-    1,
-    RCRBlock.flux_2,
-    {
-        RCR_BLOCK_PRESSURE_MID_ID: RCRBlock.dflux_2_dp_mid,
-        RCR_BLOCK_PRESSURE_2_ID: RCRBlock.dflux_2_dp_2,
-    },
-)
-
-# Define the residual expression giving the pressure at the mid node
-_rcr_block_pressure_mid_residual_expr = Expression(
-    1,
-    RCRBlock.pressure_mid_residual,
-    {
-        RCR_BLOCK_PRESSURE_1_ID: RCRBlock.pressure_mid_residual_dp_1,
-        RCR_BLOCK_PRESSURE_MID_ID: RCRBlock.pressure_mid_residual_dp_mid,
-        RCR_BLOCK_PRESSURE_2_ID: RCRBlock.pressure_mid_residual_dp_2,
-    },
-)
-
-# Derfine the stored volume saved quantity expression.
-_rcr_volume_stored_expr = Expression(1, RCRBlock.compute_volume_stored)
-
-
-RCRBlock.declares_internal_expression(
-    RCR_BLOCK_PRESSURE_MID_ID, _rcr_block_pressure_mid_residual_expr
-)
-
-RCRBlock.declares_flux_expression(1, RCR_BLOCK_PRESSURE_1_ID, _rcr_block_flux_1_expr)
-RCRBlock.declares_flux_expression(2, RCR_BLOCK_PRESSURE_2_ID, _rcr_block_flux_2_expr)
-RCRBlock.declares_saved_quantity_expression(
-    RCR_BLOCK_VOLUME_OUTPUT_ID, _rcr_volume_stored_expr
-)

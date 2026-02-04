@@ -185,10 +185,21 @@ Declare functions to compute the fluxes and the internal equations
 
 We define methods to compute the :class:`~physioblocks.computing.models.Block` relations as written above in the discretized form.
 
+To make the methods available to build the residual matrix the methods are decorated to identify:
+    
+    * **Fluxes** with :func:`~physioblocks.computing.models.declares_flux` decorator.
+      You will need to set the local node index where the flux is shared as well as the local name in the block of the dof at the node.
+      The default flux size is 1 but can be updated.
+    * **Internal equations** with :func:`~physioblocks.computing.models.declares_internal_equation` decorator.
+      You need to set at least the local name of the variable on which the equation provides a dynamic.
+      Default equation size is set to 1 and can be updated.
+
+
 .. code:: python
 
     # Flux definition
 
+    @declares_flux(1, "pressure_1")
     def flux_1(self):
         """
         Computes the flux at first node.
@@ -198,6 +209,7 @@ We define methods to compute the :class:`~physioblocks.computing.models.Block` r
         
         return (pressure_mid_discr - pressure_1_discr) / self.resistance_1.current
 
+    @declares_flux(2, "pressure_2")
     def flux_2(self):
         """
         Computes the flux at second node.
@@ -208,6 +220,7 @@ We define methods to compute the :class:`~physioblocks.computing.models.Block` r
         return (pressure_mid_discr - pressure_2_discr) / self.resistance_2.current
 
     # Internal Equation definition
+    @declares_internal_equation("pressure_mid")
     def residual_pressure_mid(self):
         """
         Computes the rcr block internal equation residual
@@ -222,7 +235,12 @@ We define methods to compute the :class:`~physioblocks.computing.models.Block` r
             - (pressure_2_discr - pressure_mid_discr) / self.resistance_2
         )
 
+To be able to add output values that are not variables, we identify the saved quantities with :func:`~physioblocks.computing.models.declares_saved_quantity` decorator.
+
+.. code:: python
+
     # Saved Quantity definition
+    @declares_saved_quantities("volume")
     def volume_stored(self):
         """
         Computes volume stored in the capacitance.
@@ -234,17 +252,21 @@ Declare all flux and internal equations partial derivatives
 
 We then have to declare functions to compute fluxes and internal equations partial derivatives.
 
+To make the methods available to build the gradient matrix, the methods are decorated to identify function partial derivative with :func:`~physioblocks.computing.models.ExpressionDecorator.partial_derivative` decorator.
+Each decorator associate the function with its the derivation variable local name.
+
 .. code:: python
 
-    # Flux 0 partial derivatives
-
+    # Flux 1 partial derivatives
+    @flux_1.partial_derivative("pressure_mid")
     def dflux_1_dpressure_mid(self):
         """
-        Computes flux_1 partial derivative for pressure_1.
+        Computes flux_1 partial derivative for pressure_mid.
         """
         
         return 0.5 / self.resistance_1.current
 
+    @flux_1.partial_derivative("pressure_1")
     def dflux_1_dpressure_1(self):
         """
         Computes flux_1 partial derivative for pressure_1.
@@ -252,15 +274,17 @@ We then have to declare functions to compute fluxes and internal equations parti
         
         return - 0.5 / self.resistance_1.current
         
-    # Flux 1 partial derivatives
+    # Flux 2 partial derivatives
 
+    @flux_2.partial_derivative("pressure_mid")
     def dflux_2_dpressure_mid(self):
         """
         Computes flux_2 partial derivative for pressure_mid.
         """
         
-        return 0.5 / self.resistance_1.current
+        return 0.5 / self.resistance_2.current
 
+    @flux_2.partial_derivative("pressure_2")
     def dflux_2_dpressure_2(self):
         """
         Computes flux_2 partial derivative for pressure_2.
@@ -270,6 +294,7 @@ We then have to declare functions to compute fluxes and internal equations parti
 
     # Internal equation partial derivatives:
 
+    @residual_pressure_mid.partial_derivative("pressure_mid")
     def dresidual_pressure_mid_dpressure_mid(self):
         """
         Computes internal equation partial derivative for pressure_mid.
@@ -281,6 +306,7 @@ We then have to declare functions to compute fluxes and internal equations parti
             + 0.5 / self.resistance_2
         )
 
+    @residual_pressure_mid.partial_derivative("pressure_1")
     def dresidual_pressure_mid_dpressure_1(self):
         """
         Computes internal equation partial derivative for pressure_1.
@@ -289,6 +315,7 @@ We then have to declare functions to compute fluxes and internal equations parti
             - 0.5 / self.resistance_1
         )
 
+    @residual_pressure_mid.partial_derivative("pressure_2")
     def dresidual_pressure_mid_dpressure_2(self):
         """
         Computes internal equation partial derivative for pressure_2.
@@ -297,107 +324,6 @@ We then have to declare functions to compute fluxes and internal equations parti
             - 0.5 / self.resistance_2
         )
 
-Define the Block Expressions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We defined every method to compute our blocks relations along with the needed quantities.
-But these methods are not yet available for the assembling process that builds the global system.
-
-We will now declare **Flux**, **Internal Equations** and **Saved Quantities** :class:`~physioblocks.computing.models.Expression` objects to assemble a residual and gradient matrix.
-
-This is performed on the **block type** directly, calling the created :class:`~physioblocks.library.blocks.capacitances.RCRBlock` class methods.
-
-But first, we have to instantiate the :class:`~physioblocks.computing.models.Expression` objects.
-They are composed of :
-
-    1. the **size** of the expression value
-    2. the **function** computing the expression value
-    3. a dictionary holding the **partial derivatives** for the function matched with the variable name.
-
-Here are all the expressions needed for our :class:`~physioblocks.computing.models.Block`.
-
-.. code:: python
-
-    # Define the flux expression going in the input node for rcr block
-    _rcr_block_flux_1_expr = Expression(
-        1, # flux 0 is size 1
-        RCRBlock.flux_1, # the function to compute flux 0
-        {
-            # the partial derivative for pressure 0 for flux 0
-            "pressure_1": RCRBlock.dflux_1_dpressure_1, 
-            # the partial derivative for pressure mid for flux 0
-            "pressure_mid": RCRBlock.dflux_1_dpressure_mid,
-        }
-    )
-
-    # The next expressions are built similarly:
-    _rcr_block_flux_2_expr = Expression(
-        1,
-        RCRBlock.flux_2,
-        {
-            # the partial derivative for pressure 0 for flux 0
-            "pressure_2": RCRBlock.dflux_2_dpressure_2, 
-            # the partial derivative for pressure mid for flux 0
-            "pressure_mid": RCRBlock.dflux_2_dpressure_mid,
-        }
-    )
-
-    _rcr_block_residual_expr = Expression(
-        1,
-        RCRBlock.residual_pressure_mid,
-        {
-            "pressure_mid": RCRBlock.dresidual_pressure_mid_dpressure_mid,
-            "pressure_1": RCRBlock.dresidual_pressure_mid_dpressure_1,
-            "pressure_2": RCRBlock.dresidual_pressure_mid_dpressure_2,
-        },
-    )
-
-    # The volume stored do not need partial derivatives
-    _rcr_block_volume_stored_expr = Expression(1, RCRBlock.volume_stored)
-
-Now we use the :class:`~physioblocks.library.blocks.capacitances.RCRBlock` class methods to register the expressions.
-To declare a flux expression for the block, we need:
-
-    1. the **index** of the local node sharing the flux.
-    2. the **variable local name** in the :class:`~physioblocks.computing.models.Block`.
-    3. the expression object
-
-.. code:: python
-
-    RCRBlock.declares_flux_expression(
-        0,
-        "pressure_1",
-        _rcr_block_flux_1_expr
-    )
-    RCRBlock.declares_flux_expression(
-        1,
-        "pressure_2",
-        _rcr_block_flux_2_expr
-    )
-
-
-To declare an internal equation expression for the block, we need:
-
-    1. the **internal variable local name** in the :class:`~physioblocks.computing.models.Block`
-    2. the expression object
-
-.. code:: python
-
-    RCRBlock.declares_internal_expression(
-        "pressure_mid",
-        _rcr_block_residual_expr
-    )
-
-Finally, to declare a **Saved Quantity** expression for the block, we need:
-
-    1. the saved quantity **local name**
-    2. the expression object
-
-.. code:: python
-
-    RCRBlock.declares_saved_quantity_expression(
-        "volume_stored", _rcr_block_volume_stored_expr
-    )
 
 Now the :class:`~physioblocks.library.blocks.capacitances.RCRBlock` is completely defined and can be used in a net.
 
