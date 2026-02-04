@@ -31,24 +31,36 @@ import numpy as np
 from numpy.typing import NDArray
 
 from physioblocks.computing import (
-    Expression,
     ModelComponent,
     Quantity,
     diff,
     mid_point,
 )
+from physioblocks.computing.models import declares_internal_equation
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
 # Constant for the active law type id
 ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_TYPE_ID = "active_law_macro_huxley_two_moments"
 
+# Constant for the active stiffness local id
+ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_STIFFNESS = "active_stiffness"
+
+# Constant for the active energy sqrt local id
+ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_ENERGY_SQRT = "active_energy_sqrt"
+
+# Constant for the active tension discretization local id
+ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_TENSION_DISCR = "active_tension_discr"
+
+# Constant for the fiber deformation local id
+ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_FIB_DEFORM = "fib_deform"
+
 
 @register_type(ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_TYPE_ID)
 @dataclass
 class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
     r"""
-    Describes the Macroscopic Huxley Two Moment implementation of the ative law.
+    Describes the Macroscopic Huxley Two Moment implementation of the active law.
 
     **Internal Equations:**
 
@@ -65,7 +77,7 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
 
             \lambda_c - T_c/\sqrt{K_c} = 0
 
-    **Discretised:**
+    **Discretized:**
 
         .. math::
 
@@ -90,7 +102,7 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
     """:math:`\\lambda_c` the active energy sqrt"""
 
     active_tension_discr: Quantity[np.float64]
-    """:math:`T_c^{n + \\frac{1}{2}\\sharp}` the active tension discretisation"""
+    """:math:`T_c^{n + \\frac{1}{2}\\sharp}` the active tension discretization"""
 
     starling_abscissas: Quantity[NDArray[np.float64]]
     """Abscissas of :math:`n_0` the discretized starling function"""
@@ -113,6 +125,15 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
     time: Time
     """:math:`t` the simulation time"""
 
+    @declares_internal_equation(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_STIFFNESS, 1, 0
+    )
+    @declares_internal_equation(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_ENERGY_SQRT, 1, 1
+    )
+    @declares_internal_equation(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_TENSION_DISCR, 1, 2
+    )
     def active_law_residual(self) -> Any:
         """
         Compute the residual of the active law.
@@ -166,6 +187,9 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             ],
         )
 
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_STIFFNESS
+    )
     def active_law_residual_dactive_stiffness(self) -> Any:
         """
         Compute the residual partial derivative for the active stiffness
@@ -219,6 +243,9 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             ],
         )
 
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_ENERGY_SQRT
+    )
     def active_law_residual_dactive_energy_sqrt(self) -> Any:
         """
         Compute the residual partial derivative for the active energy sqrt
@@ -264,6 +291,9 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             ],
         )
 
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_FIB_DEFORM
+    )
     def active_law_residual_dfib_deform(self) -> Any:
         """
         Compute the residual partial derivative for the fiber deformation
@@ -293,6 +323,9 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             ],
         )
 
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_TENSION_DISCR
+    )
     def active_law_residual_dactive_tension(self) -> Any:
         """
         Compute the residual partial derivative for the active tension
@@ -310,36 +343,3 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             * np.fabs(diff(self.fib_deform))
             * self.time.inv_dt
         )
-
-
-# Define the expression for the residual of the ActiveLawMacroscopicHuxleyTwoMoment and
-# its partial derivatives.
-_active_law_macroscopic_huxley_two_moment_residual_expression = Expression(
-    3,
-    ActiveLawMacroscopicHuxleyTwoMoment.active_law_residual,
-    {
-        "active_stiffness": ActiveLawMacroscopicHuxleyTwoMoment.active_law_residual_dactive_stiffness,  # noqa: E501
-        "active_energy_sqrt": ActiveLawMacroscopicHuxleyTwoMoment.active_law_residual_dactive_energy_sqrt,  # noqa: E501
-        "active_tension_discr": ActiveLawMacroscopicHuxleyTwoMoment.active_law_residual_dactive_tension,  # noqa: E501
-        "fib_deform": ActiveLawMacroscopicHuxleyTwoMoment.active_law_residual_dfib_deform,  # noqa: E501
-    },
-)
-
-ActiveLawMacroscopicHuxleyTwoMoment.declares_internal_expression(
-    "active_stiffness",
-    _active_law_macroscopic_huxley_two_moment_residual_expression,
-    1,
-    0,
-)
-ActiveLawMacroscopicHuxleyTwoMoment.declares_internal_expression(
-    "active_energy_sqrt",
-    _active_law_macroscopic_huxley_two_moment_residual_expression,
-    1,
-    1,
-)
-ActiveLawMacroscopicHuxleyTwoMoment.declares_internal_expression(
-    "active_tension_discr",
-    _active_law_macroscopic_huxley_two_moment_residual_expression,
-    1,
-    2,
-)

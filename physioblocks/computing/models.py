@@ -32,6 +32,7 @@ functions.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from inspect import get_annotations
@@ -46,7 +47,7 @@ SystemFunction: TypeAlias = Callable[..., np.float64 | NDArray[np.float64]]
 """Type alias for functions composing the system"""
 
 
-@dataclass(frozen=True)
+@dataclass
 class Expression:
     """Expression(size:int, expr_func: SystemFunction, expr_gradients: Mapping[str, SystemFunction] = {})
     Store function computing numerical values for terms in the models with the function
@@ -100,6 +101,223 @@ class Expression:
                 and self.expr_gradients == value.expr_gradients
             )
         )
+
+
+class ExpressionDecorator:
+    """
+    Base class for expression decorators.
+
+    This is a helper that defines expressions decorating methods in a model or block
+    class.
+    """
+
+    expression: Expression
+    """The expression resulting from decorators declarations"""
+
+    def __init__(
+        self,
+        wrapped_function: Callable[..., Any],
+    ):
+        """
+        :param wrapped_function: The decorated expression function
+        :type wrapped_function: Callable
+        """
+        self.expression = Expression(0, wrapped_function)
+        self._terms: list[tuple[str, int, int]] = []
+        functools.update_wrapper(self, wrapped_function)
+
+    def register_term(
+        self,
+        term_name: str,
+        term_size: int,
+        term_index: int,
+    ) -> None:
+        """
+        Register a new term to the expression decorator
+
+        :param term_name: the term local name.
+        :type term_name: str
+
+        :param term_size: The size of the term
+        :type term_size: int
+
+        :param term_index: The start index of the term in the expression
+        :type term_index: int
+        """
+        self.expression.size += term_size
+        self._terms.append((term_name, term_size, term_index))
+
+    @property
+    def terms(self) -> list[tuple[str, int, int]]:
+        """
+        Get the terms described by the expression.
+
+        :return: list of terms description
+        :rtype: list[[tuple[str, int, int]]]
+        """
+        return self._terms.copy()
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.expression.expr_func(*args, **kwargs)
+
+    def partial_derivative(
+        self, variable_name: str
+    ) -> Callable[..., Callable[..., Any]]:
+        """
+        Declares a flux partial derivative.
+
+        :param variable_name: the variable local name.
+        :type variable_name: str
+        """
+
+        def _register(wrapped: Callable[..., Any]) -> Callable[..., Any]:
+            self.expression.expr_gradients[variable_name] = wrapped
+            return wrapped
+
+        return _register
+
+
+def _check_expression_decorator_type(
+    wrapped_function: Any, new_decorator_type: type[ExpressionDecorator]
+) -> None:
+    if (
+        isinstance(wrapped_function, ExpressionDecorator) is True
+        and isinstance(wrapped_function, new_decorator_type) is False
+    ):
+        raise ValueError(
+            str.format(
+                "Can not decorate a function of an other type. "
+                "Current type is {0}, new type is {1}.",
+                type(wrapped_function),
+                new_decorator_type,
+            )
+        )
+
+
+class InternalEquationDecorator(ExpressionDecorator):
+    """
+    Define a decorator that identifies internal equation expressions.
+    """
+
+    pass
+
+
+def declares_internal_equation(
+    variable_name: str, size: int = 1, starting_index: int = 0
+) -> Callable[..., InternalEquationDecorator]:
+    """
+    Declares a internal equation expression.
+
+    Once the internal equation function is declared, partial derivatives can be added
+    using the function name and the local variable name for the partial derivative.
+
+    :param variable_name: the variable name on which the expression provides a dynamic.
+    :type variable_name: str
+
+    :param size: the size of the equation. Default is 1
+    :type size: int
+
+    :param starting_index: the starting index of the equation line matching the
+      variable. Default is 0
+    :type starting_index: int
+
+    :raises ValueError: Raises a ValueError if the function is already decorated with
+      an expression decorator of an other type.
+
+    Example
+    ^^^^^^^
+
+    .. code:: python
+
+        @dataclass
+        class SimpleModel(ModelComponent):
+
+            x: Quantity
+            a: Quantity
+
+            @declares_internal_equation("x")
+            def residual(self):
+                return x.new**2 - a.current
+
+            @flux_1.partial_derivative("x")
+            def dresidual_dx(self):
+                return 2.0 * x.new
+    """
+
+    def _create_internal_equation_decorator(
+        wrapped: Callable[..., Any],
+    ) -> InternalEquationDecorator:
+        _check_expression_decorator_type(wrapped, InternalEquationDecorator)
+
+        decorated = (
+            wrapped
+            if isinstance(wrapped, InternalEquationDecorator)
+            else InternalEquationDecorator(wrapped)
+        )
+        decorated.register_term(variable_name, size, starting_index)
+        return decorated
+
+    return _create_internal_equation_decorator
+
+
+class SavedQuantityDecorator(ExpressionDecorator):
+    """
+    Define a decorator that identifies saved quantities expressions.
+    """
+
+    pass
+
+
+def declares_saved_quantity(
+    quantity_name: str, size: int = 1, starting_index: int = 0
+) -> Callable[..., SavedQuantityDecorator]:
+    """
+    Declares a saved quantity expression.
+
+    :param quantity_name: the local quantity name.
+    :type quantity_name: str
+
+    :param size: the size of the expression. Default is 1
+    :type size: int
+
+    :param starting_index: the starting index of the expression in the function.
+      Default is 0
+    :type starting_index: int
+
+    :raises ValueError: Raises a ValueError if the function is already decorated with
+      an expression decorator of an other type.
+
+    Example
+    ^^^^^^^
+
+    .. code:: python
+
+        @dataclass
+        class SimpleModel(ModelComponent):
+
+            a: Quantity
+            b: Quantity
+
+            @declares_saved_quantity("a + b")
+            def sum(self):
+                return a.current + b.current
+    """
+
+    def _create_saved_quantity_decorator(
+        wrapped: Callable[..., Any],
+    ) -> SavedQuantityDecorator:
+        _check_expression_decorator_type(wrapped, SavedQuantityDecorator)
+
+        decorator = (
+            wrapped
+            if isinstance(wrapped, SavedQuantityDecorator)
+            else SavedQuantityDecorator(wrapped)
+        )
+        decorator.register_term(quantity_name, size, starting_index)
+
+        return decorator
+
+    return _create_saved_quantity_decorator
 
 
 @dataclass(frozen=True)
@@ -303,6 +521,23 @@ class ModelComponentMetaClass(type):
             cls.__INTERNAL_EXPRESSION_KEY: [],
             cls.__SAVED_QUANTITIES_EXPRESSION_KEY: [],
         }
+        for attr in cls.__dict__.values():
+            if isinstance(attr, InternalEquationDecorator):
+                for term_name, term_size, term_index in attr.terms:
+                    cls.declares_internal_expression(
+                        term_name,
+                        attr.expression,
+                        term_size,
+                        term_index,
+                    )
+            elif isinstance(attr, SavedQuantityDecorator):
+                for term_name, term_size, term_index in attr.terms:
+                    cls.declares_saved_quantity_expression(
+                        term_name,
+                        attr.expression,
+                        term_size,
+                        term_index,
+                    )
 
     @staticmethod
     def __is_quantity_type(type_to_test: Any) -> bool:
@@ -481,6 +716,7 @@ class ModelComponentMetaClass(type):
 
         # Add the term definition to the expression definition
         expression_def.terms.append(TermDefinition(term_id, size, index))
+        expression_def.terms.sort(key=lambda term: term.index)
 
     def declares_internal_expression(
         cls,
@@ -690,6 +926,78 @@ class ModelComponent(metaclass=ModelComponentMetaClass):
         """Override this method to define specific for model initialization."""
 
 
+class FluxDecorator(ExpressionDecorator):
+    """
+    Define a decorator that identifies flux functions
+    """
+
+    pass
+
+
+def declares_flux(
+    index: int, dof_name: str, size: int = 1
+) -> Callable[..., FluxDecorator]:
+    """
+    Declares a flux function.
+
+    Once the flux expression is declared, partial derivatives can be added using the
+    flux function name and the local variable name for the partial derivative.
+
+    :param index: the index of the flux in the block.
+    :type index: int
+
+    :param dof_name: the matching dof local name
+    :type dof_name: str
+
+    :param size: the size of the flux returned by the function
+    :type size: int
+
+    :raises ValueError: Raises a ValueError if the function is already decorated with
+      an expression decorator of an other type.
+
+
+    Example
+    ^^^^^^^
+
+    .. code:: python
+
+        @dataclass
+        class SimpleBlock(Block):
+
+            q_1: Quantity
+
+            # declares a flux shared at local node 1, where the associated dof has the
+            # local name "potential_1"
+            @declares_flux(1, "potential_1")
+            def flux_1(self):
+                return q_1.new
+
+            # associate the following function as the partial derivative of "flux_1" for
+            # variable "q_1"
+            @flux_1.partial_derivative("q_1")
+            def dflux_1_dq_1(self):
+                return 1.0
+
+    """
+
+    def _create_flux_decorator(wrapped: Callable[..., Any]) -> FluxDecorator:
+        if isinstance(wrapped, ExpressionDecorator) is True:
+            raise ValueError(
+                str.format(
+                    "Function already declares an expression, it can not be a flux."
+                )
+            )
+
+        decorator = (
+            wrapped if isinstance(wrapped, FluxDecorator) else FluxDecorator(wrapped)
+        )
+        decorator.register_term(dof_name, size, index)
+
+        return decorator
+
+    return _create_flux_decorator
+
+
 class BlockMetaClass(ModelComponentMetaClass):
     """Meta-class for :class:`~physioblocks.computing.models.Block`.
 
@@ -711,6 +1019,10 @@ class BlockMetaClass(ModelComponentMetaClass):
     def __init__(cls, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         cls._fluxes = {}
+        for attr in cls.__dict__.values():
+            if isinstance(attr, FluxDecorator):
+                for term_name, _term_size, term_index in attr.terms:
+                    cls.declares_flux_expression(term_index, term_name, attr.expression)
 
     def declares_flux_expression(
         cls, node_index: int, variable_id: str, expr: Expression

@@ -33,7 +33,8 @@ from typing import Any
 
 import numpy as np
 
-from physioblocks.computing import Block, Expression, Quantity
+from physioblocks.computing import Block, Quantity
+from physioblocks.computing.models import declares_flux
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -74,7 +75,7 @@ class SphericalCavityBlock(Block):
 
         :math:`Q = - \frac {dV(y)}{dt}`
 
-    **Discretised:**
+    **Discretized:**
 
         :math:`Q^{n + \frac{1}{2}} = - \frac {V(y^{n + 1}) - V(y^{n})}{\Delta t^n}`
 
@@ -135,9 +136,10 @@ class SphericalCavityBlock(Block):
             3,
         )
 
+    @declares_flux(1, CAVITY_PRESSURE_LOCAL_ID)
     def cavity_flux(self) -> Any:
         """
-        Compute the ventricule flux at local node 1.
+        Compute the cavity flux at local node 1.
 
         :return: the flux
         :rtype: np.float64
@@ -149,6 +151,7 @@ class SphericalCavityBlock(Block):
 
         return cavity_flux
 
+    @cavity_flux.partial_derivative(CAVITY_DISP_LOCAL_ID)
     def dcavity_flux_ddisp(self) -> Any:
         """
         Compute the partial derivative of the cavity flux for ``disp``
@@ -169,24 +172,3 @@ class SphericalCavityBlock(Block):
             )
             * (1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio)
         )
-
-
-# Define the cavity block flux expression.
-_cavity_block_flux_expr = Expression(
-    1,
-    SphericalCavityBlock.cavity_flux,
-    {CAVITY_DISP_LOCAL_ID: SphericalCavityBlock.dcavity_flux_ddisp},
-)
-
-SphericalCavityBlock.declares_flux_expression(
-    1, CAVITY_PRESSURE_LOCAL_ID, _cavity_block_flux_expr
-)
-
-
-# Define the cavity block volume of fluid expression.
-_cavity_block_fluid_volume_expr = Expression(
-    1, SphericalCavityBlock.fluid_volume_current
-)
-SphericalCavityBlock.declares_saved_quantity_expression(
-    CAVITY_VOLUME_LOCAL_ID, _cavity_block_fluid_volume_expr
-)
