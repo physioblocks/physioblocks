@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from rich.logging import RichHandler
 
 import physioblocks.utils.exceptions_utils as exception_utils
 from physioblocks.configuration import Configuration, load, unwrap_aliases
@@ -64,8 +65,9 @@ from physioblocks.simulation import AbstractSimulation, SimulationError
 .. note:: When deleting a serie from the launcher folder, or a specific simulation from
   a serie, the launchers logs are updated the next time any simulation is launched.
 """
+FILE_LOG_FORMATTER = logging.Formatter(logging.BASIC_FORMAT)
+RICH_LOG_FORMATTER = logging.Formatter("%(message)s", "[%X]")
 
-SIMULATION_LOG_FORMATER = logging.Formatter(logging.BASIC_FORMAT)
 _root_logger = logging.getLogger()
 _root_logger.setLevel(logging.DEBUG)
 
@@ -90,8 +92,10 @@ def run_simulation(config: Configuration) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def add_log_handler(handler: logging.Handler, level: str | int) -> None:
-    handler.setFormatter(SIMULATION_LOG_FORMATER)
+def add_log_handler(
+    handler: logging.Handler, level: str | int, formatter: logging.Formatter
+) -> None:
+    handler.setFormatter(formatter)
     handler.setLevel(level)
     _root_logger.addHandler(handler)
 
@@ -132,7 +136,7 @@ def main(
     # configure the simulation log file (always in DEBUG)
     log_file_path = sim_folder / str.join(".", [sim_info.reference, "log"])
     file_handler = logging.FileHandler(log_file_path)
-    add_log_handler(file_handler, logging.DEBUG)
+    add_log_handler(file_handler, logging.DEBUG, FILE_LOG_FORMATTER)
 
     # log the current simulation infos
     _root_logger.info(str(sim_info))
@@ -260,8 +264,8 @@ if __name__ == "__main__":
 
     # setup logger when verbose
     if args.verbose is True:
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        add_log_handler(stdout_handler, args.log_level)
+        # stdout_handler = logging.StreamHandler(sys.stdout)
+        add_log_handler(RichHandler(), args.log_level, RICH_LOG_FORMATTER)
 
     # create paths from arguments
     root_folder_path = Path(args.launcher_directory).absolute()

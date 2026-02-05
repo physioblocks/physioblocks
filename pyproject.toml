@@ -10,7 +10,8 @@ dependencies = [
     "pandas",
     "plotly",
     "pyarrow",
-    "regex"
+    "regex",
+    "rich"
 ]
 description = "Physioblocks allows the simulation of dynamical models of physiological systems"
 keywords = [
