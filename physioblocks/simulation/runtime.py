@@ -37,6 +37,7 @@ from typing import Any, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
+from rich.progress import Progress
 
 from physioblocks.computing.assembling import EqSystem
 from physioblocks.computing.models import ModelComponent
@@ -359,77 +360,82 @@ class ForwardSimulation(AbstractSimulation):
         """
         # initialize the simulation and save the initial results
         results = self._initialize()
+        progress_step_update = (
+            100.0 * self.time_manager.step_size / self.time_manager.duration
+        )
+        with Progress() as progress:
+            try:
+                sim_task = progress.add_task("Simulation in progress...")
+                while self.time_manager.ended is False:
+                    next_step = self.time_manager.time.new
 
-        try:
-            while self.time_manager.ended is False:
-                next_step = self.time_manager.time.new
+                    self._update_time()
 
-                self._update_time()
+                    while (
+                        np.abs(next_step - self.time_manager.time.current)
+                        > self.time_manager.min_step
+                    ):
+                        self.state.reset_state_vector()
 
-                while (
-                    np.abs(next_step - self.time_manager.time.current)
-                    > self.time_manager.min_step
-                ):
-                    self.state.reset_state_vector()
+                        sol = self.solver.solve(self.state, self.eq_system)
 
-                    sol = self.solver.solve(self.state, self.eq_system)
-
-                    if sol.converged is False:
-                        inter_time = 0.5 * self.time_manager.current_step_size
-                        if inter_time < self.time_manager.min_step:
-                            raise ConvergenceError(
-                                str.format(
-                                    "The solver did not converge at {0}s for minimal"
-                                    "time step {1}",
-                                    self.time_manager.time.current,
-                                    self.time_manager.min_step,
+                        if sol.converged is False:
+                            inter_time = 0.5 * self.time_manager.current_step_size
+                            if inter_time < self.time_manager.min_step:
+                                raise ConvergenceError(
+                                    str.format(
+                                        "The solver did not converge at {0}s for "
+                                        "minimal time step {1}",
+                                        self.time_manager.time.current,
+                                        self.time_manager.min_step,
+                                    )
                                 )
-                            )
 
-                        self.time_manager.current_step_size = inter_time
-                        self.time_manager.time.update(
-                            self.time_manager.time.current
-                            + self.time_manager.current_step_size
-                        )
-                    else:
-                        self.state.set_state_vector(sol.x)
-
-                        self.time_manager.update_time()
-                        if (
-                            np.abs(next_step - self.time_manager.time.current)
-                            >= self.time_manager.min_step
-                        ):
-                            self.time_manager.current_step_size = (
-                                next_step - self.time_manager.time.current
-                            )
-                            self.time_manager.time.update(next_step)
-                        else:
-                            self.time_manager.time.initialize(next_step)
-                            self.time_manager.current_step_size = (
-                                self.time_manager.step_size
-                            )
+                            self.time_manager.current_step_size = inter_time
                             self.time_manager.time.update(
                                 self.time_manager.time.current
                                 + self.time_manager.current_step_size
                             )
+                        else:
+                            self.state.set_state_vector(sol.x)
 
-                self.state.set_state_vector(sol.x)
-                results.append(self._get_current_result())
-        except Exception as exception:
-            log_exception(
-                _logger,
-                type(exception),
-                exception,
-                exception.__traceback__,
-                logging.DEBUG,
-            )
-            raise SimulationError(
-                str.format(
-                    "An error caused the simulation to stop prematurely",
-                    intermediate_results=results,
-                ),
-                results,
-            ) from exception
+                            self.time_manager.update_time()
+                            if (
+                                np.abs(next_step - self.time_manager.time.current)
+                                >= self.time_manager.min_step
+                            ):
+                                self.time_manager.current_step_size = (
+                                    next_step - self.time_manager.time.current
+                                )
+                                self.time_manager.time.update(next_step)
+                            else:
+                                progress.update(sim_task, advance=progress_step_update)
+                                self.time_manager.time.initialize(next_step)
+                                self.time_manager.current_step_size = (
+                                    self.time_manager.step_size
+                                )
+                                self.time_manager.time.update(
+                                    self.time_manager.time.current
+                                    + self.time_manager.current_step_size
+                                )
+
+                    self.state.set_state_vector(sol.x)
+                    results.append(self._get_current_result())
+            except Exception as exception:
+                log_exception(
+                    _logger,
+                    type(exception),
+                    exception,
+                    exception.__traceback__,
+                    logging.DEBUG,
+                )
+                raise SimulationError(
+                    str.format(
+                        "An error caused the simulation to stop prematurely",
+                        intermediate_results=results,
+                    ),
+                    results,
+                ) from exception
 
         self._finalize()
         return results
