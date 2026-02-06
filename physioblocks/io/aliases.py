@@ -26,10 +26,16 @@
 
 """Defines methods to load aliases folders."""
 
+import logging
 from pathlib import Path
 
 from physioblocks.configuration.aliases import add_alias
 from physioblocks.io.configuration import read_json
+from physioblocks.utils.exceptions_utils import log_exception
+
+_logger = logging.getLogger(__name__)
+
+_JSON_EXTENSIONS = [".json", ".jsonc"]
 
 
 def load_aliases(path: str) -> None:
@@ -67,7 +73,22 @@ def load_aliases(path: str) -> None:
             # recursivly load child directories
             load_aliases(str(child))
         else:
-            config_alias = read_json(str(child))
-            # get file name without extension as alias id
-            alias_id = child.name.removesuffix(child.suffix)
-            add_alias(alias_id, config_alias)
+            if child.suffix not in _JSON_EXTENSIONS:
+                continue
+
+            try:
+                config_alias = read_json(str(child))
+
+                # get file name without extension as alias id
+                alias_id = child.name.removesuffix(child.suffix)
+                add_alias(alias_id, config_alias)
+            except Exception as error:
+                _logger.warning(
+                    str.format(
+                        "Error while loading alias from: {0}. File skipped.",
+                        str(child.absolute()),
+                    )
+                )
+                log_exception(
+                    _logger, type(error), error, error.__traceback__, logging.WARNING
+                )
