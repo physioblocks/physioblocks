@@ -24,6 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
+from json import JSONDecodeError
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -51,6 +52,47 @@ def test_load_aliases(
 
     load_aliases("")
     mock_add_alias.assert_called_once_with("alias", True)
+
+
+@patch("physioblocks.io.aliases.add_alias")
+@patch("pathlib.Path.iterdir")
+@patch("pathlib.Path.exists")
+@patch("pathlib.Path.is_dir")
+def test_load_wrong_aliases(
+    mock_path_is_dir: Mock,
+    mock_path_exists: Mock,
+    mock_iter_dir: Mock,
+    mock_add_alias: Mock,
+):
+    folder_path = "aliases"
+    mock_path_is_dir.side_effect = [True, False]
+    mock_path_exists.return_value = True
+    mock_iter_dir.return_value = [Path("alias.any")]
+
+    load_aliases(folder_path)
+    mock_add_alias.assert_not_called()
+
+
+@patch("physioblocks.io.aliases.add_alias")
+@patch("physioblocks.io.aliases.read_json")
+@patch("pathlib.Path.iterdir")
+@patch("pathlib.Path.exists")
+@patch("pathlib.Path.is_dir")
+def test_load_unreadable_alias(
+    mock_path_is_dir: Mock,
+    mock_path_exists: Mock,
+    mock_iter_dir: Mock,
+    mock_read_json: Mock,
+    mock_add_alias: Mock,
+):
+    folder_path = "aliases"
+    mock_path_is_dir.side_effect = [True, False]
+    mock_path_exists.return_value = True
+    mock_iter_dir.return_value = [Path("alias.json")]
+    mock_read_json.side_effect = JSONDecodeError
+
+    load_aliases(folder_path)
+    mock_add_alias.assert_not_called()
 
 
 @patch("pathlib.Path.exists")
