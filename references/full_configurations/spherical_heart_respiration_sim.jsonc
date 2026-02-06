@@ -1,0 +1,387 @@
+{
+    "type": "forward_simulation",
+    "time": {
+        "type": "time",
+        "step_size": 0.001,
+        "min_step": 6.25e-05,
+        "start": 0.0,
+        "duration": 25.0
+    },
+    "solver": {
+        "type": "newton_solver",
+        "tolerance": 1e-09,
+        "iteration_max": 10
+    },
+    "net": {
+        "type": "net",
+        "flux_dof_definitions": {
+            "blood_flow": "blood_pressure"
+        },
+        "nodes": [
+            "cavity",
+            "atrial",
+            "aorta_proximal",
+            "aorta_distal",
+            "venous"
+        ],
+        "blocks": {
+            "cavity": {
+                "type": "block_description",
+                "model_type": "spherical_cavity_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "disp": "cavity.dynamics.disp",
+                "radius": "heart_radius",
+                "thickness": "heart_thickness",
+                "submodels": {
+                    "dynamics": {
+                        "type": "model_description",
+                        "model_type": "spherical_dynamics",
+                        "time": "time",
+                        "fib_deform": "cavity.rheology.fib_deform",
+                        "pressure": "cavity.blood_pressure",
+                        "pressure_external": "pleural.pressure",
+                        "vel": "cavity.velocity_law.vel",
+                        "radius": "heart_radius",
+                        "thickness": "heart_thickness",
+                        "series_stiffness": "cavity.rheology.series_stiffness"
+                    },
+                    "velocity_law": {
+                        "type": "model_description",
+                        "model_type": "velocity_law_hht",
+                        "time": "time",
+                        "disp": "cavity.dynamics.disp"
+                    },
+                    "rheology": {
+                        "type": "model_description",
+                        "model_type": "rheology_fiber_additive",
+                        "time": "time",
+                        "disp": "cavity.dynamics.disp",
+                        "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
+                        "radius": "heart_radius",
+                        "submodels": {
+                            "active_law": {
+                                "type": "model_description",
+                                "model_type": "active_law_macro_huxley_two_moments",
+                                "time": "time",
+                                "fib_deform": "cavity.rheology.fib_deform",
+                                "contractility": "heart_contractility"
+                            }
+                        }
+                    }
+                },
+                "nodes": {
+                    "1": "cavity"
+                }
+            },
+            "valve_atrium": {
+                "type": "block_description",
+                "model_type": "valve_rl_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "backward_conductance": "conductance_iso",
+                "nodes": {
+                    "1": "atrial",
+                    "2": "cavity"
+                }
+            },
+            "valve_arterial": {
+                "type": "block_description",
+                "model_type": "valve_rl_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "backward_conductance": "conductance_iso",
+                "nodes": {
+                    "1": "cavity",
+                    "2": "aorta_proximal"
+                }
+            },
+            "capacitance_valve": {
+                "type": "block_description",
+                "model_type": "c_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "nodes": {
+                    "1": "cavity"
+                }
+            },
+            "circulation_aorta_proximal": {
+                "type": "block_description",
+                "model_type": "rc_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "nodes": {
+                    "1": "aorta_distal",
+                    "2": "aorta_proximal"
+                }
+            },
+            "circulation_aorta_distal": {
+                "type": "block_description",
+                "model_type": "rc_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "nodes": {
+                    "1": "venous",
+                    "2": "aorta_distal"
+                }
+            }
+        },
+        "boundaries_conditions": {
+            "atrial": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "atrial.blood_pressure"
+                }
+            ],
+            "venous": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "venous.blood_pressure"
+                }
+            ]
+        }
+    },
+    "variables_initialization": {
+        "valve_atrium.flux": 0.0,
+        "valve_arterial.flux": 0.0,
+        "cavity.dynamics.disp": 0.0,
+        "cavity.velocity_law.vel": 0.0,
+        "cavity.velocity_law.accel": 0.0,
+        "cavity.rheology.fib_deform": 0.0,
+        "cavity.rheology.active_law.active_stiffness": 1.0,
+        "cavity.rheology.active_law.active_energy_sqrt": 0.0,
+        "cavity.rheology.active_law.active_tension_discr": 0.0,
+        "cavity.blood_pressure": "atrial.blood_pressure.max",
+        "aorta_proximal.blood_pressure": 10760.0,
+        "aorta_distal.blood_pressure": 10760.0
+    },
+    "variables_magnitudes": {
+        "valve_atrium.flux": 0.001,
+        "valve_arterial.flux": 0.001,
+        "cavity.dynamics.disp": 0.01,
+        "cavity.rheology.fib_deform": 0.1,
+        "cavity.velocity_law.vel": 0.1,
+        "cavity.velocity_law.accel": 1.0,
+        "aorta_proximal.blood_pressure": 10000.0,
+        "aorta_distal.blood_pressure": 10000.0,
+        "cavity.blood_pressure": 10000.0,
+        "cavity.rheology.active_law.active_stiffness": 100000.0,
+        "cavity.rheology.active_law.active_energy_sqrt": 10.0,
+        "cavity.rheology.active_law.active_tension_discr": 10000.0
+    },
+    "parameters": {
+        "heartbeat_duration": {
+            "type": "product",
+            "factors": [
+                60.0
+            ],
+            "inverses": [
+                "heart_rate"
+            ]
+        },
+        "pleural.pressure": {
+            "type": "sinus_offset",
+            "offset_value": "pleural.pressure.offset",
+            "amplitude": "pleural.pressure.amplitude",
+            "frequency": "pleural.pressure.frequency",
+            "phase_shift": 0.0
+        },
+        "diastole_scaling_factor": 0.8,
+        "cavity.dynamics.vol_mass": 1000.0,
+        "cavity.dynamics.damping_coef": 70.0,
+        "cavity.velocity_law.scheme_ts_hht": 0.4,
+        "cavity.rheology.series_stiffness": 100000000.0,
+        "cavity.rheology.damping_parallel": 70.0,
+        "cavity.rheology.active_law.starling_abscissas": [
+            -0.1668,
+            -0.0073,
+            0.0534,
+            0.0969,
+            0.1326,
+            0.2016,
+            0.4663,
+            0.9187,
+            1.1762
+        ],
+        "cavity.rheology.active_law.starling_ordinates": [
+            0.0,
+            0.5614,
+            0.7748,
+            0.8933,
+            0.9618,
+            1.0,
+            1.0,
+            0.1075,
+            0.0
+        ],
+        "cavity.rheology.active_law.destruction_rate": 12.0,
+        "cavity.rheology.active_law.crossbridge_stiffness": 273000.0,
+        "active_law.activation.min": -20.0,
+        "active_law.activation.max": 35.0,
+        "cavity.rheology.active_law.activation": {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "heartbeat_duration",
+            "alpha": "diastole_scaling_factor",
+            "reference_function": [
+                [
+                    0.0,
+                    "active_law.activation.min"
+                ],
+                [
+                    0.027,
+                    "active_law.activation.min"
+                ],
+                [
+                    0.037,
+                    0.0
+                ],
+                [
+                    0.145,
+                    "active_law.activation.max"
+                ],
+                [
+                    0.309,
+                    "active_law.activation.max"
+                ],
+                [
+                    0.417,
+                    0.0
+                ],
+                [
+                    0.427,
+                    "active_law.activation.min"
+                ],
+                [
+                    0.9,
+                    "active_law.activation.min"
+                ]
+            ],
+            "phases": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                0,
+                0
+            ]
+        },
+        "atrial.blood_pressure": {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "heartbeat_duration",
+            "alpha": "diastole_scaling_factor",
+            "reference_function": [
+                [
+                    0.0,
+                    "atrial.blood_pressure.max"
+                ],
+                [
+                    0.02,
+                    "atrial.blood_pressure.max"
+                ],
+                [
+                    0.07,
+                    "atrial.blood_pressure.min"
+                ],
+                [
+                    0.84,
+                    "atrial.blood_pressure.min"
+                ],
+                [
+                    0.9,
+                    "atrial.blood_pressure.max"
+                ]
+            ],
+            "phases": [
+                1,
+                1,
+                0,
+                1
+            ]
+        },
+        "conductance_iso": 5e-12,
+        "valve_atrium.inductance": 1000.0,
+        "valve_atrium.conductance": 9e-06,
+        "valve_arterial.inductance": 30000.0,
+        "valve_arterial.conductance": 1.3e-05,
+        "capacitance_valve.capacitance": 5e-12,
+        "valve_atrium.scheme_ts_flux": 0.25,
+        "valve_arterial.scheme_ts_flux": 0.25,
+        "circulation_aorta_proximal.capacitance": 2e-10,
+        "circulation_aorta_distal.capacitance": {
+            "type": "product",
+            "factors": [
+                "circulation_aorta_distal.time_constant"
+            ],
+            "inverses": [
+                "circulation_aorta_distal.resistance"
+            ]
+        },
+        "pleural.pressure.offset": {
+            "type": "product",
+            "factors": [
+                {
+                    "type": "sum",
+                    "add": [
+                        "pleural.pressure.min",
+                        "pleural.pressure.max"
+                    ]
+                },
+                0.5
+            ]
+        },
+        "pleural.pressure.amplitude": {
+            "type": "sum",
+            "add": [
+                "pleural.pressure.max"
+            ],
+            "subtract": [
+                "pleural.pressure.offset"
+            ]
+        },
+        "pleural.pressure.frequency": {
+            "type": "product",
+            "factors": [
+                1.0
+            ],
+            "inverses": [
+                "respiration.period"
+            ]
+        },
+        "heart_radius": 0.034,
+        "heart_thickness": 0.0113,
+        "heart_contractility": 90000.0,
+        "heart_rate": 60.0,
+        "respiration.period": 5.0,
+        "venous.blood_pressure": 1600.0,
+        "atrial.blood_pressure.min": 450.0,
+        "atrial.blood_pressure.max": 900.0,
+        "pleural.pressure.min": 0.0,
+        "pleural.pressure.max": 300.0,
+        "circulation_aorta_proximal.resistance": 7000000.0,
+        "circulation_aorta_distal.resistance": 110000000.0,
+        "circulation_aorta_distal.time_constant": 2.0,
+        "cavity.dynamics.hyperelastic_cst": [
+            444.0,
+            2.9,
+            69.0,
+            6.5
+        ]
+    },
+    "output_functions": {
+        "atrial.blood_pressure": {
+            "type": "watch_quantity",
+            "quantity": "atrial.blood_pressure"
+        },
+        "active_law.activation": {
+            "type": "watch_quantity",
+            "quantity": "cavity.rheology.active_law.activation"
+        },
+        "pleural.pressure": {
+            "type": "watch_quantity",
+            "quantity": "pleural.pressure"
+        }
+    }
+}
