@@ -146,8 +146,8 @@ class AbstractSimulation(ABC):
     @property
     def quantities(self) -> dict[str, Quantity[Any]]:
         """
-        Get all the quantities in the simulation from the parameters, the state
-        and the time manager.
+        Get all the quantities in the simulation from the parameters, the state,
+        the time manager and the saved quantities.
 
         :return: a dictionary containing all the simulation quantities
         :rtype: dict[str, Quantity]
@@ -157,6 +157,7 @@ class AbstractSimulation(ABC):
         }
         quantities.update(self.parameters)
         quantities.update(self.state.variables)
+        quantities.update(self.saved_quantities.items())
 
         return quantities
 
