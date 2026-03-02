@@ -97,9 +97,8 @@ def create_models(
     """
     submodels = {}
 
-    for submodel_id, submodel_desc in description.submodels.items():
-        unique_id = __get_submodel_unique_id(model_id, submodel_id)
-        submodels.update(create_models(unique_id, submodel_desc, parameters))
+    for submodel_desc in description.submodels.values():
+        submodels.update(create_models(submodel_desc.name, submodel_desc, parameters))
 
     model_params: dict[str, Quantity[Any]]
     model_params = {}
@@ -115,10 +114,6 @@ def create_models(
     models = {model_id: model}
     models.update(submodels)
     return models
-
-
-def __get_submodel_unique_id(model_id: str, submodel_id: str) -> str:
-    return __ID_SEPARATOR.join([model_id, submodel_id])
 
 
 def build_state(net: Net) -> State:
@@ -359,10 +354,9 @@ def _get_model_internal_expressions(
 
     int_expressions = _get_internal_expressions(model_id, model_desc, state, models)
 
-    for submodel_id, submodel_desc in model_desc.submodels.items():
-        submodel_net_id = __get_submodel_unique_id(model_id, submodel_id)
+    for submodel_desc in model_desc.submodels.values():
         submodel_expressions = _get_model_internal_expressions(
-            submodel_net_id, submodel_desc, state, models
+            submodel_desc.name, submodel_desc, state, models
         )
 
         int_expressions.extend(submodel_expressions)
@@ -465,9 +459,11 @@ def _get_model_saved_quantities_expressions(
         for saved_qty_expr_def in model_desc.saved_quantities_expressions
         for term_def in saved_qty_expr_def.terms
     ]
-    for submodel_id, submodel_desc in model_desc.submodels.items():
+    for submodel_desc in model_desc.submodels.values():
         expressions.extend(
-            _get_model_saved_quantities_expressions(submodel_id, submodel_desc, models)
+            _get_model_saved_quantities_expressions(
+                submodel_desc.name, submodel_desc, models
+            )
         )
 
     return expressions
