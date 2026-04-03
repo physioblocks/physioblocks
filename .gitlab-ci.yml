@@ -80,9 +80,9 @@ test references debian:
   script:
     - pip install .
     - python -m physioblocks.launcher.configure -d ./launcher
-    - python -m physioblocks.launcher references/circulation_alone_sim.jsonc -d launcher -t --compare tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv -s Circulation
-    - python -m physioblocks.launcher references/spherical_heart_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv -s SphericalHeart
-    - python -m physioblocks.launcher references/spherical_heart_respiration_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv -s SphericalHeartRespiration
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_sim_compare_reference.jsonc -d launcher -s Circulation
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_respiration_sim_compare_reference.jsonc -d launcher -s SphericalHeartRespiration
   artifacts:
     paths:
       - launcher/simulations
@@ -102,10 +102,10 @@ test references windows:
     - windows
   script:
     - pip install .
-    - python -m physioblocks.launcher.configure -d ./launcher 
-    - python -m physioblocks.launcher references/circulation_alone_sim.jsonc -d launcher -t --compare tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv -s Circulation
-    - python -m physioblocks.launcher references/spherical_heart_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv -s SphericalHeart
-    - python -m physioblocks.launcher references/spherical_heart_respiration_sim.jsonc -d launcher -t --compare tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv -s SphericalHeartRespiration
+    - python -m physioblocks.launcher.configure -d ./launcher
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_sim_compare_reference.jsonc -d launcher -s Circulation
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_respiration_sim_compare_reference.jsonc -d launcher -s SphericalHeartRespiration
   artifacts:
     paths:
       - launcher/simulations

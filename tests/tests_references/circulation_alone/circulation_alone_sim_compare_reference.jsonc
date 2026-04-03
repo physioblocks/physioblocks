@@ -1,0 +1,8 @@
+{
+    "type": "./references/circulation_alone_sim.jsonc",
+    "post-processes": {
+        "compare_reference_simulation": {
+            "reference": "./tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv"
+        }
+    }
+}

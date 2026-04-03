@@ -41,6 +41,7 @@ from rich.logging import RichHandler
 
 import physioblocks.utils.exceptions_utils as exception_utils
 from physioblocks.configuration import Configuration, load, unwrap_aliases
+from physioblocks.configuration.constants import PLOTS_CONFIGURATION_ID
 from physioblocks.io.configuration import read_json, write_json
 from physioblocks.launcher.configuration import (
     check_launcher_directory,
@@ -50,16 +51,15 @@ from physioblocks.launcher.configuration import (
     import_configured_libraries,
 )
 from physioblocks.launcher.constants import (
-    LAUNCHER_COMPARE_TRACE_FILE_NAME,
     LAUNCHER_SERIES_DIR_NAME,
 )
 from physioblocks.launcher.files import (
-    write_figure,
     write_simulation_log_entry,
     write_simulation_results,
 )
 from physioblocks.launcher.series import get_simulation_info
 from physioblocks.simulation import AbstractSimulation, SimulationError
+from physioblocks.simulation.process import AbstractPlotProcess, run_processes
 
 """
 .. note:: When deleting a serie from the launcher folder, or a specific simulation from
@@ -80,7 +80,7 @@ def load_configuration(config_file_path: Path) -> Any:
     return unwrap_aliases(simulation_config)
 
 
-def run_simulation(config: Configuration) -> pd.DataFrame:
+def run_simulation(config: Configuration) -> dict[str, pd.DataFrame]:
     simulation: AbstractSimulation = load(config)
     try:
         results = simulation.run()
@@ -89,7 +89,7 @@ def run_simulation(config: Configuration) -> pd.DataFrame:
         _root_logger.error(sim_error)
         results = sim_error.intermediate_results
 
-    return pd.DataFrame(results)
+    return results
 
 
 def add_log_handler(
@@ -106,9 +106,6 @@ def main(
     series: str,
     message: str,
     extension: str,
-    trace: bool = False,
-    reference_file_path: Path | None = None,
-    rows_height: float = 200.0,
 ) -> int:
     if check_launcher_directory(root_sim_directory) is False:
         _root_logger.error(
@@ -146,7 +143,7 @@ def main(
     import_configured_aliases(launcher_configuration)
 
     # Load configuration and unwrap aliases
-    sim_config = load_configuration(config_file_path)
+    sim_config: Configuration = load_configuration(config_file_path)
 
     # copy the unwrapped simulation configuration file to the simulation folder
     write_json(str(sim_folder / config_file_path.name), sim_config)
@@ -155,21 +152,19 @@ def main(
     data = run_simulation(sim_config)
 
     # write the result
-    write_simulation_results(sim_folder, sim_info, data, extension)
+    write_simulation_results(sim_folder, data, extension)
 
-    # trace the simulation result if needed.
-    if trace is True:
-        data = data.set_index("time")
-        write_figure(
-            data, sim_folder, str.join(".", [sim_info.reference, "html"]), rows_height
-        )
+    # trace the configured plots.
+    if PLOTS_CONFIGURATION_ID in sim_config:
+        plots: dict[str, AbstractPlotProcess] = load(sim_config[PLOTS_CONFIGURATION_ID])
 
-    if reference_file_path is not None:
-        df_ref = pd.read_csv(reference_file_path, sep=";").set_index("time")
-        error_df = abs(df_ref - data)
-        write_figure(
-            error_df, sim_folder, LAUNCHER_COMPARE_TRACE_FILE_NAME, rows_height
-        )
+        # Initialize plot processes
+        for plot_id, plot_process in plots.items():
+            plot_process.folder_path = sim_folder
+            plot_process.plot_name = plot_id
+
+        # Run processes
+        run_processes(plots, data)
 
     return 0
 
@@ -215,17 +210,16 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         required=False,
-        help="Display logs in console",
+        help="Display INFO level logs in the console",
     )
 
     parser.add_argument(
-        "-l",
-        "--log_level",
-        dest="log_level",
-        default="INFO",
-        choices=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"],
+        "--DEBUG",
+        dest="debug",
+        action="store_true",
+        default=False,
         required=False,
-        help="Level of the console logs",
+        help="Display DEBUG logs in console when used with -v",
     )
 
     parser.add_argument(
@@ -237,44 +231,22 @@ if __name__ == "__main__":
         help="The file extension to write the simulation results.",
         choices=["csv", "parquet"],
     )
-    parser.add_argument(
-        "-t",
-        "--trace",
-        dest="trace",
-        default="False",
-        required=False,
-        action="store_true",
-        help="Set to True to save a html graph of the results. Default is False",
-    )
-    parser.add_argument(
-        "--compare",
-        dest="reference",
-        required=False,
-        help="Set a reference file to compare against the simulation results"
-        "(column names must match).",
-    )
-    parser.add_argument(
-        "--rows_height",
-        dest="rows_height",
-        default=200.0,
-        required=False,
-        help="Height of each row in the graph if any.",
-    )
     args = parser.parse_args()
 
-    # setup logger when verbose
+    # setup logger for console
+    console_level = logging.WARNING
+
     if args.verbose is True:
-        # stdout_handler = logging.StreamHandler(sys.stdout)
-        add_log_handler(RichHandler(), args.log_level, RICH_LOG_FORMATTER)
+        console_level = logging.INFO
+        if args.debug is True:
+            console_level = logging.DEBUG
+
+    add_log_handler(RichHandler(), console_level, RICH_LOG_FORMATTER)
 
     # create paths from arguments
     root_folder_path = Path(args.launcher_directory).absolute()
     config_file_path = Path(args.simulation_configuration).absolute()
-    reference_file_path = (
-        Path(args.reference).absolute() if args.reference is not None else None
-    )
 
-    rows_heights = float(args.rows_height)
     sys.exit(
         main(
             root_sim_directory=root_folder_path,
@@ -282,8 +254,5 @@ if __name__ == "__main__":
             series=args.series,
             message=args.message,
             extension=args.extension,
-            trace=args.trace,
-            reference_file_path=reference_file_path,
-            rows_height=rows_heights,
         )
     )

@@ -27,19 +27,19 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 from physioblocks.configuration.base import Configuration
 from physioblocks.io.configuration import read_json, write_json
-from tests.helpers.file_helpers import clean_files
 
-write_file_path = "./tests/tests_io/references/test_write.json"
-ref_file_path = "./tests/tests_io/references/configuration.json"
-alternative_config_file_path = "./tests/tests_io/references/alt_config_file_path.json"
-commented_config_file_path = (
-    "./tests/tests_io/references/commented_config_file_path.jsonc"
-)
+# write_file_path = "./tests/tests_io/references/test_write.json"
+# ref_file_path = "./tests/tests_io/references/configuration.json"
+# alternative_config_file_path = "./tests/tests_io/references/alt_config_file_path.json"
+# commented_config_file_path = (
+#     "./tests/tests_io/references/commented_config_file_path.jsonc"
+# )
 
 ROOT_ID = "root_item"
 FLOAT_VAL_ID = "float_value"
@@ -53,6 +53,60 @@ CHILD_ITEM_ID = "child_item"
 class NonSerializable:
     val_1: float
     val_2: int
+
+
+@pytest.fixture
+def reference_config_dict():
+    return {
+        "type": "root_item",
+        "float_value": 1.0,
+        "int_value": 1,
+        "str_value": "one",
+        "child": {
+            "type": "child_item",
+            "float_value": 2.0,
+            "int_value": 2,
+            "str_value": "two",
+        },
+    }
+
+
+@pytest.fixture
+def alternative_config_dict():
+    return {
+        "float_value": 1.0,
+        "int_value": 1,
+        "str_value": "one",
+        "child": {
+            "type": "child_item",
+            "float_value": 2.0,
+            "int_value": 2,
+            "str_value": "two",
+        },
+    }
+
+
+@pytest.fixture
+def commented_config_string():
+    return """
+    // this comment is starting the file
+    {
+        "type": "root_item",
+        "float_value": 1.0,
+        "int_value": 1, // this is a comment
+        "str_value": "one",
+        // "commented_value": "bis"
+        "child" : {
+                // this is also a comment
+                "type": "child_item",
+                "float_value": 2.0,
+                "int_value": 2,
+                "str_value": "two"
+                // "other_commented_value": "ter"
+            }
+    }
+    // this comment is ending the file
+    """
 
 
 @pytest.fixture
@@ -77,29 +131,50 @@ def ref_alt_config(ref_config: Configuration) -> dict:
     return ref_config.configuration_items.copy()
 
 
-def test_read_json(ref_config: Configuration, ref_alt_config: Configuration):
+def test_read_json_configuration(
+    tmp_path, ref_config: Configuration, reference_config_dict: dict
+):
+    ref_file_path = tmp_path / "ref_config.json"
+    config_json = json.dumps(reference_config_dict)
+    Path(ref_file_path).write_text(config_json)
+
     config = read_json(ref_file_path)
     assert config == ref_config
 
-    commented_config = read_json(commented_config_file_path)
+
+def test_read_commented_json(
+    tmp_path, ref_config: Configuration, commented_config_string: str
+):
+    ref_file_path = tmp_path / "ref_config.json"
+    Path(ref_file_path).write_text(commented_config_string)
+
+    commented_config = read_json(ref_file_path)
     assert commented_config == ref_config
 
-    alt_config = read_json(alternative_config_file_path)
+
+def test_read_no_root_config_type(
+    tmp_path, ref_alt_config: Configuration, alternative_config_dict: dict
+):
+    ref_file_path = tmp_path / "ref_config.json"
+    config_json = json.dumps(alternative_config_dict)
+    Path(ref_file_path).write_text(config_json)
+
+    alt_config = read_json(ref_file_path)
     assert alt_config == ref_alt_config
 
 
-@clean_files(write_file_path)
-def test_write_json(ref_config: Configuration):
+def test_write_json(tmp_path, ref_config: Configuration, reference_config_dict: dict):
+    write_file_path = tmp_path / "reference.csv"
     write_json(write_file_path, ref_config)
 
     write_json_txt = Path(write_file_path).read_text()
     write_json_obj = json.loads(write_json_txt)
 
-    ref_json_txt = Path(ref_file_path).read_text()
-    ref_json_obj = json.loads(ref_json_txt)
+    assert write_json_obj == reference_config_dict
 
-    assert write_json_obj == ref_json_obj
 
-    obj = NonSerializable(1.0, 2)
+def test_write_json_non_serializable(tmp_path):
+    write_file_path = tmp_path / "non_serializable.json"
+    obj = Mock()
     with pytest.raises(TypeError):
         write_json(write_file_path, obj)

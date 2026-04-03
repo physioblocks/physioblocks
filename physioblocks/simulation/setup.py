@@ -51,6 +51,7 @@ from physioblocks.description.flux import (
     get_flux_dof_register,
 )
 from physioblocks.description.nets import BoundaryCondition, Net
+from physioblocks.simulation.process import AbstractProcess
 from physioblocks.simulation.runtime import AbstractSimulation, Parameters
 from physioblocks.simulation.saved_quantities import SavedQuantities
 from physioblocks.simulation.solvers import AbstractSolver, NewtonSolver
@@ -195,7 +196,7 @@ def build_eq_system(expressions: SystemExpressions, state: State) -> EqSystem:
     :type expressions: Expressions
 
     :param state: the state for the system
-    :tupe size: State
+    :type size: State
 
     :return: an equation system initialized with the given expressions
     :rtype: EqSystem
@@ -402,7 +403,7 @@ def _build_net_expressions(
     :param blocks: the blocks defining the expressions
     :type blocks: dict[str, Block]
 
-    :param quantities: all the quantities availables
+    :param quantities: all the quantities available
     :type quantities: dict[str, Quantity]
 
     :return: a set of expressions
@@ -500,6 +501,9 @@ class SimulationFactory:
     """
     Factory for **Simulation** objects
 
+    :param simulation_name: the simulation name
+    :type simulation_name: str
+
     :param simulation_type: The simulation type to create
     :type simulation_type: type[AbstractSimulation]
 
@@ -516,14 +520,20 @@ class SimulationFactory:
 
     def __init__(
         self,
+        simulation_name: str,
         simulation_type: type[AbstractSimulation],
         solver: AbstractSolver | None = None,
         net: Net | None = None,
+        preprocesses: dict[str, AbstractProcess] | None = None,
+        postprocesses: dict[str, AbstractProcess] | None = None,
         simulation_options: dict[str, Any] | None = None,
     ):
+        self.simulation_name = simulation_name
         self.simulation_type = simulation_type
         self.solver = solver if solver is not None else NewtonSolver()
         self.net = net if net is not None else Net()
+        self.preprocesses = preprocesses if preprocesses is not None else {}
+        self.postprocesses = postprocesses if postprocesses is not None else {}
         self.simulation_options = (
             simulation_options if simulation_options is not None else {}
         )
@@ -554,13 +564,14 @@ class SimulationFactory:
         expressions = _build_net_expressions(self.net, state, models, all_quantities)
         eq_system = build_eq_system(expressions, state)
 
-        # Log simulation informations
+        # Log simulation information
         _logger.info(str.format("Net:{1}{0}", self.net, linesep))
         _logger.info(str.format("State:{1}{0}", state, linesep))
         _logger.info(str.format("System:{1}{0}", eq_system, linesep))
 
         return self.simulation_type(
             factory=self,
+            simulation_name=self.simulation_name,
             time_manager=time_manager,
             state=state,
             parameters=parameters,
@@ -568,5 +579,7 @@ class SimulationFactory:
             models=models,
             solver=self.solver,
             eq_system=eq_system,
+            preprocesses=self.preprocesses,
+            postprocesses=self.postprocesses,
             **self.simulation_options,
         )

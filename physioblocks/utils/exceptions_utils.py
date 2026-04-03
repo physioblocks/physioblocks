@@ -29,7 +29,6 @@
 import logging
 import traceback
 from collections.abc import Callable
-from logging import Logger
 from types import TracebackType
 from typing import TypeAlias
 
@@ -40,7 +39,7 @@ ExceptionHandlerFunction: TypeAlias = Callable[
 
 
 def create_uncaught_exception_logger_handler(
-    logger: Logger,
+    logger: logging.Logger,
 ) -> ExceptionHandlerFunction:
     """create_uncaught_exception_logger_handler(logger: Logger) -> ExceptionHandlerFunction
 
@@ -72,13 +71,13 @@ def create_uncaught_exception_logger_handler(
         exception_value: BaseException,
         tb: TracebackType | None = None,
     ) -> None:
-        log_exception(logger, exception_type, exception_value, tb, logger.level)
+        log_exception(logger, exception_type, exception_value, tb, logging.ERROR)
 
     return log_handler
 
 
 def log_exception(
-    logger: Logger,
+    logger: logging.Logger,
     exc_type: type[BaseException],
     exception: BaseException,
     tb: TracebackType | None,

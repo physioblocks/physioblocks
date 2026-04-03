@@ -39,7 +39,6 @@ from typing import Any
 from physioblocks.description.blocks import (
     ID_SEPARATOR,
     BlockDescription,
-    ModelComponentDescription,
 )
 from physioblocks.description.flux import Dof, get_flux_dof_register
 from physioblocks.registers.type_register import register_type
@@ -506,7 +505,7 @@ class Net:
         for loc_node in node.local_nodes:
             self.remove_block(loc_node[0])
 
-        # Actualy remove the node
+        # Actually remove the node
         self._nodes.pop(node_id)
 
     def add_block(
@@ -555,47 +554,50 @@ class Net:
                 )
             )
 
+        # create a block description copy
+        new_block_description = BlockDescription(
+            block_local_id,
+            block_description.described_type,
+            block_description.flux_type,
+            block_description.global_ids,
+            block_description.submodels,
+            block_description.alternative_types,
+        )
+
         # link block local node to global node.
         dof_ids = {}
         for (
             node_index,
             flux_def,
-        ) in block_description.described_type.fluxes_expressions.items():
+        ) in new_block_description.described_type.fluxes_expressions.items():
             global_node_id = node_ids[node_index]
             global_node = self._nodes[global_node_id]
 
             # create new dof if necessary
             created_dof_types = [dof.dof_type for dof in global_node.dofs]
-            dof_type = _flux_type_register.flux_dof_couples[block_description.flux_type]
+            dof_type = _flux_type_register.flux_dof_couples[
+                new_block_description.flux_type
+            ]
             new_dof_id = ID_SEPARATOR.join([global_node_id, dof_type])
             # get matching local parameter in the block
             local_dof_id = flux_def.get_term(0).term_id
-            if local_dof_id in block_description.described_type.local_ids:
-                dof_ids[local_dof_id] = new_dof_id
-                # else the dof is not used in the model
-                # (it is only described to use in submodels)
+            dof_ids[local_dof_id] = new_dof_id
             if dof_type not in created_dof_types:
                 global_node.add_dof(new_dof_id, dof_type)
 
             # Add node local to node global
-            global_node.add_node_local(block_description.name, node_index)
+            global_node.add_node_local(new_block_description.name, node_index)
 
-        # update global ids for the block with dof ids
-        new_global_ids = block_description.global_ids
-        new_global_ids.update(dof_ids)
+        # Rename block with dof ids
+        for local_dof_id, global_dof_id in dof_ids.items():
+            if local_dof_id in new_block_description.global_ids:
+                new_block_description.rename_global_id(
+                    new_block_description.global_ids[local_dof_id], global_dof_id
+                )
 
-        # create and save the block description
-        block_description = BlockDescription(
-            block_local_id,
-            block_description.described_type,
-            block_description.flux_type,
-            new_global_ids,
-            block_description.submodels,
-        )
+        self._blocks[block_local_id] = new_block_description
 
-        self._blocks[block_local_id] = block_description
-
-        return self._blocks[block_local_id]
+        return new_block_description
 
     def remove_block(self, block_id: str) -> None:
         """
@@ -655,7 +657,7 @@ class Net:
         :type index_block_node: int
 
         :raise ValueError:
-          Raise a ValueError if no globla node is linked to the given local node.
+          Raise a ValueError if no global node is linked to the given local node.
 
         :return: the global node name
         :rtype: str
@@ -720,17 +722,9 @@ class Net:
             bc.condition_id != old_dof_id
             and bc.condition_type in _flux_type_register.dof_flux_couples
         ):
-            # rename potentiel with the new id in all blocks and models
+            # rename potential with the new id in all blocks and models
             for block in self._blocks.values():
-                self._rename_block_ids_rec(block, old_dof_id, bc.condition_id)
-
-    def _rename_block_ids_rec(
-        self, model: ModelComponentDescription, old: str, new: str
-    ) -> None:
-        model.rename_global_id(old, new)
-
-        for submodel in model.submodels.values():
-            self._rename_block_ids_rec(submodel, old, new)
+                block.rename_global_id(old_dof_id, bc.condition_id)
 
     def remove_boundary(self, node_id: str, condition_type: str) -> None:
         """
@@ -744,3 +738,51 @@ class Net:
         """
         node = self._nodes[node_id]
         node.remove_boundary_condition(condition_type)
+
+    def get_alternative_net(self, alternative_id: str) -> Net:
+        """
+        Get the net resulting from assembling all blocks tagged with the given id.
+
+        If boundary conditions and nodes are linked to the alternatives blocks, the are
+        recreated in the alternative nets.
+
+        :param alternative_id: the tag of the alternative net.
+        :type alternative_id: str
+
+        :return: the alternative net
+        :rtype: Net
+        """
+        net = Net()
+        for block_id, block_desc in self.blocks.items():
+            if alternative_id in block_desc.alternative_types:
+                linked_nodes = {}
+                alt_desc = block_desc.alternative_descriptions[alternative_id]
+
+                for node_id, node in self.nodes.items():
+                    for node_block_id, node_flux_id in node.local_nodes:
+                        if (
+                            node_block_id == block_id
+                            and node_flux_id in alt_desc.fluxes
+                        ):
+                            linked_nodes[node_flux_id] = node_id
+
+                for node_id in linked_nodes.values():
+                    if node_id not in net.nodes:
+                        net.add_node(node_id)
+
+                net.add_block(
+                    block_id,
+                    alt_desc,
+                    linked_nodes,
+                )
+
+        for node_id, boundary_conditions in self.boundary_conditions.items():
+            if node_id in net.nodes:
+                for bc in boundary_conditions:
+                    if net.nodes[node_id].has_flux_type(
+                        bc.condition_type
+                    ) or bc.condition_type in [
+                        dof.dof_type for dof in net.nodes[node_id].dofs
+                    ]:
+                        net.set_boundary(node_id, bc.condition_type, bc.condition_id)
+        return net

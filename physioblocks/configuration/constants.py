@@ -38,6 +38,12 @@ PARAMETERS_ID = "parameters"
 # Definition of the flux-dof types couples
 FLUX_DOF_DEFINITION_ID = "flux_dof_definitions"
 
+# Label for the simulation name
+SIMULATION_NAME = "simulation_name"
+
+# Default simulation name
+DEFAULT_SIMULATION_NAME = "main"
+
 # Options label for specific simulation types
 SIMULATION_OPTIONS = "simulation_options"
 
@@ -65,6 +71,9 @@ SUBMODEL_ITEM_ID = "submodels"
 
 # Label of the model type item
 MODEL_COMPONENT_TYPE_ITEM_ID = "model_type"
+
+# Label of the model type item
+ALTERNATIVE_TYPES_ITEM_ID = "alternative_types"
 
 
 # Boundary Conditions
@@ -116,3 +125,14 @@ TIME_STEP_MIN_VAL_ID = "min_step"
 
 # Optional field id for output functions in the simulation configuration.
 OUTPUTS_FUNCTIONS_ID = "output_functions"
+
+# Processes
+
+# Optional field id for simulation pre-processes
+PRE_PROCESSES_ID = "pre-processes"
+
+# Optional field id for simulation post-processes
+POST_PROCESSES_ID = "post-processes"
+
+# Optional field for simulation plots
+PLOTS_CONFIGURATION_ID = "plots"

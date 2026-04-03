@@ -41,5 +41,8 @@
             "frequency": "pleural.pressure.frequency",
             "phase_shift": 0.0
         }
+    },
+    "output_functions":{
+        "pleural.pressure": {"type": "watch_quantity", "quantity": "pleural.pressure"}
     }
 }

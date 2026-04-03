@@ -90,9 +90,6 @@ LAUNCHER_CONFIGURATION_FILE_NAME = "launcher.json"
 LAUNCHER_MODULE_INIT_FILE_NAME = "__init__.py"
 """Init file name"""
 
-LAUNCHER_COMPARE_TRACE_FILE_NAME = "reference_compare.html"
-"""Name of an error file generated with the compare module"""
-
 # CONFIGURATION
 
 LAUNCHER_CONFIGURATION_LIBRARIES_ID = "libraries"

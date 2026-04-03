@@ -93,18 +93,8 @@ File format options
 
 A single option to update the format of the simulation result.
 
-    * **file extension:** the ``-ext`` option update the result file format. Supported options are currently ``csv`` and ``parquet``
+    * **file extension:** the ``-ext`` option update the result file format. Supported options are currently ``csv`` and ``parquet``.
 
-Traces options
-^^^^^^^^^^^^^^
-
-Several options are avaible to save basic traces of the simulation results.
-
-    * **Trace:** if set, the ``-t`` create a trace in html of the simulation results.
-    * **compare:** the ``--compare`` options takes a path to a reference file.
-      If set, a html file tracing the **error between the reference file and the current simulation** is saved along with the results.
-      Be careful: It only compare datas with **matching columns names** in the reference and the results files
-    * **row_height:**  if the default row size is not adapted, the ``--row_heights`` option set the rows size in the generated graphs.
 
 Update configuration files
 --------------------------

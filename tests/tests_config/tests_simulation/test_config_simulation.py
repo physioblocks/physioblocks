@@ -37,7 +37,7 @@ from physioblocks.computing.models import (
     TermDefinition,
 )
 from physioblocks.computing.quantities import Quantity
-from physioblocks.configuration.constants import NET_ID
+from physioblocks.configuration.constants import DEFAULT_SIMULATION_NAME, NET_ID
 from physioblocks.configuration.simulation.simulations import (
     PARAMETERS_ID,
     load_simulation_config,
@@ -100,7 +100,7 @@ def ref_func():
 
 @pytest.fixture
 def ref_term() -> TermDefinition:
-    return TermDefinition(1, DOF_ID)
+    return TermDefinition(DOF_ID, 1)
 
 
 @pytest.fixture
@@ -184,7 +184,9 @@ def simulation_reference(net_reference: Net, ref_flux_expressions, ref_nodes):
             __init__=MagicMock(return_value=None),
         ),
     ):
-        factory = SimulationFactory(AbstractSimulation, AbstractSolver(), net_reference)
+        factory = SimulationFactory(
+            DEFAULT_SIMULATION_NAME, AbstractSimulation, AbstractSolver(), net_reference
+        )
         sim = factory.create_simulation()
         sim.state.set_variables_magnitudes(
             {str.format("{0}.{1}", NODE_A_ID, DOF_TYPE_ID): 1.1}

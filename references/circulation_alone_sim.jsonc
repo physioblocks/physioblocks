@@ -17,8 +17,5 @@
         "aorta_proximal.blood_flow.min": 0.0,
         "aorta_proximal.blood_flow.max": 0.5e-3
 
-    },
-    "output_functions":{
-        "aorta_proximal.blood_flow": {"type": "watch_quantity", "quantity": "aorta_proximal.blood_flow"}
-    } 
+    }
 }

@@ -33,15 +33,9 @@ import pytest
 _logger = logging.getLogger(__name__)
 
 
-def read_reference(reference_file: str) -> pd.DataFrame:
-    data = pd.read_csv(reference_file, sep=";")
-    return data
-
-
 def results_close_to_data(
     results: pd.DataFrame,
     ref: pd.DataFrame,
-    matching_ids: dict[str, str],
     tol: float,
     tol_factors: dict[str, float],
     interval: tuple[float, float] | None = None,
@@ -53,14 +47,14 @@ def results_close_to_data(
 
     found_differences = False
 
-    for var_id, data_id in matching_ids.items():
-        result_array = results_df[var_id].to_numpy()
+    for data_id in results_df.columns:
+        result_array = results_df[data_id].to_numpy()
         ref_array = ref_df[data_id].to_numpy()
 
-        if result_array != pytest.approx(ref_array, abs=tol * tol_factors[var_id]):
+        if result_array != pytest.approx(ref_array, abs=tol * tol_factors[data_id]):
             found_differences = True
             message = str.format(
-                "Results differ from reference for outputs: {0}", var_id
+                "Results differ from reference for outputs: {0}", data_id
             )
             _logger.info(message)
             if result_array.shape != ref_array.shape:

@@ -12,6 +12,42 @@
         "tolerance": 1e-09,
         "iteration_max": 10
     },
+    "plots": {
+        "main_plot": {
+            "type": "subplot",
+            "inputs": [
+                "main"
+            ],
+            "abscissas": "time"
+        },
+        "plot_error_main": {
+            "type": "subplot",
+            "inputs": [
+                "main_error"
+            ],
+            "abscissas": "time"
+        },
+        "plot_error_espvr_edpvr": {
+            "type": "subplot",
+            "inputs": [
+                "espvr-edpvr_error"
+            ],
+            "abscissas": "cavity.dynamics.disp"
+        },
+        "PV-Loop_plot": {
+            "type": "plot",
+            "abscissas": "cavity.volume",
+            "ordinates": [
+                "cavity.blood_pressure",
+                "cavity.dynamics.EDPVR",
+                "cavity.dynamics.ESPVR"
+            ],
+            "inputs": [
+                "main",
+                "espvr-edpvr"
+            ]
+        }
+    },
     "net": {
         "type": "net",
         "flux_dof_definitions": {
@@ -33,6 +69,9 @@
                 "disp": "cavity.dynamics.disp",
                 "radius": "heart_radius",
                 "thickness": "heart_thickness",
+                "alternative_types": {
+                    "cavity.asymptotic": "spherical_cavity_block_asymptotic"
+                },
                 "submodels": {
                     "dynamics": {
                         "type": "model_description",
@@ -44,7 +83,10 @@
                         "vel": "cavity.velocity_law.vel",
                         "radius": "heart_radius",
                         "thickness": "heart_thickness",
-                        "series_stiffness": "cavity.rheology.series_stiffness"
+                        "series_stiffness": "cavity.rheology.series_stiffness",
+                        "alternative_types": {
+                            "cavity.asymptotic": "spherical_dynamics_asymptotic"
+                        }
                     },
                     "velocity_law": {
                         "type": "model_description",
@@ -59,13 +101,19 @@
                         "disp": "cavity.dynamics.disp",
                         "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
                         "radius": "heart_radius",
+                        "alternative_types": {
+                            "cavity.asymptotic": "rheology_fiber_additive_asymptotic"
+                        },
                         "submodels": {
                             "active_law": {
                                 "type": "model_description",
                                 "model_type": "active_law_macro_huxley_two_moments",
                                 "time": "time",
                                 "fib_deform": "cavity.rheology.fib_deform",
-                                "contractility": "heart_contractility"
+                                "contractility": "heart_contractility",
+                                "alternative_types": {
+                                    "cavity.asymptotic": "active_law_macro_huxley_two_moments_asymptotic"
+                                }
                             }
                         }
                     }
@@ -338,6 +386,64 @@
         "active_law.activation": {
             "type": "watch_quantity",
             "quantity": "cavity.rheology.active_law.activation"
+        }
+    },
+    "pre-processes": {
+        "ESPVR-EDPVR": {
+            "type": "compute_espvr_edpvr",
+            "alternative_cavity_id": "cavity.asymptotic",
+            "displacement_id": "cavity.dynamics.disp",
+            "displacement_min": -0.002,
+            "displacement_max": 0.011,
+            "displacement_step": 1e-05,
+            "outputs": [
+                "espvr-edpvr"
+            ]
+        }
+    },
+    "post-processes": {
+        "medical_units_conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "valve_atrium.flux": 1000000.0,
+                "valve_arterial.flux": 1000000.0,
+                "aorta_proximal.blood_pressure": 0.00750062,
+                "aorta_distal.blood_pressure": 0.00750062,
+                "cavity.blood_pressure": 0.00750062,
+                "atrial.blood_pressure": 0.00750062,
+                "pleural.pressure": 0.0102,
+                "cavity.volume": 1000000.0,
+                "cavity.dynamics.EDPVR": 0.00750062,
+                "cavity.dynamics.ESPVR": 0.00750062
+            },
+            "inputs": [
+                "main",
+                "espvr-edpvr"
+            ],
+            "outputs": [
+                "main",
+                "espvr-edpvr"
+            ]
+        },
+        "compare_reference_simulation": {
+            "type": "compare_process",
+            "inputs": [
+                "main"
+            ],
+            "outputs": [
+                "main_error"
+            ],
+            "abscissas": "time"
+        },
+        "compare_reference_espvr_edpvr": {
+            "type": "compare_process",
+            "inputs": [
+                "espvr-edpvr"
+            ],
+            "outputs": [
+                "espvr-edpvr_error"
+            ],
+            "abscissas": "cavity.dynamics.disp"
         }
     }
 }

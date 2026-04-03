@@ -33,7 +33,8 @@ from typing import Any
 
 import numpy as np
 
-from physioblocks.computing import Expression, ModelComponent, Quantity, diff, mid_point
+from physioblocks.computing import ModelComponent, Quantity, diff, mid_point
+from physioblocks.computing.models import declares_internal_equation
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -91,6 +92,7 @@ class RheologyFiberAdditiveModelComponent(ModelComponent):
         """
         self._inv_radius = 1 / self.radius.current
 
+    @declares_internal_equation("fib_deform")
     def fib_deform_equation(self) -> Any:
         """
         Compute the equation representing the fiber deformation.
@@ -111,6 +113,7 @@ class RheologyFiberAdditiveModelComponent(ModelComponent):
             )
         )
 
+    @fib_deform_equation.partial_derivative("fib_deform")
     def dfib_deform_equation_dfib_deform(self) -> Any:
         """
         Compute the equation partial derivative for ``fib_deform``
@@ -124,6 +127,7 @@ class RheologyFiberAdditiveModelComponent(ModelComponent):
             + self.series_stiffness.current * 0.5
         )
 
+    @fib_deform_equation.partial_derivative("disp")
     def dfib_deform_equation_ddisp(self) -> np.float64:
         """
         Compute the equation partial derivative for ``disp``
@@ -133,6 +137,7 @@ class RheologyFiberAdditiveModelComponent(ModelComponent):
         """
         return -self.series_stiffness.current * self._inv_radius * 0.5
 
+    @fib_deform_equation.partial_derivative("active_tension_discr")
     def dfib_deform_equation_dactive_tension_discr(self) -> Any:
         """
         Compute the equation partial derivative for the ``active_tension_discr``
@@ -143,18 +148,86 @@ class RheologyFiberAdditiveModelComponent(ModelComponent):
         return 1.0
 
 
-# Define the expression of the equation of the model.
-_fib_deform_equation_expr = Expression(
-    1,
-    RheologyFiberAdditiveModelComponent.fib_deform_equation,
-    {
-        "fib_deform": RheologyFiberAdditiveModelComponent.dfib_deform_equation_dfib_deform,  # noqa: E501
-        "disp": RheologyFiberAdditiveModelComponent.dfib_deform_equation_ddisp,
-        "active_tension_discr": RheologyFiberAdditiveModelComponent.dfib_deform_equation_dactive_tension_discr,  # noqa: E501
-    },
+RHEOLOGY_FIBER_ADDITIVE_ASYMPTOTIC_TYPE_ID = (
+    RHEOLOGY_FIBER_ADDITIVE_TYPE_ID + "_asymptotic"
 )
 
-RheologyFiberAdditiveModelComponent.declares_internal_expression(
-    "fib_deform",
-    _fib_deform_equation_expr,
-)
+
+@dataclass
+@register_type(RHEOLOGY_FIBER_ADDITIVE_ASYMPTOTIC_TYPE_ID)
+class RheologyFiberAdditiveModelComponentAsymptotic(ModelComponent):
+    r"""
+    Asymptotic description of the rheology model.
+
+    **Internal equation:**
+
+    .. math::
+
+        T_c - k_s(\frac{y}{R_0} - e_c) = 0
+    """
+
+    fib_deform: Quantity[np.float64]
+    """:math:`e_c` the fiber deformation"""
+
+    disp: Quantity[np.float64]
+    """:math:`y` the displacement"""
+
+    active_tension_discr: Quantity[np.float64]
+    """:math:`T_c` the active tension"""
+
+    radius: Quantity[np.float64]
+    """:math:`R_0` sphere initial radius"""
+
+    series_stiffness: Quantity[np.float64]
+    """:math:`k_s` the series stiffness"""
+
+    def initialize(self) -> None:
+        """
+        Initialize model's radius inverse
+        """
+        self._inv_radius = 1 / self.radius.current
+
+    @declares_internal_equation("fib_deform")
+    def fib_deform_equation(self) -> Any:
+        """
+        Compute the equation representing the fiber deformation.
+
+        :return: the relation value
+        :rtype: np.float64
+        """
+
+        return self.active_tension_discr.new - (
+            self.series_stiffness.current
+            * (self.disp.new * self._inv_radius - self.fib_deform.new)
+        )
+
+    @fib_deform_equation.partial_derivative("fib_deform")
+    def dfib_deform_equation_dfib_deform(self) -> Any:
+        """
+        Compute the equation partial derivative for ``fib_deform``
+
+        :return: the partial derivative value
+        :rtype: np.float64
+        """
+
+        return self.series_stiffness.current
+
+    @fib_deform_equation.partial_derivative("disp")
+    def dfib_deform_equation_ddisp(self) -> np.float64:
+        """
+        Compute the equation partial derivative for ``disp``
+
+        :return: the partial derivative value
+        :rtype: np.float64
+        """
+        return -self.series_stiffness.current * self._inv_radius
+
+    @fib_deform_equation.partial_derivative("active_tension_discr")
+    def dfib_deform_equation_dactive_tension_discr(self) -> Any:
+        """
+        Compute the equation partial derivative for the ``active_tension_discr``
+
+        :return: the partial derivative value
+        :rtype: np.float64
+        """
+        return 1.0

@@ -30,19 +30,18 @@
 Level 3
 *******
 
-In this chapter will learn how to write new **Blocks** and **ModelComponents**.
+In this chapter will learn how to write specific objects in the physioblocks API and make them available for a level 2 user in a configuration file.
 
 First, we will present how to install optional tools to test the source code.
-We will then present the PhysioBlocks objects and main concepts for writing **Fluxes**, **Internal Equations** and **Saved Quantities**.
-We will then use the :class:`~physioblocks.library.blocks.capacitances.RCRBlock` implemented in the PhysioBlocks library to provide an example for each object.
-Finally, we will see how to make the block available for use in **Nets and Simulation Configurations**.
+We will then present how to write:
+
+   * Blocks and model components
+   * Pre and post-process scripts
 
 .. toctree::
    :glob:
    :maxdepth: 2
 
    level_3/specific_installations
-   level_3/overview
-   level_3/block_definition
-   level_3/block_configuration
-   level_3/block_test
+   level_3/blocks
+   level_3/processes

@@ -42,6 +42,7 @@ from physioblocks.simulation.solvers import AbstractSolver
 from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
 
+SIMULATION_NAME = "sim"
 SUBBLOCK_ID = "subblock"
 INTERNAL_VAR_ID = "var_id"
 FLUX_TYPE_ID = "flux_type"
@@ -185,6 +186,7 @@ class TestSimulationFactory:
         net.set_boundary(node_0_id, FLUX_TYPE_ID, FLUX_ID)
 
         sim_factory = setup.SimulationFactory(
+            SIMULATION_NAME,
             AbstractSimulation,
             AbstractSolver(),
             net,
@@ -198,5 +200,7 @@ class TestSimulationFactory:
             "{0} is not a {1} sub-class.", object.__name__, AbstractSimulation.__name__
         )
         with pytest.raises(TypeError, match=err_message):
-            sim_factory = setup.SimulationFactory(object, AbstractSolver())
+            sim_factory = setup.SimulationFactory(
+                SIMULATION_NAME, object, AbstractSolver()
+            )
             sim_factory.create_simulation()

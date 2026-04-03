@@ -34,7 +34,7 @@ from typing import Any
 import numpy as np
 
 from physioblocks.computing import Block, Quantity
-from physioblocks.computing.models import declares_flux
+from physioblocks.computing.models import declares_flux, declares_saved_quantity
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -87,13 +87,13 @@ class SphericalCavityBlock(Block):
     """  # noqa: E501
 
     disp: Quantity[np.float64]
-    """Displacement y"""
+    """Displacement :math:`y`"""
 
     radius: Quantity[np.float64]
-    """Initial Sphere radius R0"""
+    """Initial sphere radius :math:`R0`"""
 
     thickness: Quantity[np.float64]
-    """Initial thickness d0"""
+    """Initial thickness :math:`d0`"""
 
     time: Time
     """time"""
@@ -107,6 +107,16 @@ class SphericalCavityBlock(Block):
         self.sphere_surface = 4.0 * np.pi * np.pow(self.radius.current, 2)
         self.thickness_radius_ratio = self.thickness.current * self.inv_radius
         self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
+
+    @declares_saved_quantity("volume")
+    def get_volume(self) -> Any:
+        """
+        Compute the current volume in the cavity.
+
+        :return: the cavity volume
+        :rtype: float
+        """
+        return self.fluid_volume_current()
 
     def fluid_volume_current(self) -> Any:
         """
@@ -171,4 +181,53 @@ class SphericalCavityBlock(Block):
                 2,
             )
             * (1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio)
+        )
+
+
+# Constant for the asymptotic description of cavity block
+CAVITY_BLOCK_ASYMPTOTIC_TYPE_ID = CAVITY_BLOCK_TYPE_ID + "_asymptotic"
+
+
+@dataclass
+@register_type(CAVITY_BLOCK_ASYMPTOTIC_TYPE_ID)
+class SphericalCavityBlockAsymptotic(Block):
+    r"""
+    Asymptotic description of the spherical cavity block.
+
+    **Saves Volume:**
+
+    :math:`V(y) = \frac{4}{3} \pi (R_0 + y - \frac{d_0}{2(1 + \frac{y}{R_0})^2})^3`
+    """
+
+    disp: Quantity[np.float64]
+    """Displacement :math:`y`"""
+
+    radius: Quantity[np.float64]
+    """Initial sphere radius :math:`R0`"""
+
+    thickness: Quantity[np.float64]
+    """Initial thickness :math:`d0`"""
+
+    def initialize(self) -> None:
+        """
+        Initialize block attributes from current quantity values
+        """
+        self.inv_radius = 1.0 / self.radius.current
+        self.sphere_volume = (4.0 / 3.0) * np.pi * np.pow(self.radius.current, 3)
+        self.sphere_surface = 4.0 * np.pi * np.pow(self.radius.current, 2)
+        self.thickness_radius_ratio = self.thickness.current * self.inv_radius
+        self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
+
+    @declares_saved_quantity("volume")
+    def fluid_volume(self) -> Any:
+        """
+        Compute the current fluid volume in the cavity.
+
+        :return: the fluid volume
+        :rtype: np.float64
+        """
+        disp_ratio = 1.0 + self.disp.new * self.inv_radius
+        return self.sphere_volume * np.pow(
+            disp_ratio - np.pow(disp_ratio, -2) * self.half_thickness_radius_ratio,
+            3,
         )
