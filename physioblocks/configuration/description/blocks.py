@@ -32,6 +32,7 @@ from typing import Any
 
 from physioblocks.configuration.base import Configuration, ConfigurationError
 from physioblocks.configuration.constants import (
+    ALTERNATIVE_TYPES_ITEM_ID,
     BLOCK_FLUX_TYPE_ITEM_ID,
     MODEL_COMPONENT_TYPE_ITEM_ID,
     SUBMODEL_ITEM_ID,
@@ -149,6 +150,15 @@ def load_model_component_config(
     if SUBMODEL_ITEM_ID in configuration.configuration_items:
         sub_models_desc = load(configuration[SUBMODEL_ITEM_ID], *args, **kwargs)
 
+    alternative_types = (
+        load(configuration[ALTERNATIVE_TYPES_ITEM_ID], *args, **kwargs)
+        if ALTERNATIVE_TYPES_ITEM_ID in configuration.configuration_items
+        else {}
+    )
+    alternative_types = {
+        key: get_registered_type(value) for key, value in alternative_types.items()
+    }
+
     if configuration_object is not None:
         new_model_ids = configuration_object.global_ids.copy()
         new_model_ids.update(model_ids)
@@ -163,6 +173,7 @@ def load_model_component_config(
         model_type,
         global_ids=new_model_ids,
         submodels=new_submodels,
+        alternative_types=alternative_types,
         **additional_model_arguments,
     )
 
@@ -212,7 +223,10 @@ def _get_model_global_ids(config: Configuration) -> dict[str, str]:
     if BLOCK_FLUX_TYPE_ITEM_ID in model_ids:
         model_ids.pop(BLOCK_FLUX_TYPE_ITEM_ID)
 
-    # Recursivlely unfold global id in configuration or dict:
+    if ALTERNATIVE_TYPES_ITEM_ID in model_ids:
+        model_ids.pop(ALTERNATIVE_TYPES_ITEM_ID)
+
+    # Recursively unfold global id in configuration or dict:
     model_ids = _unfold_global_ids(model_ids)
 
     return model_ids

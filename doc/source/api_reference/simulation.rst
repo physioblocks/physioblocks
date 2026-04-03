@@ -75,3 +75,9 @@ Runtime
 
 .. automodule:: physioblocks.simulation.runtime
     :members:
+
+Processes
+=========
+
+.. automodule:: physioblocks.simulation.process
+    :members:

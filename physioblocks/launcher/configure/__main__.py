@@ -82,17 +82,31 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         required=False,
-        help="Display logs in console",
+        help="Display INFO level logs in the console",
+    )
+
+    parser.add_argument(
+        "--DEBUG",
+        dest="debug",
+        action="store_true",
+        default=False,
+        required=False,
+        help="Display DEBUG logs in console when used with -v",
     )
 
     args = parser.parse_args()
 
-    # Direct the logs to stdout
+    # Create console logger
+    console_log_level = logging.WARNING
     if args.verbose is True:
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-        stdout_handler.setLevel(logging.DEBUG)
-        _logger.addHandler(stdout_handler)
+        console_log_level = logging.INFO
+        if args.debug is True:
+            console_level = logging.DEBUG
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+    stdout_handler.setLevel(console_log_level)
+    _logger.addHandler(stdout_handler)
 
     # Convert the str path to a Pathlib Path
     launcher_directory_path = Path(args.launcher_directory)

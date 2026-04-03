@@ -3,5 +3,12 @@
     "time": {"type": "default_time"},
     "solver": {
         "type": "newton_method_solver"
+    },
+    "plots": {
+        "main_plot": {
+            "type": "subplot",
+            "inputs": ["main"],
+            "abscissas": "time"
+        }
     }
 }

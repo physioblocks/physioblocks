@@ -45,3 +45,4 @@ and **Functions**.
     library/blocks
     library/model_components
     library/functions
+    library/processes

@@ -49,5 +49,33 @@
             "inverses": ["aorta_distal.resistance"]
         }
     },
-    "solver": {"type": "linear_solver"}
+    "solver": {"type": "linear_solver"},
+    "output_functions":{
+        "aorta_proximal.blood_flow": {"type": "watch_quantity", "quantity": "aorta_proximal.blood_flow"}
+    },
+    "post-processes": {
+        "medical_units_conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "aorta_proximal.blood_flow": 1.0e6, // from m3/s to mL/s
+                "aorta_proximal.blood_pressure": 0.00750062, // from Pa to mmHg
+                "aorta_distal.blood_pressure": 0.00750062 // from Pa to mmHg
+            },
+            "inputs": ["main"],
+            "outputs": ["main"] // overwrite main simulation results
+        },
+        "compare_reference_simulation": {
+            "type": "compare_process",
+            "inputs": ["main"],
+            "outputs": ["main_error"],
+            "abscissas": "time"
+        }
+    },
+    "plots":{
+        "plot_error_main": {
+            "type": "subplot",
+            "inputs": ["main_error"],
+            "abscissas": "time"
+        }
+    }
 }

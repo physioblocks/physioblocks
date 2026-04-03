@@ -37,8 +37,10 @@ from typing import Any, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
+from pandas import DataFrame
 from rich.progress import Progress
 
+from physioblocks.base.function_factories import attribute_checker
 from physioblocks.computing.assembling import EqSystem
 from physioblocks.computing.models import ModelComponent
 from physioblocks.computing.quantities import Quantity
@@ -47,6 +49,11 @@ from physioblocks.simulation.functions import (
     AbstractFunction,
     is_state_function,
     is_time_function,
+)
+from physioblocks.simulation.process import (
+    AbstractProcess,
+    run_method_checkers,
+    run_processes,
 )
 from physioblocks.simulation.saved_quantities import SavedQuantities
 from physioblocks.simulation.solvers import AbstractSolver, ConvergenceError
@@ -67,15 +74,28 @@ Results: TypeAlias = list[Result]
 _logger = logging.getLogger(__name__)
 
 
+@run_method_checkers(attribute_checker("parent_simulation"))
+class AbstractSimulationProcess(AbstractProcess):
+    """
+    Process using parent simulation as a parameter.
+    """
+
+    parent_simulation: AbstractSimulation
+    """The parent simulation attribute"""
+
+
 class AbstractSimulation(ABC):
     """
     Base class for **Simulations**
 
     .. note:: Use a :class:`~physioblocks.simulation.setup.SimulationFactory` instance
-      to instanciate simulations.
+      to instantiate simulations.
 
     :param factory: the factory that created the simulation instance.
     :type factory: SimulationFactory
+
+    :param simulation_name: the simulation name
+    :type str: str
 
     :param time_manager: the simulation time manager
     :type time_manager: TimeManager
@@ -97,11 +117,18 @@ class AbstractSimulation(ABC):
 
     :param eq_system: the equation system to solve at each time step
     :type eq_system: EqSystem
+
+    :param preprocesses: dictionary of simulation preprocesses
+    :type preprocesses: dict[AbstractProcess]
+
+    :param postprocesses: dictionary of simulation postprocesses
+    :type postprocesses: dict[AbstractProcess]
     """
 
     def __init__(
         self,
         factory: Any,
+        simulation_name: str,
         time_manager: TimeManager,
         state: State,
         parameters: Parameters,
@@ -109,8 +136,11 @@ class AbstractSimulation(ABC):
         models: dict[str, ModelComponent],
         solver: AbstractSolver,
         eq_system: EqSystem,
+        preprocesses: dict[str, AbstractProcess] | None = None,
+        postprocesses: dict[str, AbstractProcess] | None = None,
     ):
         self.factory = factory
+        self.name = simulation_name
         self.state = state
         self.parameters = parameters
         self.saved_quantities = saved_quantities
@@ -120,6 +150,8 @@ class AbstractSimulation(ABC):
         self.eq_system = eq_system
         self._timed_updates: dict[str, AbstractFunction] = {}
         self._output_functions_updates: dict[str, AbstractFunction] = {}
+        self.preprocesses = preprocesses if preprocesses is not None else {}
+        self.postprocesses = postprocesses if postprocesses is not None else {}
 
     @property
     def update_functions(self) -> dict[str, AbstractFunction]:
@@ -193,7 +225,7 @@ class AbstractSimulation(ABC):
 
     def unregister_timed_parameter_update(self, parameter_id: str) -> None:
         """
-        Unegister a simulation function from the timed updates.
+        Unregister a simulation function from the timed updates.
 
         :param parameter_id: the global name of the parameter to unregister.
         :type parameter_id: str
@@ -268,7 +300,7 @@ class AbstractSimulation(ABC):
         self.state.set_state_vector(self._initial_state)
 
     @abstractmethod
-    def run(self) -> Results:
+    def run(self) -> dict[str, DataFrame]:
         """
         Run the simulation, this method should be implemented in child classes.
 
@@ -322,6 +354,47 @@ def _initialize_models(models: Iterable[ModelComponent]) -> None:
         block.initialize()
 
 
+STATIC_SIMULATION_ID = "static_simulation"
+
+
+@register_type(STATIC_SIMULATION_ID)
+class StaticSimulation(AbstractSimulation):
+    """
+    Extend :class:`~.AbstractSimulation` class to define a **Static Simulation**.
+
+    Solves the equation system once without updating the time and save results.
+
+    The state result is set to the state at the end of the simulation.
+
+    :raise ConvergenceError: Raise a
+      :class:`~.physioblocks.simulation.solvers.ConvergenceError` if the solver did not
+      converged.
+    """
+
+    def run(self) -> dict[str, DataFrame]:
+        """
+        Return the simulation results.
+
+        :return: the simulation results
+        :rtype: dict[str, DataFrame]
+        """
+
+        _initialize_models(self.models.values())
+
+        solution = self.solver.solve(self.state, self.eq_system)
+        if solution.converged:
+            self.state.set_state_vector(solution.x)
+            result_df = {self.name: DataFrame([self._get_current_result()])}
+            return result_df
+
+        else:
+            raise ConvergenceError(
+                str.format(
+                    "The solver did not converge for static simulation {0}", self.name
+                )
+            )
+
+
 # Forward simulation type id
 FORWARD_SIM_ID = "forward_simulation"
 
@@ -336,7 +409,7 @@ class ForwardSimulation(AbstractSimulation):
 
     If the solver did not converge at a given time step, it breaks the current time
     step into smaller steps and try again.
-    If it still do not converge, it recursivly breaks the current time steps again and
+    If it still do not converge, it recursively breaks the current time steps again and
     stops if the time step is under the minimum time step allowed by the time manager.
 
     When finding a solution for a reduced time step, the simulation
@@ -349,7 +422,7 @@ class ForwardSimulation(AbstractSimulation):
 
     """
 
-    def run(self) -> Results:
+    def run(self) -> dict[str, DataFrame]:
         """
         Solve the system for each time steps.
 
@@ -359,14 +432,23 @@ class ForwardSimulation(AbstractSimulation):
         :raise SimulationError: raise a Simulation Error holding the current results
           if the simulation stops before reaching the end time.
         """
+        # run preprocesses
+        for process in self.preprocesses.values():
+            if isinstance(process, AbstractSimulationProcess):
+                process.parent_simulation = self
+        results_dfs = run_processes(self.preprocesses)
+
         # initialize the simulation and save the initial results
         results = self._initialize()
+
         progress_step_update = (
             100.0 * self.time_manager.step_size / self.time_manager.duration
         )
         with Progress() as progress:
             try:
-                sim_task = progress.add_task("Simulation in progress...")
+                sim_task = progress.add_task(
+                    str.format("{0}: Simulation in progress...", self.name)
+                )
                 while self.time_manager.ended is False:
                     next_step = self.time_manager.time.new
 
@@ -430,16 +512,25 @@ class ForwardSimulation(AbstractSimulation):
                     exception.__traceback__,
                     logging.DEBUG,
                 )
+                results_dfs.update({self.name: DataFrame(results)})
                 raise SimulationError(
                     str.format(
                         "An error caused the simulation to stop prematurely",
-                        intermediate_results=results,
                     ),
-                    results,
+                    intermediate_results=results_dfs,
                 ) from exception
 
         self._finalize()
-        return results
+
+        # run post-processes
+        results_dfs.update({self.name: DataFrame(results)})
+
+        for process in self.postprocesses.values():
+            if isinstance(process, AbstractSimulationProcess):
+                process.parent_simulation = self
+        results_dfs = run_processes(self.postprocesses, results_dfs)
+
+        return results_dfs
 
 
 class SimulationError(Exception):
@@ -447,11 +538,15 @@ class SimulationError(Exception):
     Error raised when the simulation encounter a problem.
     """
 
-    intermediate_results: Results
-    """Results obtained before the simulation error occured"""
+    intermediate_results: dict[str, DataFrame]
+    """Results obtained before the simulation error occurred"""
 
     def __init__(
-        self, message: str, intermediate_results: Results, *args: Any, **kwargs: Any
+        self,
+        message: str,
+        intermediate_results: dict[str, DataFrame],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(message, *args, **kwargs)
         self.intermediate_results = intermediate_results

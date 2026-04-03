@@ -153,5 +153,68 @@
             "factors": ["circulation_aorta_distal.time_constant"],
             "inverses": ["circulation_aorta_distal.resistance"]
         }
+    },
+    "output_functions": {
+        "atrial.blood_pressure": {"type": "watch_quantity", "quantity": "atrial.blood_pressure"},
+        "active_law.activation": {"type": "watch_quantity", "quantity": "cavity.rheology.active_law.activation"}
+    },
+    "pre-processes": {
+        "ESPVR-EDPVR": {
+            "type": "compute_espvr_edpvr",
+            "alternative_cavity_id": "cavity.asymptotic",
+            "displacement_id": "cavity.dynamics.disp",
+            "displacement_min": -0.002,
+            "displacement_max": 0.011,
+            "displacement_step": 1e-5,
+            "outputs": ["espvr-edpvr"]
+        }
+    },
+    "post-processes": {
+        "medical_units_conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "valve_atrium.flux": 1.0e6, // m3/s to mL/s
+                "valve_arterial.flux": 1.0e6, // m3/s to mL/s
+                "aorta_proximal.blood_pressure": 0.00750062, // Pa to mmHg
+                "aorta_distal.blood_pressure": 0.00750062, // Pa to mmHg
+                "cavity.blood_pressure": 0.00750062, // Pa to mmHg
+                "atrial.blood_pressure": 0.00750062, // Pa to mmHg
+                "pleural.pressure": 0.0102, // Pa to cmH20
+                "cavity.volume": 1.0e6, // m3 to mL
+                "cavity.dynamics.EDPVR": 0.00750062, // Pa to mmHg
+                "cavity.dynamics.ESPVR": 0.00750062 // Pa to mmHg
+            },
+            "inputs": ["main", "espvr-edpvr"],
+            "outputs": ["main", "espvr-edpvr"] // overwrite simulations results
+        },
+        "compare_reference_simulation": {
+            "type": "compare_process",
+            "inputs": ["main"],
+            "outputs": ["main_error"],
+            "abscissas": "time"
+        },"compare_reference_espvr_edpvr": {
+            "type": "compare_process",
+            "inputs": ["espvr-edpvr"],
+            "outputs": ["espvr-edpvr_error"],
+            "abscissas": "cavity.dynamics.disp"
+        }
+    }, 
+    "plots":{
+        "plot_error_main": {
+            "type": "subplot",
+            "inputs": ["main_error"],
+            "abscissas": "time"
+        },
+        "plot_error_espvr_edpvr": {
+            "type": "subplot",
+            "inputs": ["espvr-edpvr_error"],
+            "abscissas": "cavity.dynamics.disp"
+        },
+        "PV-Loop_plot": {
+            "type": "plot",
+            "abscissas": "cavity.volume",
+            "ordinates": ["cavity.blood_pressure", "cavity.dynamics.EDPVR", "cavity.dynamics.ESPVR"],
+            "inputs": ["main", "espvr-edpvr"]
+        }
     }
 }

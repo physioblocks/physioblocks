@@ -90,5 +90,5 @@ def load_aliases(path: str) -> None:
                     )
                 )
                 log_exception(
-                    _logger, type(error), error, error.__traceback__, logging.WARNING
+                    _logger, type(error), error, error.__traceback__, logging.DEBUG
                 )

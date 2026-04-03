@@ -28,6 +28,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
+from pandas import DataFrame
 
 from physioblocks.computing.models import (
     ModelComponent,
@@ -42,6 +43,8 @@ from physioblocks.simulation.runtime import (
 from physioblocks.simulation.setup import SimulationFactory
 from physioblocks.simulation.solvers import AbstractSolver, Solution
 from physioblocks.simulation.state import State
+
+SIMULATION_NAME = "sim"
 
 
 def get_solution(converged: bool) -> Solution:
@@ -73,7 +76,9 @@ def state_func(self, state: State) -> np.float64:
 @patch.multiple(AbstractSolver, __abstractmethods__=set())
 @patch.multiple(AbstractSimulation, __abstractmethods__=set())
 def simulation() -> AbstractSimulation:
-    sim_factory = SimulationFactory(AbstractSimulation, AbstractSolver())
+    sim_factory = SimulationFactory(
+        SIMULATION_NAME, AbstractSimulation, AbstractSolver()
+    )
     return sim_factory.create_simulation()
 
 
@@ -211,7 +216,9 @@ class TestSimulation:
 @pytest.fixture
 @patch.multiple(AbstractSolver, __abstractmethods__=set())
 def forward_simulation() -> ForwardSimulation:
-    sim_factory = SimulationFactory(ForwardSimulation, solver=AbstractSolver())
+    sim_factory = SimulationFactory(
+        SIMULATION_NAME, ForwardSimulation, solver=AbstractSolver()
+    )
     sim = sim_factory.create_simulation()
     sim.time_manager.start = 0.0
     sim.time_manager.duration = 0.010
@@ -220,8 +227,39 @@ def forward_simulation() -> ForwardSimulation:
     return sim
 
 
+# TODO: Simplify all simulation tests
+@pytest.fixture
+def result_reference(forward_simulation: ForwardSimulation) -> DataFrame:
+    return DataFrame(
+        {
+            "time": [
+                forward_simulation.time_manager.start
+                + forward_simulation.time_manager.start
+                + forward_simulation.time_manager.step_size * i
+                for i in range(
+                    int(
+                        forward_simulation.time_manager.duration
+                        / forward_simulation.time_manager.step_size
+                    )
+                )
+            ],
+            "x": [
+                [0.1, 0.2, 0.3]
+                for _i in range(
+                    int(
+                        forward_simulation.time_manager.duration
+                        / forward_simulation.time_manager.step_size
+                    )
+                )
+            ],
+        }
+    )
+
+
 class TestForwardSimulation:
-    def test_run(self, forward_simulation: ForwardSimulation):
+    def test_run(
+        self, forward_simulation: ForwardSimulation, result_reference: DataFrame
+    ):
         sol = get_solution(True)
         forward_simulation.state["x"].initialize(sol.x)
         with patch.multiple(
@@ -230,8 +268,9 @@ class TestForwardSimulation:
             solve=Mock(return_value=sol),
         ):
             results = forward_simulation.run()
-            for result in results:
-                assert result["x"] == pytest.approx(sol.x)
+            assert SIMULATION_NAME in results
+            for index in results[SIMULATION_NAME].index:
+                assert results[SIMULATION_NAME]["x"].loc[index] == pytest.approx(sol.x)
 
     def test_run_no_solution(self, forward_simulation: ForwardSimulation):
         sol = get_solution(False)

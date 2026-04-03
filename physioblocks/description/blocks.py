@@ -30,6 +30,9 @@ Declares the **Blocks** and their **Local Nodes**
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from copy import copy
+
 from physioblocks.computing.models import (
     Block,
     Expression,
@@ -72,11 +75,17 @@ class ModelComponentDescription:
 
     :param submodels: mapping of all the model submodels with their name.
     :type submodels: dict[str, ModelComponentDescription]
+
+    :param alternative_types: mapping of all the alternative types of the model
+      description with their tag id.
+    :type alternative_types: Mapping[str, type[ModelComponent]]
     """
 
     _unique_id: str
 
     _submodels: dict[str, ModelComponentDescription]
+    _alternative_types: Mapping[str, type[ModelComponent]]
+    _alternative_descriptions: Mapping[str, ModelComponentDescription]
 
     def __init__(
         self,
@@ -84,9 +93,13 @@ class ModelComponentDescription:
         model_type: type[ModelComponent],
         global_ids: dict[str, str] | None = None,
         submodels: dict[str, ModelComponentDescription] | None = None,
+        alternative_types: Mapping[str, type[ModelComponent]] | None = None,
     ):
         self._unique_id = unique_id
         self._described_type = model_type
+        self._alternative_types = (
+            alternative_types if alternative_types is not None else {}
+        )
 
         # check user defined ids
         user_ids = {}
@@ -125,6 +138,8 @@ class ModelComponentDescription:
             for model_id, model in submodels.items():
                 # rename default ids with submodel new id
                 self.add_submodel(model_id, model)
+
+        self._alternative_descriptions = self._get_alternative_descriptions()
 
     def _get_global_expressions_definitions(
         self, local_definitions: list[ExpressionDefinition]
@@ -177,6 +192,26 @@ class ModelComponentDescription:
         return self._described_type
 
     @property
+    def alternative_types(self) -> Mapping[str, type[ModelComponent]]:
+        """Get all the alternative
+        :class:`~physioblocks.computing.models.ModelComponent` types.
+
+        :return: the alternatives model component types
+        :rtype: dict[str, type[ModelComponent]]
+        """
+        return copy(self._alternative_types)
+
+    @property
+    def alternative_descriptions(self) -> Mapping[str, ModelComponentDescription]:
+        """Get all the alternative
+        :class:`~physioblocks.computing.models.ModelComponentDescription`.
+
+        :return: the alternatives model component descriptions
+        :rtype: dict[str, ModelComponentDescription]
+        """
+        return copy(self._alternative_descriptions)
+
+    @property
     def submodels(self) -> dict[str, ModelComponentDescription]:
         """Get the submodels descriptions.
 
@@ -218,7 +253,7 @@ class ModelComponentDescription:
     @property
     def saved_quantities(self) -> list[tuple[str, int]]:
         """
-        Get the model **Saved Quantities** global names and sizes recursivly
+        Get the model **Saved Quantities** global names and sizes recursively
         for the model and its submodels.
 
         :return: the saved quantities name and sizes
@@ -261,8 +296,19 @@ class ModelComponentDescription:
             if old_id == global_id:
                 self._global_ids[local_id] = new_id
 
-        for submodel in self.submodels.values():
+        # Update the definitions with new names
+        self._internal_defs = self._get_global_expressions_definitions(
+            self._described_type.internal_expressions
+        )
+        self._saved_quantities_defs = self._get_global_expressions_definitions(
+            self._described_type.saved_quantities_expressions
+        )
+
+        for submodel in self._submodels.values():
             submodel.rename_global_id(old_id, new_id)
+
+        for alt_description in self._alternative_descriptions.values():
+            alt_description.rename_global_id(old_id, new_id)
 
     def add_submodel(
         self, local_model_id: str, model_description: ModelComponentDescription
@@ -280,7 +326,7 @@ class ModelComponentDescription:
         :type model_type: type[ModelComponent]
 
         :return: the submodel description in the current model description
-        :rtype: ModelComponentDescritpion
+        :rtype: ModelComponentDescription
         """
         submodel_id = ID_SEPARATOR.join([self.name, local_model_id])
 
@@ -296,6 +342,7 @@ class ModelComponentDescription:
             model_description.described_type,
             renamed_ids,
             model_description.submodels,
+            model_description.alternative_types,
         )
         return self._submodels[local_model_id]
 
@@ -307,9 +354,42 @@ class ModelComponentDescription:
         :type model_id: str
 
         :return: the removed submodel description
-        :rtype: ModelComponentDescritpion
+        :rtype: ModelComponentDescription
         """
         return self._submodels.pop(model_id)
+
+    def _get_alternative_model_global_ids(
+        self, alternative_type: type[ModelComponent]
+    ) -> dict[str, str]:
+        return {
+            local_id: self.global_ids[local_id]
+            for local_id in alternative_type.local_ids
+            if local_id
+            not in [
+                saved_quantity_term.term_id
+                for saved_quantity_term in alternative_type.saved_quantities
+            ]
+        }
+
+    def _get_alternative_model_submodels(
+        self, alternative_type_id: str
+    ) -> dict[str, ModelComponentDescription]:
+        return {
+            submodel_id: submodel_desc.alternative_descriptions[alternative_type_id]
+            for submodel_id, submodel_desc in self._submodels.items()
+            if alternative_type_id in submodel_desc.alternative_descriptions
+        }
+
+    def _get_alternative_descriptions(self) -> dict[str, ModelComponentDescription]:
+        return {
+            alt_id: ModelComponentDescription(
+                self.name,
+                alt_type,
+                self._get_alternative_model_global_ids(alt_type),
+                self._get_alternative_model_submodels(alt_id),
+            )
+            for alt_id, alt_type in self._alternative_types.items()
+        }
 
 
 # Id for the model description type
@@ -365,6 +445,10 @@ class BlockDescription(ModelComponentDescription):
     _block_id: str
     _flux_type: str
     _described_type: type[Block]
+    _alternative_types: Mapping[str, type[Block]]
+    alternative_types: Mapping[str, type[Block]]
+    _alternative_descriptions: dict[str, BlockDescription]
+    alternative_descriptions: dict[str, BlockDescription]
 
     def __init__(
         self,
@@ -373,9 +457,14 @@ class BlockDescription(ModelComponentDescription):
         flux_type: str,
         global_ids: dict[str, str] | None = None,
         submodels: dict[str, ModelComponentDescription] | None = None,
+        alternative_types: Mapping[str, type[Block]] | None = None,
     ):
         super().__init__(block_id, block_type, global_ids, submodels)
         self._flux_type = flux_type
+        self._alternative_types = (
+            alternative_types if alternative_types is not None else {}
+        )
+        self._alternative_descriptions = self._get_alternative_block_descriptions()
 
     @property
     def described_type(self) -> type[Block]:
@@ -416,3 +505,15 @@ class BlockDescription(ModelComponentDescription):
         :rtype: str
         """
         return self._flux_type
+
+    def _get_alternative_block_descriptions(self) -> dict[str, BlockDescription]:
+        return {
+            alt_id: BlockDescription(
+                self.name,
+                alt_type,
+                self._flux_type,
+                self._get_alternative_model_global_ids(alt_type),
+                self._get_alternative_model_submodels(alt_id),
+            )
+            for alt_id, alt_type in self._alternative_types.items()
+        }

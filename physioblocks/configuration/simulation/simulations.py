@@ -34,10 +34,14 @@ from typing import Any
 
 from physioblocks.configuration.base import Configuration, ConfigurationError
 from physioblocks.configuration.constants import (
+    DEFAULT_SIMULATION_NAME,
     INIT_VARIABLES_ID,
     NET_ID,
     OUTPUTS_FUNCTIONS_ID,
     PARAMETERS_ID,
+    POST_PROCESSES_ID,
+    PRE_PROCESSES_ID,
+    SIMULATION_NAME,
     SIMULATION_OPTIONS,
     SOLVER_ID,
     TIME_MANAGER_ID,
@@ -78,6 +82,13 @@ def load_simulation_config(
 
     if configuration_object is None:
         net = None
+
+        sim_name = (
+            load(config[SIMULATION_NAME])
+            if SIMULATION_NAME in config
+            else DEFAULT_SIMULATION_NAME
+        )
+
         if NET_ID in config:
             net = load(config[NET_ID])
 
@@ -91,6 +102,7 @@ def load_simulation_config(
             simulation_options = load(config[SIMULATION_OPTIONS])
 
         sim_factory = SimulationFactory(
+            sim_name,
             configuration_type,
             solver,
             net,
@@ -238,6 +250,15 @@ def _configure_simulation(
             config[OUTPUTS_FUNCTIONS_ID], configuration_references=references
         )
         __configure_outputs(simulation, outputs)
+
+    # processes
+    if PRE_PROCESSES_ID in config:
+        preprocesses = load(config[PRE_PROCESSES_ID])
+        simulation.preprocesses.update(preprocesses)
+
+    if POST_PROCESSES_ID in config:
+        postprocesses = load(config[POST_PROCESSES_ID])
+        simulation.postprocesses.update(postprocesses)
 
 
 def __initialize_functions(

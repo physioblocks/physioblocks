@@ -64,7 +64,7 @@ def save_net_config(net: Net, *args: Any, **kwargs: Any) -> Configuration:
             )
         )
 
-    # add node informations
+    # add node information
     for block_id, block in net.blocks.items():
         block_connections = {
             str(node_index): net.local_to_global_node_id(block_id, node_index)

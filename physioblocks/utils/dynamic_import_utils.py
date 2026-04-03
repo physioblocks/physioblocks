@@ -133,7 +133,7 @@ def _import_modules_recursivly_at_path(
                     ImportError,
                     import_exception,
                     import_exception.__traceback__,
-                    logging.WARNING,
+                    logging.DEBUG,
                 )
                 _logger.warning(
                     str.format(

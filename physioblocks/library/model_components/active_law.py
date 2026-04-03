@@ -301,6 +301,7 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
         :return: the partial derivative
         :rtype: np.array
         """
+
         active_stiffness_active_law_dfib_deform = (
             self.destruction_rate.current * self.active_stiffness.new * self.time.inv_dt
         )
@@ -343,3 +344,99 @@ class ActiveLawMacroscopicHuxleyTwoMoment(ModelComponent):
             * np.fabs(diff(self.fib_deform))
             * self.time.inv_dt
         )
+
+
+# Constant for the asymptotic active law type id
+ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ASYMPTOTIC_TYPE_ID = (
+    ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_TYPE_ID + "_asymptotic"
+)
+
+
+@dataclass
+@register_type(ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ASYMPTOTIC_TYPE_ID)
+class ActiveLawMacroscopicHuxleyTwoMomentAsymptotic(ModelComponent):
+    """
+    Asymptotic behavior of the active law.
+
+    **Internal Equation:**
+
+    .. math::
+
+        T_c - n_0(e_c)T_0 = 0
+
+    """
+
+    fib_deform: Quantity[np.float64]
+    """:math:`e_c` the fiber deformation """
+
+    active_tension_discr: Quantity[np.float64]
+    """:math:`T_c` the active tension"""
+
+    starling_abscissas: Quantity[NDArray[np.float64]]
+    """Abscissas of :math:`n_0` the discretized starling function"""
+
+    starling_ordinates: Quantity[NDArray[np.float64]]
+    """Ordinates of :math:`n_0` the discretize starling function"""
+
+    crossbridge_stiffness: Quantity[np.float64]
+    """:math:`K_0` the crossbridge stiffness"""
+
+    contractility: Quantity[np.float64]
+    """:math:`T_0` the contractility"""
+
+    def initialize(self) -> None:
+        self.starling_ordinates_diff = np.diff(
+            self.starling_ordinates.current
+        ) / np.diff(self.starling_abscissas.current)
+
+    @declares_internal_equation(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_TENSION_DISCR
+    )
+    def active_law_residual(self) -> Any:
+        """
+        Compute the residual of the active law.
+
+        :return: the residual value
+        :rtype: np.array
+        """
+        starling = np.interp(
+            self.fib_deform.new,
+            self.starling_abscissas.current,
+            self.starling_ordinates.current,
+        )
+        abs_plus_starling = np.clip(starling, 0.0, None)
+
+        return (
+            self.contractility.current * abs_plus_starling
+            - self.active_tension_discr.new
+        )
+
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_ACTIVE_TENSION_DISCR
+    )
+    def active_law_residual_dactive_energy_sqrt(self) -> Any:
+        """
+        Compute the residual partial derivative for the active tension
+
+        :return: the partial derivative
+        :rtype: np.array
+        """
+
+        return -1.0
+
+    @active_law_residual.partial_derivative(
+        ACTIVE_LAW_MACRO_HUXLEY_TWO_MOMENTS_FIB_DEFORM
+    )
+    def active_law_residual_dfib_deform(self) -> Any:
+        """
+        Compute the residual partial derivative for the fiber deformation
+
+        :return: the partial derivative
+        :rtype: np.array
+        """
+        fib_deform_index = (
+            self.starling_abscissas.current > self.fib_deform.new
+        ).argmax() - 1
+        dstarling_dfib_deform = self.starling_ordinates_diff[fib_deform_index]
+
+        return self.contractility.current * dstarling_dfib_deform

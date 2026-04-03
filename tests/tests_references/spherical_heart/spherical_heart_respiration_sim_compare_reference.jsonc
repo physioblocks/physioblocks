@@ -1,0 +1,10 @@
+{
+    "type": "./references/spherical_heart_respiration_sim.jsonc",
+    "post-processes": {
+        "compare_reference_simulation": {
+            "reference": "./tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv"
+        },"compare_reference_espvr_edpvr": {
+            "reference": "./tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim_espvr_edpvr.csv"
+        }
+    }
+}

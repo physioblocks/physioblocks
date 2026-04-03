@@ -24,9 +24,8 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from copy import copy
 
-import pandas as pd
+import pandas
 
 from physioblocks.configuration.aliases import unwrap_aliases
 from physioblocks.configuration.functions import load
@@ -35,7 +34,7 @@ from physioblocks.simulation.runtime import ForwardSimulation
 from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
 from physioblocks.utils.gradient_test_utils import gradient_test_from_file
 
-from .io import read_reference, results_close_to_data
+from .compare import results_close_to_data
 
 reference_path = (
     "tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv"
@@ -53,20 +52,17 @@ def test_circulation_alone_ref():
     sim.time_manager.duration = 5.0  # Shorten simulation time to avoid test too long
     results = sim.run()
 
-    ref_df = read_reference(reference_path)
-    ref_df = ref_df.set_index(TIME_QUANTITY_ID)
+    ref_df = pandas.read_csv(reference_path)
 
-    matching_ids = {data_id: data_id for data_id in results[0] if data_id != "time"}
-    tol_factors = copy(sim.state.magnitudes)
-    tol_factors["aorta_proximal.blood_flow"] = 1.0e-6
-
-    results_df = pd.DataFrame(results)
-    results_df = results_df.set_index(TIME_QUANTITY_ID)
+    tol_factors = {
+        "aorta_proximal.blood_flow": 1.0,
+        "aorta_proximal.blood_pressure": 1.0e2,
+        "aorta_distal.blood_pressure": 1.0e2,
+    }
 
     assert results_close_to_data(
-        results_df,
-        ref_df,
-        matching_ids,
+        results[sim.name].set_index(TIME_QUANTITY_ID),
+        ref_df.set_index(TIME_QUANTITY_ID),
         1e-9,
         tol_factors,
         (sim.time_manager.start, sim.time_manager.start + sim.time_manager.duration),

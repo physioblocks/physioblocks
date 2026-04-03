@@ -15,6 +15,7 @@
             "disp": "cavity.dynamics.disp",
             "radius": "heart_radius",
             "thickness": "heart_thickness",
+            "alternative_types": {"cavity.asymptotic": "spherical_cavity_block_asymptotic"},
             "submodels": {
                 "dynamics": {
                     "type": "spherical_dynamics",
@@ -24,7 +25,8 @@
                     "vel": "cavity.velocity_law.vel",
                     "radius": "heart_radius",
                     "thickness": "heart_thickness",
-                    "series_stiffness": "cavity.rheology.series_stiffness"
+                    "series_stiffness": "cavity.rheology.series_stiffness",
+                    "alternative_types": {"cavity.asymptotic": "spherical_dynamics_asymptotic"}
                 },
                 "velocity_law": {
                     "type": "velocity_law_hht",
@@ -35,11 +37,13 @@
                     "disp": "cavity.dynamics.disp",
                     "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
                     "radius": "heart_radius",
+                    "alternative_types": {"cavity.asymptotic": "rheology_fiber_additive_asymptotic"},
                     "submodels": {
                         "active_law": {
                             "type": "active_law_macro_huxley_two_moments",
                             "fib_deform": "cavity.rheology.fib_deform",
-                            "contractility": "heart_contractility"
+                            "contractility": "heart_contractility",
+                            "alternative_types": {"cavity.asymptotic": "active_law_macro_huxley_two_moments_asymptotic"}
                         }
                     }
                 }

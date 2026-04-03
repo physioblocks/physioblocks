@@ -31,9 +31,6 @@ Describe function to handles the various launcher directory and files
 from pathlib import Path
 
 import pandas as pd
-import plotly
-import plotly.graph_objects as go
-import plotly.subplots
 
 from physioblocks.launcher.constants import (
     LAUNCHER_DATE_COLUMN,
@@ -100,51 +97,14 @@ def update_simulations_log(
 
 
 def write_simulation_results(
-    simulation_folder: Path, info: SimulationInfo, data: pd.DataFrame, extension: str
+    simulation_folder: Path, data: dict[str, pd.DataFrame], extension: str
 ) -> None:
-    file_path = simulation_folder / str.join(".", [info.reference, extension])
-    match extension:
-        case "csv":
-            data.to_csv(file_path, index=False, sep=";")
-        case "parquet":
-            data.to_parquet(file_path, index=False)
-        case _:
-            raise OSError(str.format("Invalid file extension: {0}", extension))
-
-
-def write_figure(
-    data_frame: pd.DataFrame,
-    folder_path: Path,
-    file_name: str,
-    rows_height: float = 200.0,
-) -> None:
-    init_figure = go.Figure(
-        layout=go.Layout(height=rows_height * len(data_frame.columns))
-    )
-    figure = plotly.subplots.make_subplots(
-        len(data_frame.columns), 1, figure=init_figure, shared_xaxes=True
-    )
-
-    plot_index = 1
-    for data_id in data_frame.columns:
-        # Trace results
-        figure.add_trace(
-            go.Scatter(
-                x=data_frame.index,
-                y=data_frame[data_id],
-                mode="lines",
-                name=data_id,
-            ),
-            plot_index,
-            1,
-        )
-
-        figure.update_xaxes(title="time", row=plot_index, col=1)
-        figure.update_yaxes(
-            title=data_id,
-            row=plot_index,
-            col=1,
-        )
-        plot_index += 1
-
-    figure.write_html(folder_path / file_name)
+    for data_id, data_frame in data.items():
+        file_path = simulation_folder / str.join(".", [data_id, extension])
+        match extension:
+            case "csv":
+                data_frame.to_csv(file_path, index=False)
+            case "parquet":
+                data_frame.to_parquet(file_path, index=False)
+            case _:
+                raise OSError(str.format("Invalid file extension: {0}", extension))

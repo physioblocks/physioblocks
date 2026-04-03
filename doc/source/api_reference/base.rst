@@ -43,3 +43,10 @@ Registers
 
 .. automodule:: physioblocks.base.registers
     :members:
+
+
+Function Factories
+==================
+
+.. automodule:: physioblocks.base.function_factories
+    :members:

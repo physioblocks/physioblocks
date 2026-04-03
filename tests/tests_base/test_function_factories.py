@@ -24,20 +24,31 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-import functools
-from pathlib import Path
+
+from unittest.mock import Mock
+
+from physioblocks.base.function_factories import attribute_checker
 
 
-def clean_files(file_path: str):
-    def decorator(func):
-        @functools.wraps(func)
-        def func_with_clean_files(*args, **kwargs):
-            try:
-                func(*args, **kwargs)
-            finally:
-                path = Path(file_path)
-                path.unlink(missing_ok=True)
+def test_attribute_checker_name():
+    checker = attribute_checker("attr_name")
+    assert checker.__name__ == "has_attr_name"
 
-        return func_with_clean_files
 
-    return decorator
+def test_attribute_checker_with_existing_attribute():
+    obj = Mock(attr_a="any_value")
+    checker = attribute_checker("attr_a")
+    assert checker(obj) is True
+
+
+def test_attribute_checker_with_none_attribute():
+    obj = Mock(attr_none=None)
+    checker = attribute_checker("attr_none")
+    assert checker(obj) is False
+
+
+def test_attribute_checker_with_missing_attribute():
+    obj = Mock()
+    del obj.attr_a
+    checker = attribute_checker("attr_a")
+    assert checker(obj) is False

@@ -33,7 +33,7 @@ This section details how to create a **simulation configuration** that uses a **
 
 First, we are going to give more details on the **Configuration Objects** needed in the **Simulation Configuration**.
 We will then provide an example configuration for the **simple circulation net** created in the :ref:`previous section <user_guide_level_2_create_net_example_1>`.
-Finally we will add **Boundary Conditions** to the **net description** and set **Functions** to update the simulation parameters.
+Finally we will add **Boundary Conditions** to the **net description**, set **Functions** to update the simulation parameters, a post-process to convert the results from SI to medical units, and plot the output.
 
 Simulation configuration items
 ------------------------------
@@ -41,12 +41,16 @@ Simulation configuration items
 **Simulation configurations** are composed of several **configuration items**:
 
     1. **type:** simulation type
-    2. **solver:** solver used at every simulation step
-    3. **time:** simulation time parameters
-    4. **net:** net used for the simulation
-    5. **variable_initialization:** initial values for variables in the global system
-    6. **variables_magnitudes:** order of magnitudes for each variable
-    7. **parameters:** values of the parameters in the global system
+    2. **name:** a name for the simulation.
+    3. **solver:** solver used at every simulation step
+    4. **time:** simulation time parameters
+    5. **net:** net used for the simulation
+    6. **variable_initialization:** initial values for variables in the global system
+    7. **variables_magnitudes:** order of magnitudes for each variable
+    8. **parameters:** values of the parameters in the global system
+    9. **pre-processes:** processes to run before launching the simulation
+    10. **post-processes:** processes to run on simulation results
+    11. **plots:** Configuration for additional plots of the outputs
 
 .. note::
 
@@ -83,6 +87,14 @@ You can find its ``type`` in the :ref:`configuration section <library_configurat
 .. note::
 
     Other **simulation types** may add more objects to configure in the JSON, but the set of configuration objects presented should remain the minimal configuration needed for every type.
+
+
+Simulation name
+^^^^^^^^^^^^^^^
+
+You can give a name to the simulation updating this parameter.
+The simulation name main use is to update the name of the result file.
+If you do not set a name, default is ``main``.
 
 Solver
 ^^^^^^
@@ -421,6 +433,120 @@ We emphasize that even if it is a direct relation, since it configured in ``outp
 
 .. _user_guide_level_2_create_simulation_full_example:
 
+Define a post-process
+---------------------
+
+You can run processes before launching the simulation or after running the simulation on the simulation results.
+
+A process does computation on **inputs** data and generate **outputs**.
+To use a post process, you will have to define:
+
+    * inputs with a list of ids of the data to process.
+    * outputs to define a id for the processed outputs
+    * parameters depending on the process you use.
+
+You will find the available processes and their needed parameters in the :ref:`process part of the library<library_processes>`.
+The simulation results data id is either the simulation name or ``main`` if you did not give a name to the simulation.
+
+.. note::
+
+    You can either overwrite inputs with outputs or create new data.
+    Every data will be written in its own file named with the data id in the simulation folder.
+
+Add a conversion post-process
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As an example, we are going to add a post-process that convert simulation results from SI units to medical units.
+In particular, we are going to convert:
+
+    * pressure from pascals (Pa) to millimeters of mercury (mmHg)
+    * volumes from cube meters (m3) to milliliters (mL)
+
+.. code:: json
+
+    {
+        "post-processes": {
+            "conversion": {
+                "type": "conversion_process",
+                "conversion_factors": {
+                    "A.flow": 1.0e6, // from m3/s to mL/s
+                    "Ca.volume_stored": 1.0e6, // from m3 to mL
+                    "A.pressure": 0.00750062, // from Pa to mmHg
+                    "B.pressure": 0.00750062 // from Pa to mmHg
+                },
+                "inputs": ["main"],
+                "outputs": ["main_medical_units"]
+            }
+        }
+    }
+
+From the :class:`conversion process documentation <physioblocks.library.processes.conversion_process>`, we get the process parameters to initialize.
+Here we set the conversion factors: for each quantity id to convert, we define a conversion factor.
+
+We use ``main`` as an input to apply the conversion to the simulation results.
+
+We created new data with the ``main_medical_units`` id, a csv file with the name ``main_medical_units.csv`` will be added in the simulation results folder.
+An alternative would have been to use ``main`` for the output id.
+In that case, the input data would have been overwritten with the result data.
+
+**Processes are called in the order of definition**. If you overwrite data, you can only access the new data in subsequent processes.
+
+.. note:: 
+
+    Notice that processes inputs and outputs parameters are lists.
+    You can apply the conversion process on several data defining several inputs ids with matching output ids.
+
+
+Add plots to the output
+-----------------------
+
+You can configure your own with the two types of plots to choose from documented in the :ref:`process part of the library<library_processes>`.
+
+    * ``plot``: Define a set of ordinates to trace against the chosen abscissas in a single plot.
+    * ``subplot``: Trace ordinates against an chosen abscissas, each in a different subplot.
+
+.. note:: 
+
+    Notice that plots are processes where you don't have to define outputs.
+    You can configure a plot the same way you define a process.
+
+The following example configures the two plot types, one to trace the pressures against time in a single graph,
+one to trace subplots of the converted values against time.
+
+.. code:: json
+
+    {
+        "plots": {
+            "pressures": {
+                "type": "plot", // Plot both the pressures in a single graph
+                "abscissas": "time",
+                "ordinates": ["A.pressure", "B.pressure"],
+                "inputs": ["main_medical_units"]
+            },
+            "main_medical_units": { // Plot every data in main_medical_units against time, 
+                "type": "subplot",  // each one in a different subplot.
+                "abscissas": "time",
+                "inputs": ["main_medical_units"]
+            }
+        }
+    }
+
+.. note:: 
+
+    A default plot that traces all the ordinates in ``main`` against time is already configured when you use the ``default_forward_simulation`` simulation type.
+
+The ``plots`` are always called **after** all processes.
+Consequently they have access to all data defined with pre and post-processes, except for overwritten data.
+
+.. note::
+    
+    In the second plot, we did not select ordinates ids: every column in the data is plotted.
+
+Both plot types also have a ``layout`` parameter.
+If you are familiar with the plotly library, you can pass a dictionary to this parameter, it will be used with the ``update_layout`` function.
+Here is the plotly documentation of the parameters you can set: https://plotly.com/python/reference/layout.
+
+
 Complete configuration file example for the simple circulation net
 ------------------------------------------------------------------
 
@@ -442,11 +568,11 @@ Here is the complete configuration file for our example net:
             "step_size": 0.001,
             "min_step": 6.25e-5
         },
-        "flux_dof_definitions": {
-            "flow": "pressure"
-        },
         "net": {
             "type": "net",
+            "flux_dof_definitions": {
+                "flow": "pressure"
+            },
             "nodes": ["A", "B", "C"],
             "blocks": {
                 "RC_1": {
@@ -500,7 +626,7 @@ Here is the complete configuration file for our example net:
         "parameters": {
             "Ca": 2.0e-10,
             "Ra": 8.0e6,
-            "Cb": 1.7e-08,     
+            "Cb": 1.7e-08,
             "Rb": 1.0e8,
             "C.pressure": 1.6e3,
             "sin_period": 0.80,
@@ -519,6 +645,34 @@ Here is the complete configuration file for our example net:
         "output_functions":{
             "A.flow": {"type": "watch_quantity", "quantity": "A.flow"},
             "Ca.volume_stored": {"type": "product", "factors": ["Ca", "A.pressure"]}
+        },
+        // We did not define pre-processes for the simulation.
+        // "pre-process": {}
+        "post-processes": {
+            "conversion": {
+                "type": "conversion_process",
+                "conversion_factors": {
+                    "A.flow": 1.0e6, // from m3/s to mL/s
+                    "Ca.volume_stored": 1.0e6, // from m3 to mL
+                    "A.pressure": 0.00750062, // from Pa to mmHg
+                    "B.pressure": 0.00750062 // from Pa to mmHg
+                },
+                "inputs": ["main"],
+                "outputs": ["main_medical_units"]
+            }
+        },
+        "plots": {
+            "pressures": {
+                "type": "plot",
+                "abscissas": "time",
+                "ordinates": ["A.pressure", "B.pressure"],
+                "inputs": ["main_medical_units"]
+            },
+            "main_medical_units": {
+                "type": "subplot",
+                "abscissas": "time",
+                "inputs": ["main_medical_units"]
+            }
         }
     }
 

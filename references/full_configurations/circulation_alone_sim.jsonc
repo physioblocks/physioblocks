@@ -10,6 +10,22 @@
     "solver": {
         "type": "linear_solver"
     },
+    "plots": {
+        "main_plot": {
+            "type": "subplot",
+            "inputs": [
+                "main"
+            ],
+            "abscissas": "time"
+        },
+        "plot_error_main": {
+            "type": "subplot",
+            "inputs": [
+                "main_error"
+            ],
+            "abscissas": "time"
+        }
+    },
     "net": {
         "type": "net",
         "flux_dof_definitions": {
@@ -133,14 +149,40 @@
         "aorta_proximal.blood_flow.min": 0.0,
         "aorta_proximal.blood_flow.max": 0.0005
     },
-    "variables_initialization": {
-        "aorta_proximal.blood_pressure": 10760.0,
-        "aorta_distal.blood_pressure": 10760.0
-    },
     "output_functions": {
         "aorta_proximal.blood_flow": {
             "type": "watch_quantity",
             "quantity": "aorta_proximal.blood_flow"
         }
+    },
+    "post-processes": {
+        "medical_units_conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "aorta_proximal.blood_flow": 1000000.0,
+                "aorta_proximal.blood_pressure": 0.00750062,
+                "aorta_distal.blood_pressure": 0.00750062
+            },
+            "inputs": [
+                "main"
+            ],
+            "outputs": [
+                "main"
+            ]
+        },
+        "compare_reference_simulation": {
+            "type": "compare_process",
+            "inputs": [
+                "main"
+            ],
+            "outputs": [
+                "main_error"
+            ],
+            "abscissas": "time"
+        }
+    },
+    "variables_initialization": {
+        "aorta_proximal.blood_pressure": 10760.0,
+        "aorta_distal.blood_pressure": 10760.0
     }
 }

@@ -37,8 +37,6 @@ The **Launcher** allows to :
 * Run a simulation based on a configuration file
 * Save results to ``.csv`` or ``.parquet``
 * Organize results in series folders
-* Create a basic trace for simulation results
-* Create a basic trace of the error of the current simulation with a reference file.
 
 .. _user_guide_level_1_launcher_configuration:
 

@@ -24,7 +24,6 @@ __Level 1:__ Configure and run a simulation : JSON
 __Level 2:__ Create Nets : JSON
 * Declare the nodes, the blocks, and the block - nodes connections
 
-
 __Level 3:__ Write and add models to the library: Python
 * Declare the quantities to use in the model
 * Write the fluxes and equations
@@ -70,13 +69,11 @@ With a Launcher folder configured:
 cd $LAUNCHER_FOLDER_PATH$
 
 #  Launch a reference simulation
-python -m physioblocks.launcher references/spherical_heart_sim.jsonc -v -t -s QuickStart
-
-# This can take some time.
+python -m physioblocks.launcher references/spherical_heart_sim.jsonc -v -s QuickStart
 ```
 
 
 Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/QuickStart` series folder:
-* the csv file contains the simulation results.
-* the html allows you to visualize the results.
+* the csv files contain the simulation results.
+* the html files allow you to visualize the results.
 * the log and json files are here for debug purposes.

@@ -35,8 +35,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 import physioblocks.utils.math_utils as math_utils
-from physioblocks.computing import Expression, ModelComponent, Quantity, diff, mid_point
+from physioblocks.computing import ModelComponent, Quantity, diff, mid_point
 from physioblocks.computing.assembling import EqSystem
+from physioblocks.computing.models import (
+    declares_internal_equation,
+    declares_saved_quantity,
+)
 from physioblocks.registers import register_type
 from physioblocks.simulation import State, Time
 from physioblocks.simulation.solvers import NewtonSolver
@@ -45,186 +49,15 @@ from physioblocks.simulation.solvers import NewtonSolver
 SPHERICAL_DYNAMICS_TYPE_ID = "spherical_dynamics"
 
 SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID = "disp"
+SPHERICAL_DYNAMICS_STATIC_FIB_DEFORM_LOCAL_ID = "fib_deform"
+SPHERICAL_DYNAMICS_STATIC_PRESSURE_LOCAL_ID = "pressure"
+SPHERICAL_DYNAMICS_STATIC_PRESSURE_EXTERNAL_LOCAL_ID = "pressure_external"
 
 _DISP_EPSILON = 1.0e-6
 _STATIC_PROBLEM_TOL = 1e-6
 _STATIC_PROBLEM_MAX_IT = 10
 _STATIC_PROBLEM_DISP_MAG = 0.010
 _STATIC_PROBLEM_MIN_PRESSURE_STEP = 1.0
-
-
-@dataclass
-class _SphericalDynamicsStaticModelComponent(ModelComponent):
-    """
-    ModelComponent containing the quantities and the expressions to solve the
-    static problem in the Spherical Dynamics Model in order to initialize the
-    displacement and fiber deformation.
-    """
-
-    disp: Quantity[np.float64]
-    """Displacement"""
-
-    pressure: Quantity[np.float64]
-    """pressure"""
-
-    thickness: Quantity[np.float64]
-    """thickness"""
-
-    hyperelastic_cst: Quantity[NDArray[np.float64]]
-    """hyperelastic constant"""
-
-    inv_radius: Quantity[np.float64]
-    """sphere radius"""
-
-    pressure_external: Quantity[np.float64]
-    """external pressure"""
-
-    def initialize(self) -> None:
-        """
-        Initialize block attributes from current quantity values
-        """
-        self.hyperelastic_cst_01 = (
-            self.hyperelastic_cst.current[0] * self.hyperelastic_cst.current[1]
-        )
-        self.hyperelastic_cst_23 = (
-            self.hyperelastic_cst.current[2] * self.hyperelastic_cst.current[3]
-        )
-        self.thickness_radius_ratio = self.thickness.current * self.inv_radius.current
-        self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
-
-    def dynamics_static_residual(self) -> Any:
-        """
-        Compute the residual for the dynamics static problem.
-
-        :return: the static problem residual
-        :rtype: np.float64
-        """
-        pressure_external = mid_point(self.pressure_external)
-
-        disp_new_ratio = 1.0 + self.disp.new * self.inv_radius.current
-        fluid_volume_diff = np.pow(
-            disp_new_ratio
-            - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
-            2,
-        ) * (1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio)
-
-        j4_new = np.pow(disp_new_ratio, 2)
-        j1_new = 2.0 * j4_new + np.pow(disp_new_ratio, -4)
-
-        j4_diff_new = 2.0 * self.inv_radius.current * (disp_new_ratio)
-        j1_diff_new = 2.0 * (
-            j4_diff_new - 2.0 * self.inv_radius.current * np.pow(disp_new_ratio, -5)
-        )
-
-        hyperelastic_potential_diff = 2.0 * (
-            (
-                self.hyperelastic_cst_01
-                * j1_diff_new
-                * (j1_new - 3.0)
-                * np.exp(self.hyperelastic_cst.current[1] * np.pow(j1_new - 3.0, 2))
-            )
-            + (
-                self.hyperelastic_cst_23
-                * j4_diff_new
-                * (j4_new - 1.0)
-                * np.exp(self.hyperelastic_cst.current[3] * np.pow(j4_new - 1.0, 2))
-            )
-        )
-
-        passive_stress = self.thickness.current * hyperelastic_potential_diff
-        external_stress = (self.pressure.new - pressure_external) * fluid_volume_diff
-
-        return passive_stress - external_stress
-
-    def dynamics_static_residual_ddisp(self) -> Any:
-        """
-        Compute the partial derivative for disp for the the static problem residual.
-
-        :return: the residual partial derivative for disp
-        :rtype: np.float64
-        """
-        disp_new_ratio = 1.0 + self.disp.new * self.inv_radius.current
-        pressure_external = mid_point(self.pressure_external)
-
-        j4_new = np.pow(disp_new_ratio, 2)
-        j1_new = 2.0 * j4_new + np.pow(disp_new_ratio, -4)
-
-        j4_diff_new = 2.0 * self.inv_radius.current * (disp_new_ratio)
-        j1_diff_new = 2.0 * (
-            j4_diff_new - 2.0 * self.inv_radius.current * np.pow(disp_new_ratio, -5)
-        )
-
-        j1_diff_diff_new = 4.0 * np.pow(self.inv_radius.current, 2) + 20.0 * np.pow(
-            self.inv_radius.current, 2
-        ) * np.pow(disp_new_ratio, -6)
-        j4_diff_diff_new = 2.0 * np.pow(self.inv_radius.current, 2)
-
-        hyperelastic_potential_diff_diff = 2.0 * (
-            self.hyperelastic_cst.current[0]
-            * self.hyperelastic_cst.current[1]
-            * (
-                j1_diff_diff_new * (j1_new - 3.0)
-                + np.pow(j1_diff_new, 2)
-                + (
-                    2.0
-                    * self.hyperelastic_cst.current[1]
-                    * np.pow(j1_diff_new * (j1_new - 3.0), 2)
-                )
-            )
-            * np.exp(self.hyperelastic_cst.current[1] * np.pow(j1_new - 3.0, 2))
-            + self.hyperelastic_cst.current[2]
-            * self.hyperelastic_cst.current[3]
-            * (
-                j4_diff_diff_new * (j4_new - 1.0)
-                + np.pow(j4_diff_new, 2)
-                + (
-                    2.0
-                    * self.hyperelastic_cst.current[3]
-                    * np.pow(j4_diff_new * (j4_new - 1.0), 2)
-                )
-            )
-            * np.exp(self.hyperelastic_cst.current[3] * np.pow(j4_new - 1.0, 2))
-        )
-
-        passive_stress_diff = self.thickness.current * hyperelastic_potential_diff_diff
-
-        fluid_volume_diff_diff = self.inv_radius.current * (
-            2.0
-            * (
-                1.0
-                + self.disp.new * self.inv_radius.current
-                - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio
-            )
-            * np.pow(1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio, 2)
-            - 3.0
-            * self.thickness_radius_ratio
-            * np.pow(disp_new_ratio, -4)
-            * np.pow(
-                1.0
-                + self.disp.new * self.inv_radius.current
-                - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
-                2,
-            )
-        )
-
-        ext_stress_diff = (
-            self.pressure.new - pressure_external
-        ) * fluid_volume_diff_diff
-
-        return passive_stress_diff - ext_stress_diff
-
-
-_spherical_dynamics_static_residual_expr = Expression(
-    1,
-    _SphericalDynamicsStaticModelComponent.dynamics_static_residual,
-    {
-        SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID: _SphericalDynamicsStaticModelComponent.dynamics_static_residual_ddisp  # noqa: E501
-    },
-)
-
-_SphericalDynamicsStaticModelComponent.declares_internal_expression(
-    SPHERICAL_DYNAMICS_STATIC_DISP_LOCAL_ID, _spherical_dynamics_static_residual_expr
-)
 
 
 @dataclass
@@ -374,6 +207,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
         self.disp.initialize(disp_init)
         self.fib_deform.initialize(fib_deform_init)
 
+    @declares_internal_equation("disp")
     def dynamics_residual(self) -> Any:
         """
         Compute the residual giving a dynamics on `disp`
@@ -538,6 +372,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
             - external_stress
         )
 
+    @dynamics_residual.partial_derivative("disp")
     def dynamics_residual_ddisp(self) -> Any:
         """
         Compute the partial derivative of the residual for `disp`.
@@ -767,6 +602,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
 
         return viscous_ddisp + active_ddisp - external_ddisp + passive_ddisp
 
+    @dynamics_residual.partial_derivative("fib_deform")
     def dynamics_residual_dfib_deform(self) -> Any:
         """
 
@@ -775,9 +611,10 @@ class SphericalDynamicsModelComponent(ModelComponent):
         :return: the residual partial derivative for `fib_deform`
         :rtype: np.float64
         """
-        # activ stress
+        # active stress
         return -self.half_thickness_radius_ratio * self.series_stiffness.current
 
+    @dynamics_residual.partial_derivative("vel")
     def dynamics_residual_dvel(self) -> Any:
         """
         Compute the partial derivative of the residual for `vel`.
@@ -788,6 +625,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
         # inertia
         return self.vol_mass.current * self.thickness.current * self.time.inv_dt
 
+    @dynamics_residual.partial_derivative("pressure")
     def dynamics_residual_dpressure(self) -> Any:
         """
         Compute the partial derivative of the residual for the `pressure`.
@@ -842,6 +680,7 @@ class SphericalDynamicsModelComponent(ModelComponent):
 
         return external_dpressure
 
+    @dynamics_residual.partial_derivative("pressure_external")
     def dynamics_residual_dpressure_external(self) -> Any:
         """
         Compute the partial derivative of the residual `pressure_external`.
@@ -966,19 +805,302 @@ class SphericalDynamicsModelComponent(ModelComponent):
         return disp_init, disp_init * self.inv_radius
 
 
-# Define the dynamics residual expression and its partial derivatives.
-_spherical_dynamics_residual_expr = Expression(
-    1,
-    SphericalDynamicsModelComponent.dynamics_residual,
-    {
-        "fib_deform": SphericalDynamicsModelComponent.dynamics_residual_dfib_deform,
-        "disp": SphericalDynamicsModelComponent.dynamics_residual_ddisp,
-        "vel": SphericalDynamicsModelComponent.dynamics_residual_dvel,
-        "pressure": SphericalDynamicsModelComponent.dynamics_residual_dpressure,
-        "pressure_external": SphericalDynamicsModelComponent.dynamics_residual_dpressure_external,  # noqa: E501
-    },
-)
+@dataclass
+class _SphericalDynamicsStaticModelComponent(ModelComponent):
+    """
+    ModelComponent containing the quantities and the expressions to solve the
+    static problem in the Spherical Dynamics Model in order to initialize the
+    displacement and fiber deformation.
+    """
 
-SphericalDynamicsModelComponent.declares_internal_expression(
-    "disp", _spherical_dynamics_residual_expr
-)
+    disp: Quantity[np.float64]
+    """Displacement"""
+
+    pressure: Quantity[np.float64]
+    """pressure"""
+
+    thickness: Quantity[np.float64]
+    """thickness"""
+
+    hyperelastic_cst: Quantity[NDArray[np.float64]]
+    """hyperelastic constant"""
+
+    inv_radius: Quantity[np.float64]
+    """sphere radius"""
+
+    pressure_external: Quantity[np.float64]
+    """external pressure"""
+
+    def initialize(self) -> None:
+        """
+        Initialize block attributes from current quantity values
+        """
+        self.hyperelastic_cst_01 = (
+            self.hyperelastic_cst.current[0] * self.hyperelastic_cst.current[1]
+        )
+        self.hyperelastic_cst_23 = (
+            self.hyperelastic_cst.current[2] * self.hyperelastic_cst.current[3]
+        )
+        self.thickness_radius_ratio = self.thickness.current * self.inv_radius.current
+        self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
+
+    @declares_internal_equation("disp")
+    def dynamics_static_residual(self) -> Any:
+        """
+        Compute the residual for the dynamics static problem.
+
+        :return: the static problem residual
+        :rtype: np.float64
+        """
+        pressure_external = mid_point(self.pressure_external)
+
+        disp_new_ratio = 1.0 + self.disp.new * self.inv_radius.current
+        fluid_volume_diff = np.pow(
+            disp_new_ratio
+            - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
+            2,
+        ) * (1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio)
+
+        j4_new = np.pow(disp_new_ratio, 2)
+        j1_new = 2.0 * j4_new + np.pow(disp_new_ratio, -4)
+
+        j4_diff_new = 2.0 * self.inv_radius.current * (disp_new_ratio)
+        j1_diff_new = 2.0 * (
+            j4_diff_new - 2.0 * self.inv_radius.current * np.pow(disp_new_ratio, -5)
+        )
+
+        hyperelastic_potential_diff = 2.0 * (
+            (
+                self.hyperelastic_cst_01
+                * j1_diff_new
+                * (j1_new - 3.0)
+                * np.exp(self.hyperelastic_cst.current[1] * np.pow(j1_new - 3.0, 2))
+            )
+            + (
+                self.hyperelastic_cst_23
+                * j4_diff_new
+                * (j4_new - 1.0)
+                * np.exp(self.hyperelastic_cst.current[3] * np.pow(j4_new - 1.0, 2))
+            )
+        )
+
+        passive_stress = self.thickness.current * hyperelastic_potential_diff
+        external_stress = (self.pressure.new - pressure_external) * fluid_volume_diff
+
+        return passive_stress - external_stress
+
+    @dynamics_static_residual.partial_derivative("disp")
+    def dynamics_static_residual_ddisp(self) -> Any:
+        """
+        Compute the partial derivative for disp for the the static problem residual.
+
+        :return: the residual partial derivative for disp
+        :rtype: np.float64
+        """
+        disp_new_ratio = 1.0 + self.disp.new * self.inv_radius.current
+        pressure_external = mid_point(self.pressure_external)
+
+        j4_new = np.pow(disp_new_ratio, 2)
+        j1_new = 2.0 * j4_new + np.pow(disp_new_ratio, -4)
+
+        j4_diff_new = 2.0 * self.inv_radius.current * (disp_new_ratio)
+        j1_diff_new = 2.0 * (
+            j4_diff_new - 2.0 * self.inv_radius.current * np.pow(disp_new_ratio, -5)
+        )
+
+        j1_diff_diff_new = 4.0 * np.pow(self.inv_radius.current, 2) + 20.0 * np.pow(
+            self.inv_radius.current, 2
+        ) * np.pow(disp_new_ratio, -6)
+        j4_diff_diff_new = 2.0 * np.pow(self.inv_radius.current, 2)
+
+        hyperelastic_potential_diff_diff = 2.0 * (
+            self.hyperelastic_cst.current[0]
+            * self.hyperelastic_cst.current[1]
+            * (
+                j1_diff_diff_new * (j1_new - 3.0)
+                + np.pow(j1_diff_new, 2)
+                + (
+                    2.0
+                    * self.hyperelastic_cst.current[1]
+                    * np.pow(j1_diff_new * (j1_new - 3.0), 2)
+                )
+            )
+            * np.exp(self.hyperelastic_cst.current[1] * np.pow(j1_new - 3.0, 2))
+            + self.hyperelastic_cst.current[2]
+            * self.hyperelastic_cst.current[3]
+            * (
+                j4_diff_diff_new * (j4_new - 1.0)
+                + np.pow(j4_diff_new, 2)
+                + (
+                    2.0
+                    * self.hyperelastic_cst.current[3]
+                    * np.pow(j4_diff_new * (j4_new - 1.0), 2)
+                )
+            )
+            * np.exp(self.hyperelastic_cst.current[3] * np.pow(j4_new - 1.0, 2))
+        )
+
+        passive_stress_diff = self.thickness.current * hyperelastic_potential_diff_diff
+
+        fluid_volume_diff_diff = self.inv_radius.current * (
+            2.0
+            * (
+                1.0
+                + self.disp.new * self.inv_radius.current
+                - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio
+            )
+            * np.pow(1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio, 2)
+            - 3.0
+            * self.thickness_radius_ratio
+            * np.pow(disp_new_ratio, -4)
+            * np.pow(
+                1.0
+                + self.disp.new * self.inv_radius.current
+                - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
+                2,
+            )
+        )
+
+        ext_stress_diff = (
+            self.pressure.new - pressure_external
+        ) * fluid_volume_diff_diff
+
+        return passive_stress_diff - ext_stress_diff
+
+
+SPHERICAL_DYNAMICS_ASYMPTOTIC_TYPE_ID = SPHERICAL_DYNAMICS_TYPE_ID + "_asymptotic"
+
+
+@dataclass
+@register_type(SPHERICAL_DYNAMICS_ASYMPTOTIC_TYPE_ID)
+class SphericalDynamicsAsymptoticModelComponent(ModelComponent):
+    r"""
+    Asymptotic description of the dynamic
+
+    Allows to save the ESPVR and EDPVR.
+
+    .. math::
+
+        \text{ESPVR} = |\Omega_0|
+        (\frac{\partial V(y)}{\partial y})^{-1}
+        (\frac{\partial W_e(y)}{\partial y}
+        + \frac{k_s}{R_0} \Bigl( \frac{y}{R_0}-e_c \Bigr))
+
+    .. math::
+
+        \text{EDPVR} = |\Omega_0|
+        (\frac{\partial V(y)}{\partial y})^{-1}
+        (\frac{\partial W_e(y)}{\partial y})
+
+    With:
+
+        * :math:`W_e(y)` represents an elastic energy per unit volume given by
+
+            .. math::
+
+                W_e(y) =
+                C_0 \exp \Bigl[ C_1 \bigl(2C(y)+C(y)^{-2}-3\bigr)^2 \Bigr]
+                + C_2 \exp \Bigl[ C_3 \bigl(C(y)-1\bigr)^2 \Bigr]
+
+            where :math:`(C_0,C_1,C_2,C_3)` denote material parameters of the passive
+            constitutive law, and :math:`C(y)= (1+y/R_0)^2` represents the component
+            of the right Cauchy-Green deformation tensor along the fiber direction
+
+        * :math:`k_s` denotes a passive elastic modulus
+
+        * :math:`|\Omega_0|` is the total volume of sphere tissue in the reference
+
+            .. math::
+
+                |\Omega_0| = 4\pi R_0^2 d_0
+
+        * :math:`V(y)` denotes the volume of the sphere, i.e.
+
+            .. math::
+
+                V(y) = \frac{4}{3}\pi \Bigl( R_0+y-\frac{d_0}{2}C(y)^{-1} \Bigr)^3,
+
+            with :math:`d(y)` the wall thickness in the deformed configuration.
+    """
+
+    disp: Quantity[np.float64]
+    """Displacement :math:`y`"""
+
+    fib_deform: Quantity[np.float64]
+    """fiber deformation  :math:`e_c`"""
+
+    thickness: Quantity[np.float64]
+    """thickness  :math:`d_0`"""
+
+    series_stiffness: Quantity[np.float64]
+    """series stiffness  :math:`k_s`"""
+
+    hyperelastic_cst: Quantity[NDArray[np.float64]]
+    """hyperelastic constant :math:`(C_0,C_1,C_2,C_3)`"""
+
+    radius: Quantity[np.float64]
+    """sphere radius :math:`R_0`"""
+
+    def initialize(self) -> None:
+        """
+        Initialize block attributes from current quantity values
+        """
+        self.inv_radius = 1 / self.radius
+        self.squared_radius = self.radius**2
+        self.hyperelastic_cst_01 = (
+            self.hyperelastic_cst.current[0] * self.hyperelastic_cst.current[1]
+        )
+        self.hyperelastic_cst_23 = (
+            self.hyperelastic_cst.current[2] * self.hyperelastic_cst.current[3]
+        )
+        self.sphere_volume = (
+            4.0 * np.pi * np.power(self.radius.current, 2) * self.thickness
+        )
+
+    def _get_fluid_volume_diff_ratio(self) -> Any:
+        disp_radius_sum = self.radius + self.disp.current
+        return (
+            np.pi
+            * (-self.squared_radius * self.thickness + 2 * disp_radius_sum**3) ** 2
+            * (self.squared_radius * self.thickness + disp_radius_sum**3)
+            / disp_radius_sum**7
+        )
+
+    def _get_hyperelastic_potential_diff(self, disp_ratio: float) -> Any:
+        return (
+            self.hyperelastic_cst_01
+            * (8 * disp_ratio / self.radius - 8 / (self.radius * disp_ratio**5))
+            * (2 * disp_ratio**2 - 3 + disp_ratio ** (-4))
+            * np.exp(
+                self.hyperelastic_cst.current[1]
+                * (2 * disp_ratio**2 - 3 + disp_ratio ** (-4)) ** 2
+            )
+            + 4
+            * self.hyperelastic_cst_23
+            * disp_ratio
+            * (disp_ratio**2 - 1)
+            * np.exp(self.hyperelastic_cst.current[3] * (disp_ratio**2 - 1) ** 2)
+            / self.radius
+        )
+
+    @declares_saved_quantity("EDPVR")
+    def compute_pressure_edpvr(self) -> Any:
+        disp_ratio = 1.0 + self.disp.current * self.inv_radius
+        fluid_volume_diff = self._get_fluid_volume_diff_ratio()
+        hyperelastic_potential_diff = self._get_hyperelastic_potential_diff(disp_ratio)
+        passive_stress = hyperelastic_potential_diff
+
+        return passive_stress * self.sphere_volume / fluid_volume_diff
+
+    @declares_saved_quantity("ESPVR")
+    def compute_pressure_espvr(self) -> Any:
+        disp_ratio = 1.0 + self.disp.current * self.inv_radius
+        fluid_volume_diff = self._get_fluid_volume_diff_ratio()
+        hyperelastic_potential_diff = self._get_hyperelastic_potential_diff(disp_ratio)
+        passive_stress = hyperelastic_potential_diff
+        active_stress = (
+            self.series_stiffness
+            * self.inv_radius
+            * (self.disp.current * self.inv_radius - self.fib_deform.current)
+        )
+        return (passive_stress + active_stress) * self.sphere_volume / fluid_volume_diff

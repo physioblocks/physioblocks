@@ -30,10 +30,50 @@ import pytest
 from physioblocks.computing.quantities import Quantity
 from physioblocks.library.model_components.active_law import (
     ActiveLawMacroscopicHuxleyTwoMoment,
+    ActiveLawMacroscopicHuxleyTwoMomentAsymptotic,
 )
 from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
+
+
+@pytest.fixture
+def ref_block_static() -> ActiveLawMacroscopicHuxleyTwoMomentAsymptotic:
+    return ActiveLawMacroscopicHuxleyTwoMomentAsymptotic(
+        fib_deform=Quantity(0.1),
+        active_tension_discr=Quantity(np.sqrt(10.0) * 2.5),
+        starling_abscissas=Quantity(
+            np.array(
+                [
+                    -0.1668,
+                    -0.0073,
+                    0.0534,
+                    0.0969,
+                    0.1326,
+                    0.2016,
+                    0.4663,
+                    0.9187,
+                    1.1762,
+                ]
+            )
+        ),
+        starling_ordinates=Quantity(
+            np.array([0.0, 0.5614, 0.7748, 0.8933, 0.9618, 1.0, 1.0, 0.1075, 0.0])
+        ),
+        crossbridge_stiffness=Quantity(100000.0),
+        contractility=Quantity(50000.0),
+    )
+
+
+class TestActiveLawMacroscopicHuxleyTwoMomentAsymptotic:
+    def test_check_gradient(
+        self, ref_block_static: ActiveLawMacroscopicHuxleyTwoMomentAsymptotic
+    ):
+        state = State()
+        state["fib_deform"] = ref_block_static.fib_deform
+        state["active_tension_discr"] = ref_block_static.active_tension_discr
+
+        assert gradient_test_from_model(ref_block_static, state)
 
 
 @pytest.fixture

@@ -21,9 +21,5 @@
         "circulation_aorta_distal.resistance": 1.1e8,
         "circulation_aorta_distal.time_constant": 2.0,
         "cavity.dynamics.hyperelastic_cst": [444.0, 2.9, 69.0, 6.5]
-    },
-    "output_functions": {
-        "atrial.blood_pressure": {"type": "watch_quantity", "quantity": "atrial.blood_pressure"},
-        "active_law.activation": {"type": "watch_quantity", "quantity": "cavity.rheology.active_law.activation"}
     }
 }

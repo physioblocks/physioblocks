@@ -34,7 +34,7 @@ In this section, we will learn **how to write configuration files describing Net
 
 We will first describe the **net description syntax**, then provide example nets description.
 The first example concerns how to **create Blocks, Nodes** and **link them in a Net**.
-The second will introduce **Model Components**.
+The second will introduce **Model Components** and **Alternative Types** for blocks and model components.
 
 Net description syntax
 ----------------------
@@ -53,18 +53,28 @@ The **Net Descriptions** are done in JSON files and have four main components:
        They *sum Flux by type* thus providing *one equation per type of flux* they receive.
     c. **Global Ids:** **global names** in the net of the block parameters and variable **local names**.
     d. **Connections:** for every **local node** sharing a flux in the block, their matching **global node** in the net.
-    e. **Sub-models:** The **model components** enhancing the Block.
+    e. **Sub-models:** the **model components** enhancing the Block.
+    f. **Alternative types:** a dictionary matching **alternative types** with an **alternative net name** for the current block.
+
+Alternative types and nets
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Alternatives types are **blocks and model components types** that use some of the **same parameters** as their main counterpart, but provide a different set of equations.
+
+When you set **alternative types** on several existing blocks or model components using the same identifier, you are defining an **alternative net**.
+The alternative net can then be automatically created from the **types definitions**.
+It will be initialized with the **same global parameters identifiers** and it will use the **same net layout** as the main net, but provides the alternate set of equations.
 
 .. note:: 
 
-    An other composant of the Nets are the **Boundary Conditions**, we will cover them in the :ref:`next section <user_guide_level_2_create_simulation>`.
-
-As a first example, we will create a *simple circulation net* configuration file consisting in a *two state windkessel model*.
+    An other important component of the Nets are the **Boundary Conditions**, we will cover them in the :ref:`next chapter <user_guide_level_2_create_simulation>`.
 
 .. _user_guide_level_2_create_net_example_1 :
 
 Simple circulation net example
 ------------------------------
+
+As a first example, we will create a *simple circulation net* configuration file consisting in a *two state windkessel model*.
 
 This simple example will focus on :
 
@@ -286,6 +296,7 @@ We are now going to see a more complete **Net** example to learn how to:
     
     * Enhance **Blocks Definition** with **Model Components**
     * Define **Blocks parameters and variables** that **share the same quantity**.
+    * Describe **alternative blocks and model components** to perform additional computations on the models.
 
 
 Cardiovascular system model
@@ -334,7 +345,7 @@ Following the process in the last example, we declare:
 * the **net type**.
 * the **fluxes-DOFs couples** (for the cardiovascular system, we declare a ``"blood_flow": "blood_pressure"`` couple)
 * the **nodes names**.
-* We refer to the documentation in the :ref:`Llbrary <library>` to:
+* We refer to the documentation in the :ref:`Library <library>` to:
 
     * Declare the needed **block types**.
     * Link the **local node indexes** in the blocks to the **global nodes names** in the net.
@@ -432,16 +443,16 @@ For our cardiovascular system net, the cavity with sub-models gives:
         "flux_type": "blood_flow",
         "submodels": {
             "dynamics": {
-                "type": "spherical_dynamics_hht_model",
+                "type": "spherical_dynamics",
             },
             "velocity_law": {
-                "type": "velocity_law_hht_model",
+                "type": "velocity_law_hht",
             },
             "rheology": {
-                "type": "rheology_fiber_additive_model",
+                "type": "rheology_fiber_additive",
                 "submodels": {
                     "active_law": {
-                        "type": "active_law_macro_huxley_two_moments_model",
+                        "type": "active_law_macro_huxley_two_moments",
                     }
                 }
             }
@@ -483,7 +494,7 @@ Let's complete the cavity definition:
         "thickness": "heart_thickness",
         "submodels": {
             "dynamics": {
-                "type": "spherical_dynamics_hht_model",
+                "type": "spherical_dynamics",
                 "fib_deform": "cavity.rheology.fib_deform",
                 "pressure": "cavity.blood_pressure",
                 "pressure_external": "pleural.pressure",
@@ -493,17 +504,17 @@ Let's complete the cavity definition:
                 "series_stiffness": "cavity.rheology.series_stiffness"
             },
             "velocity_law": {
-                "type": "velocity_law_hht_model",
+                "type": "velocity_law_hht",
                 "disp": "cavity.dynamics.disp"
             },
             "rheology": {
-                "type": "rheology_fiber_additive_model",
+                "type": "rheology_fiber_additive",
                 "disp": "cavity.dynamics.disp",
                 "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
                 "radius": "heart_radius",
                 "submodels": {
                     "active_law": {
-                        "type": "active_law_macro_huxley_two_moments_model",
+                        "type": "active_law_macro_huxley_two_moments",
                         "fib_deform": "cavity.rheology.fib_deform",
                         "contractility": "heart_contractility"
                     }
@@ -540,6 +551,93 @@ The entries are in bold when the **global name** is the **default name** of the 
     
     In our net, the pleural pressure is a parameter, but we could increase the net to make it a DOF and provide a dynamics on it. 
 
+Add alternative blocks and model component behavior
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This cardio-vascular model allows to compute **ESPVR and EDPVR** *(End Systolic and Diastolic Pressure-Volume Relationships)* curves for the cavity and draw the **Pressure-Volume Loop**.
+
+The current net configuration is lacking the static equations that define the asymptotic behavior of the cavity to compute **ESPVR and EDPVR**.
+In order to provide the equations without redefining the current net layout, we can define **alternative blocks and model component types** for the cavity.
+
+Here, we are in a very **specific use case** of the alternative nets since:
+
+    * We only define alternative behavior for the cavity block and model components.
+      We will get a **one block alternative net**.
+    * The equations in the alternative cavity net are **static**.
+      Therefore the simulation we will run using the alternative net will not be driven on time.
+
+However, keep in mind that you can build **alternative nets** with the same syntax for more generic use cases with a dynamics and several blocks.
+
+
+Create alternative cavity to compute ESPVR and EDPVR curves
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Let's define an alternative cavity net using the asymptotic definition for model components that compute the ESPVR and EDPVR quantities.
+
+.. note::
+
+    All the asymptotic blocks and model components definitions we use are documented in the :ref:`Library <library>`.
+
+We only have to select the alternative blocks and models component types to add and match them to their main description.
+The alternative models global ids will then be derived for their main global ids, meaning *the alternative models have the same global ids as the main models*.
+
+.. code:: json
+
+    {
+        "cavity": {
+            "type": "spherical_cavity_block",
+            "flux_type": "blood_flow",
+            "disp": "cavity.dynamics.disp",
+            "radius": "heart_radius",
+            "thickness": "heart_thickness",
+            "alternative_types": {"cavity.asymptotic": "spherical_cavity_block_asymptotic"},
+            "submodels": {
+                "dynamics": {
+                    "type": "spherical_dynamics",
+                    "fib_deform": "cavity.rheology.fib_deform",
+                    "pressure": "cavity.blood_pressure",
+                    "pressure_external": "pleural.pressure",
+                    "vel": "cavity.velocity_law.vel",
+                    "radius": "heart_radius",
+                    "thickness": "heart_thickness",
+                    "series_stiffness": "cavity.rheology.series_stiffness",
+                    "alternative_types": {"cavity.asymptotic": "spherical_dynamics_asymptotic"}
+                },
+                "velocity_law": {
+                    "type": "velocity_law_hht",
+                    "disp": "cavity.dynamics.disp"
+                },
+                "rheology": {
+                    "type": "rheology_fiber_additive",
+                    "disp": "cavity.dynamics.disp",
+                    "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
+                    "radius": "heart_radius",
+                    "alternative_types": {"cavity.asymptotic": "rheology_fiber_additive_asymptotic"},
+                    "submodels": {
+                        "active_law": {
+                            "type": "active_law_macro_huxley_two_moments",
+                            "fib_deform": "cavity.rheology.fib_deform",
+                            "contractility": "heart_contractility",
+                            "alternative_types": {"cavity.asymptotic": "active_law_macro_huxley_two_moments_asymptotic"}
+                        }
+                    }
+                }
+            },
+            "nodes": {
+                "1": "cavity"
+            }
+        }
+    }
+
+Note that the **alternative types** are defined in a dictionary.
+A model or block can defined several **alternative types**.
+Then, a full **alternative net** can be built for each identifier. 
+
+In our example, we can build a alternative net from all blocks and components types tagged with the ``cavity.asymptotic`` id.
+This model is then run separately in a pre-process to compute the ESPVR and EDPVR curves.
+
+We will see in the next chapter how to add processes to the simulation.
+
 Full net description
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -564,31 +662,35 @@ Finally, the full JSON net description for our model gives:
                 "disp": "cavity.dynamics.disp",
                 "radius": "heart_radius",
                 "thickness": "heart_thickness",
+                "alternative_types": {"cavity.asymptotic": "spherical_cavity_block_asymptotic"},
                 "submodels": {
                     "dynamics": {
-                        "type": "spherical_dynamics_hht_model",
+                        "type": "spherical_dynamics",
                         "fib_deform": "cavity.rheology.fib_deform",
                         "pressure": "cavity.blood_pressure",
                         "pressure_external": "pleural.pressure",
                         "vel": "cavity.velocity_law.vel",
                         "radius": "heart_radius",
                         "thickness": "heart_thickness",
-                        "series_stiffness": "cavity.rheology.series_stiffness"
+                        "series_stiffness": "cavity.rheology.series_stiffness",
+                        "alternative_types": {"cavity.asymptotic": "spherical_dynamics_asymptotic"}
                     },
                     "velocity_law": {
-                        "type": "velocity_law_hht_model",
+                        "type": "velocity_law_hht",
                         "disp": "cavity.dynamics.disp"
                     },
                     "rheology": {
-                        "type": "rheology_fiber_additive_model",
+                        "type": "rheology_fiber_additive",
                         "disp": "cavity.dynamics.disp",
                         "active_tension_discr": "cavity.rheology.active_law.active_tension_discr",
                         "radius": "heart_radius",
+                        "alternative_types": {"cavity.asymptotic": "rheology_fiber_additive_asymptotic"},
                         "submodels": {
                             "active_law": {
-                                "type": "active_law_macro_huxley_two_moments_model",
+                                "type": "active_law_macro_huxley_two_moments",
                                 "fib_deform": "cavity.rheology.fib_deform",
-                                "contractility": "heart_contractility"
+                                "contractility": "heart_contractility",
+                                "alternative_types": {"cavity.asymptotic": "active_law_macro_huxley_two_moments_asymptotic"}
                             }
                         }
                     }
@@ -642,4 +744,3 @@ Finally, the full JSON net description for our model gives:
     }
 
 Now that we know how to define a net with a JSON file, we are going to see **how to write a simulation configuration** to run a simulation based on a net description.
-
