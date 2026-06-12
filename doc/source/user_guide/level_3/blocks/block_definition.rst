@@ -204,8 +204,8 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the flux at first node.
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_1_discr = 0.5 * (self.pressure_1.new - self.pressure_1.current)
+        pressure_mid_discr = 0.5 * (self.pressure_mid.new + self.pressure_mid.current)
+        pressure_1_discr = 0.5 * (self.pressure_1.new + self.pressure_1.current)
         
         return (pressure_mid_discr - pressure_1_discr) / self.resistance_1.current
 
@@ -214,8 +214,8 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the flux at second node.
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_2_discr = 0.5 * (self.pressure_2.new - self.pressure_2.current)
+        pressure_mid_discr = 0.5 * (self.pressure_mid.new + self.pressure_mid.current)
+        pressure_2_discr = 0.5 * (self.pressure_2.new + self.pressure_2.current)
         
         return (pressure_mid_discr - pressure_2_discr) / self.resistance_2.current
 
@@ -225,9 +225,9 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the rcr block internal equation residual
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_1_discr = 0.5 * (self.pressure_1.new - self.pressure_1.current)
-        pressure_2_discr = 0.5 * (self.pressure_2.new - self.pressure_2.current)
+        pressure_mid_discr = 0.5 * (self.pressure_mid.new + self.pressure_mid.current)
+        pressure_1_discr = 0.5 * (self.pressure_1.new + self.pressure_1.current)
+        pressure_2_discr = 0.5 * (self.pressure_2.new + self.pressure_2.current)
         
         return (
             self.capacitance * (self.pressure_mid.new - self.pressure_mid.current) * self.time.inv_dt # time quantity also define its inverse.
