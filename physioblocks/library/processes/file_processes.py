@@ -23,13 +23,14 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare processes handling files."""
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
-import pandas
 from pandas import DataFrame
 
 from physioblocks.base.function_factories import attribute_checker
@@ -37,92 +38,200 @@ from physioblocks.registers.type_register import register_type
 from physioblocks.simulation.process import AbstractProcess, run_method_checkers
 
 
-def _read_data_frame(path: Path, options: dict[str, Any]) -> DataFrame:
-    if path.exists():
-        if path.suffix == ".csv":
-            return pandas.read_csv(path, **options)
-        elif path.suffix == ".parquet":
-            return pandas.read_parquet(path, **options)
-        else:
-            raise NotImplementedError(
-                str.format(
-                    "{0}: Format not supported for {1}",
-                    str(path.suffix),
-                    str(path.absolute()),
-                )
-            )
-    else:
-        raise FileNotFoundError(str.format("{0}: File not found", str(path.absolute())))
+@run_method_checkers(attribute_checker("mapping"))
+@register_type("rename_process")
+class RenameProcess(AbstractProcess):
+    """Rename components of each input with the provided mapping.
 
+    Parameters
+    ----------
+    mapping : dict[str, str]
+        the mapping of old to new names
+    component : str
+        name of the component to rename. Default is "columns".
 
-@register_type("compare_process")
-@run_method_checkers(attribute_checker("reference"))
-class CompareProcess(AbstractProcess):
-    """
-    Compute the absolute error between every input file with the matching
-    reference file.
+    Configuration
+    -------------
 
-    :param references: paths to references files
-    :type list[str]:
+    .. code-block:: json
 
-    :param options: Optional arguments to pass to read the file format.
-    :type options: dict[str, Any]
+        {
+            "type": "rename_process",
+            "inputs": ["<str>"],     // Names of the input data
+            "outputs": ["<str>"],    // Names of the output data
+            "mapping": {             // New name for each old name
+                "<str>": "<str>"
+            },
+            "component": "<str>"     // Renamed component ("columns" or "index")
+                                     // (optional, default: "columns")
+        }
 
     """
 
     def __init__(
         self,
-        reference: str | None = None,
-        abscissas: str | None = None,
-        ordinates: list[str] | None = None,
-        abscissas_precision: int = 9,
-        options: dict[str, Any] | None = None,
+        mapping: dict[str, str] | None = None,
+        component: str = "columns",
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.options = options if options is not None else {}
-        self.abscissas = abscissas
-        self.ordinates = ordinates if ordinates is not None else []
-        self.reference = reference
-        self.abscissas_precision = abscissas_precision
-
+        self.mapping = mapping if mapping is not None else {}
+        self.component = component
         super().__init__(*args, **kwargs)
 
-    def run(self, data: DataFrame) -> list[DataFrame]:
+    def run(self, *dfs: DataFrame) -> list[DataFrame]:
+        """Rename components of the dataframes.
+
+        Parameters
+        ----------
+        *dfs : DataFrame
+            the inputs to rename
+
+        Returns
+        -------
+        list[DataFrame]
+            the outputs dataframes
+
         """
-        Compute absolute error for each input dataframe with the reference.
+        results = [df.rename(self.mapping, axis=self.component) for df in dfs]
 
-        :param df: the inputs to compare
-        :type df: DataFrame
+        return results
 
-        :return: the outputs dataframes
-        :rtype: list[DataFrame]
+
+@register_type("drop_process")
+class DropProcess(AbstractProcess):
+    """Drop identified lines and columns in the data.
+
+    Parameters
+    ----------
+    columns: list[str] | None
+        The list of columns to drop.
+        Default is 'None', no column is deleted
+    abscissas_name: str
+        The name of the abscissa where to drop lines
+        Default is 'time'
+    abscissas_interval: tuple[float, float] | None
+        The interval of abscissas to drop.
+        Default is `None`: no abscissas is deleted.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "drop_process",
+            "inputs": ["<str>"],        // Names of the input data
+            "outputs": ["<str>"],       // Names of the output data
+            "columns": ["<str>"],       // Names of the columns to drop (optional)
+            "abscissas_interval": "[<float>, <float>]"
+                                        // start and end value of the abscissas interval
+                                        // to drop. (optional)
+            "abscissas_name": "<str>"   // Name of the abscissas to drop
+                                        // (optional, default is 'time')
+        }
+
+    """
+
+    def __init__(
+        self,
+        columns: list[str] | None = None,
+        abscissas_name: str = "time",
+        abscissas_interval: tuple[float, float] | None = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        self.columns = columns
+        self.interval = abscissas_interval
+        self.abscissas = abscissas_name
+        super().__init__(*args, **kwargs)
+
+    def run(self, *dfs: DataFrame) -> list[DataFrame]:
+        """Drop columns and lines in input data.
+
+        For every input, drop the columns and the specified abscissas range.
+        Then map it on the outputs.
+
+        Parameters
+        ----------
+        *dfs : DataFrame
+            the inputs to rename
+
+        Returns
+        -------
+        list[DataFrame]
+            the outputs dataframes
         """
-        if self.reference is None:
-            raise ValueError("Process reference is not initialized.")
-        reference = _read_data_frame(Path(self.reference), self.options)
+        results = []
+        for df in dfs:
+            out_df: DataFrame = df.copy()
 
-        data_cpy = data.copy()
-        reference_cpy = reference.copy()
+            if self.columns is not None:
+                out_df = out_df.drop(labels=self.columns, axis=1)
 
-        # set index to abscissas
-        if self.abscissas is not None:
-            data_cpy[self.abscissas] = data_cpy[self.abscissas].round(
-                self.abscissas_precision
-            )
-            data_cpy = data_cpy.set_index(self.abscissas)
-            reference_cpy[self.abscissas] = reference_cpy[self.abscissas].round(
-                self.abscissas_precision
-            )
-            reference_cpy = reference_cpy.set_index(self.abscissas)
+            if self.interval is not None:
+                start, end = self.interval
+                interval_indexes = out_df.index[
+                    out_df[self.abscissas].between(start, end)
+                ]
+                out_df = out_df.drop(labels=interval_indexes, axis=0)
 
-        # set columns to compare
-        ordinates = self.ordinates if len(self.ordinates) > 0 else data_cpy.columns
-        data_cpy = data_cpy[ordinates]
-        reference_cpy = reference_cpy[ordinates]
-        diff = data_cpy - reference_cpy
-        diff = diff.abs()
-        if self.abscissas is not None:
-            diff = diff.reset_index()
+            results.append(out_df)
 
-        return [diff]
+        return results
+
+
+@register_type("write_process")
+class WriteProcess(AbstractProcess):
+    """
+    Write the DataFrame at specified location.
+
+    When using the launcher, every file is saved in the series folder.
+    Use this process to save a dataframe anywhere else.
+
+    Parameters
+    ----------
+    destinations: list[str]
+        List of the paths to write the data to.
+        The size should match the size of the inputs to write.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "write_process",
+            "inputs": ["<str>"],        // Names of the input data
+            "destinations": ["<str>"],  // Paths where to write each input respectively.
+        }
+
+    """
+
+    def __init__(self, destinations: list[str], *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.destinations = [Path(destination) for destination in destinations]
+
+    def run(self, *dfs: DataFrame) -> DataFrame:
+        """
+        Write the input data to destinations.
+
+        Returns
+        -------
+        DataFrame
+            the inputs dataframes
+        """
+        for destination, data in zip(self.destinations, dfs, strict=True):
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.suffix == ".csv":
+                data.to_csv(destination)
+            elif destination.suffix == ".parquet":
+                data.to_parquet(destination)
+            else:
+                warnings.warn(
+                    f"File format not supported: {destination}. File skipped.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+        return dfs

@@ -24,9 +24,10 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Describe the configuration of the simulations objects
-"""
+"""Declare load and save functions for simulation objects."""
 
 # Import modules to access load / save functions
+import physioblocks.configuration.simulation._migrations
+import physioblocks.configuration.simulation.functions
+import physioblocks.configuration.simulation.observer
 import physioblocks.configuration.simulation.simulations  # noqa: F401

@@ -31,7 +31,6 @@ import pytest
 from physioblocks.description.flux import (
     Dof,
     FluxDofTypesRegister,
-    get_flux_dof_register,
 )
 
 FLUX_TYPE_ID = "flux"
@@ -44,13 +43,9 @@ FLUX_TYPE_B = "flux_b"
 DOF_TYPE_B = "potential_b"
 
 
-@pytest.fixture
-def register() -> FluxDofTypesRegister:
-    return get_flux_dof_register()
-
-
 class TestFluxDofCouple:
-    def test_register(self, register: FluxDofTypesRegister):
+    def test_register(self):
+        register = FluxDofTypesRegister()
         register.register_flux_dof_couple(FLUX_TYPE_ID, DOF_TYPE_ID)
         assert DOF_TYPE_ID in register.dof_flux_couples
         assert FLUX_TYPE_ID in register.flux_dof_couples
@@ -75,7 +70,8 @@ class TestFluxDofCouple:
 
         register.unregister_flux_dof_couple(FLUX_TYPE_ID)
 
-    def test_get_matching_type(self, register: FluxDofTypesRegister):
+    def test_get_matching_type(self):
+        register = FluxDofTypesRegister()
         with patch.multiple(
             register,
             _fluxes_types={FLUX_TYPE_ID: DOF_TYPE_ID},
@@ -84,7 +80,8 @@ class TestFluxDofCouple:
             assert register.flux_dof_couples[FLUX_TYPE_ID] == DOF_TYPE_ID
             assert register.dof_flux_couples[DOF_TYPE_ID] == FLUX_TYPE_ID
 
-    def test_unregister(self, register: FluxDofTypesRegister):
+    def test_unregister(self):
+        register = FluxDofTypesRegister()
         register.register_flux_dof_couple(FLUX_TYPE_ID, DOF_TYPE_ID)
         register.unregister_flux_dof_couple(FLUX_TYPE_ID)
         with pytest.raises(KeyError):
@@ -100,6 +97,15 @@ class TestFluxDofCouple:
 
         with pytest.raises(ValueError):
             register.unregister_flux_dof_couple(DOF_TYPE_ID)
+
+    def test_get(self):
+        register = FluxDofTypesRegister()
+        register.register_flux_dof_couple("flux", "dof")
+
+        assert register.get("flux") == "dof"
+        assert register.get("dof") == "flux"
+        assert register.get("other") is None
+        assert register.get("other", default="default") == "default"
 
 
 class TestDof:

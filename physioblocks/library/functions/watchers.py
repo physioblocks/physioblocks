@@ -24,21 +24,13 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Watcher are useful functions to use to set **Output Functions**
-in the configuration.
-"""
+"""Define configurable functions to follow a quantity value."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
-
 from physioblocks.base.operators import AbstractBaseOperators
-from physioblocks.computing.models import Block
 from physioblocks.computing.quantities import Quantity
 from physioblocks.registers.type_register import register_type
 from physioblocks.simulation import AbstractFunction
@@ -47,67 +39,48 @@ from physioblocks.simulation import AbstractFunction
 WATCH_QUANTITY_TYPE_ID = "watch_quantity"
 
 
-@dataclass
 @register_type(WATCH_QUANTITY_TYPE_ID)
 class WatchQuantity(AbstractFunction, AbstractBaseOperators):
-    """
-    Return the current value of the watch quantity.
-    """
+    """Return the value of the watch quantity.
 
-    quantity: Quantity[Any]
-    """The quantities to watch"""
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "watch_quantity",
+            "evaluation_quantities": {
+                "quantity": "<str>"  // Global name of the watched quantity
+            }
+        }
+
+    """
 
     @property
     def operation_value(self) -> Any:
+        """Value used with base operators.
+
+        Returns
+        -------
+        Any
+            the current evaluation of the function
+
         """
-        Value used with base operators.
+        return self.eval_current()
 
-        :return: the current evaluation of the function
-        :rtype: Any
+    def eval(self, quantity: Quantity[Any]) -> Quantity[Any]:
+        """Get the watched quantity.
+
+        Parameters
+        ----------
+        quantity : Quantity[Any]
+            the watched quantity.
+
+        Returns
+        -------
+        Quantity[Any]
+            the watched quantity
+
         """
-        return self.eval()
-
-    def eval(self) -> Any:
-        """Just return the watched quantity current value
-
-        :return: the watched quantity current value
-        :rtype: np.float64 | np.ndarray"""
-        return self.quantity.current
-
-
-# Sum Blocks Quantity function type name
-SUM_BLOCKS_QUANTITY_TYPE_ID = "sum_blocks_quantity"
-
-
-@dataclass
-@register_type(SUM_BLOCKS_QUANTITY_TYPE_ID)
-class SumBlocksQuantity(AbstractFunction, AbstractBaseOperators):
-    """Sum the current values of quantities with the given name
-    for each the blocks."""
-
-    quantity_id: str
-    """block local id of the quantity to sum"""
-
-    elements: Iterable[Block] = field(default_factory=list)
-    """the blocks holding the quantity to sum"""
-
-    @property
-    def operation_value(self) -> Any:
-        """
-        Value used with base operators.
-
-        :return: the current evaluation of the function
-        :rtype: Any
-        """
-        return self.eval()
-
-    def eval(self) -> Any:
-        """
-        Sum the quantities
-
-        :return: the sum of the quantities
-        :rtype: Any
-        """
-        return np.sum(
-            [getattr(block, self.quantity_id).current for block in self.elements]
-        )
+        return quantity

@@ -1,0 +1,73 @@
+{
+    "type": "default_forward_simulation",
+    "solver": {"type": "linear_solver"},
+    "time": {
+        "start": -10.0,
+        "step_size": 0.001,
+        "length": 20.0
+    },
+    "net": {
+        "type": "simple_circulation_net",
+        "boundaries_conditions": {
+            "C": [{
+                "type": "condition",
+                "condition_type": "pressure",
+                "condition_id": "C.pressure"
+            }],
+            "A": [{
+                "type": "condition",
+                "condition_type": "flow",
+                "condition_id": "A.flow"
+            }]
+        }
+    },
+    "state": {
+        "A.pressure": {
+            "type": "quantity",
+            "value": 8e3,
+            "magnitude": 1e5
+        },
+        "B.pressure": {
+            "type": "quantity",
+            "value": 8e3,
+            "magnitude": 1e5
+        }
+    },
+    "parameters": {
+        "Ca": 2.0e-10,
+        "Ra": 8.0e6,
+        "Cb": 1.7e-08,
+        "Rb": 1.0e8,
+        "C.pressure": 1.6e3
+    },
+    "update_functions": {
+        "A.flow": {"type": "flow_pulse_function"}
+    },
+    "postprocesses": {
+        "remove_transition": {
+            "type": "drop_process",
+            "inputs": ["main"],
+            "outputs": ["synthetic_data"],
+            "columns":["B.pressure"],
+            "abscissas_name": "time",
+            "abscissas_interval": [-10.0001, -0.0001]
+        },
+        "copy": {
+            "type": "write_process",
+            "inputs": ["synthetic_data"],
+            "destinations": ["simulations_results/user_guide/level_2/estimation/1_synthetic_data/synthetic_data.csv"]
+        }
+    },
+    "plots": {
+        "synthetic_data": {
+            "type": "plot",
+            "abscissas": "time",
+            "inputs": ["synthetic_data"],
+            "subplots": ["A.pressure"],
+            "layout": {
+                "xaxis_title": "time (s)",
+                "yaxis_title": "pressure (Pa)"
+            }
+        }
+    }
+}

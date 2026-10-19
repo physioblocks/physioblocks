@@ -23,6 +23,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare load and save methods for quantities."""
 
 from typing import Any
 
@@ -40,6 +41,22 @@ def load_quantity(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
+    """
+    Load a quantity configuration object.
+
+    Parameters
+    ----------
+    configuration : Any
+        the quantity configuration
+    configuration_object : Quantity[Any] | None, optional
+        a quantity to set with the configuration value. Default is ``None`` and a new
+        quantity reference is created.
+
+    Returns
+    -------
+    Any
+        the configured quantity.
+    """
     if configuration_object is not None:
         configuration_object.initialize(configuration)
     else:
@@ -53,4 +70,17 @@ def save_quantity(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
+    """
+    Save a quantity to a configuration object.
+
+    Parameters
+    ----------
+    quantity : Quantity[Any]
+        the quantity to save.
+
+    Returns
+    -------
+    Any
+        the current value of the quantity.
+    """
     return float(quantity) if quantity.size == 1 else np.asarray(quantity).tolist()

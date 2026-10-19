@@ -26,9 +26,8 @@
 
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.blocks.cavity import SphericalCavityBlock
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_expression
 
@@ -45,7 +44,7 @@ def ref_block() -> SphericalCavityBlock:
 
 class TestSphericalCavityBlock:
     def test_check_gradient(self, ref_block: SphericalCavityBlock):
-        state = State()
+        state = QuantitiesRegistry()
 
         state["disp"] = ref_block.disp
 
@@ -53,7 +52,7 @@ class TestSphericalCavityBlock:
         ref_block.initialize()
 
         assert gradient_test_from_expression(
-            SphericalCavityBlock.fluxes_expressions[1].expression,
+            SphericalCavityBlock.fluxes_expressions[1],
             ref_block,
             state,
         )

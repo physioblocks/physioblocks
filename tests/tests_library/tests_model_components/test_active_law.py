@@ -27,12 +27,11 @@
 import numpy as np
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.model_components.active_law import (
     ActiveLawMacroscopicHuxleyTwoMoment,
     ActiveLawMacroscopicHuxleyTwoMomentAsymptotic,
 )
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
@@ -60,7 +59,6 @@ def ref_block_static() -> ActiveLawMacroscopicHuxleyTwoMomentAsymptotic:
         starling_ordinates=Quantity(
             np.array([0.0, 0.5614, 0.7748, 0.8933, 0.9618, 1.0, 1.0, 0.1075, 0.0])
         ),
-        crossbridge_stiffness=Quantity(100000.0),
         contractility=Quantity(50000.0),
     )
 
@@ -69,7 +67,7 @@ class TestActiveLawMacroscopicHuxleyTwoMomentAsymptotic:
     def test_check_gradient(
         self, ref_block_static: ActiveLawMacroscopicHuxleyTwoMomentAsymptotic
     ):
-        state = State()
+        state = QuantitiesRegistry()
         state["fib_deform"] = ref_block_static.fib_deform
         state["active_tension_discr"] = ref_block_static.active_tension_discr
 
@@ -111,11 +109,26 @@ def ref_block() -> ActiveLawMacroscopicHuxleyTwoMoment:
 
 class TestActiveLawMacroscopicHuxleyTwoMoment:
     def test_check_gradient(self, ref_block: ActiveLawMacroscopicHuxleyTwoMoment):
-        state = State()
+        state = QuantitiesRegistry()
         state["fib_deform"] = ref_block.fib_deform
         state["active_stiffness"] = ref_block.active_stiffness
         state["active_energy_sqrt"] = ref_block.active_energy_sqrt
         state["active_tension_discr"] = ref_block.active_tension_discr
+
+        ref_block.time.update(0.001)
+
+        assert gradient_test_from_model(ref_block, state)
+
+    def test_check_gradient_negative_fib_deform_rate(
+        self, ref_block: ActiveLawMacroscopicHuxleyTwoMoment
+    ):
+        state = QuantitiesRegistry()
+        state["fib_deform"] = ref_block.fib_deform
+        state["active_stiffness"] = ref_block.active_stiffness
+        state["active_energy_sqrt"] = ref_block.active_energy_sqrt
+        state["active_tension_discr"] = ref_block.active_tension_discr
+        # Set decreasing fib_deform
+        ref_block.fib_deform.update(ref_block.fib_deform.current - 0.01)
 
         ref_block.time.update(0.001)
 

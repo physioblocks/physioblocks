@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines the net description objects configuration
-"""
+"""Defines the net description objects configuration."""
 
 # Import modules to access load / save functions
 import physioblocks.configuration.description.blocks

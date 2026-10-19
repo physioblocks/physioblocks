@@ -24,10 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines methods to dynamically import modules while in a script or python
-application.
-"""
+"""Define methods to dynamically import modules."""
 
 import importlib
 import logging
@@ -41,17 +38,18 @@ _logger = logging.getLogger(__name__)
 
 
 def import_libraries(libraries_folder_paths: list[Path]) -> None:
-    """
-    Dynamically import all the modules at the given paths.
+    """Dynamically import all the modules at the given paths.
 
     .. note:: The libraries folders must be in a site to be able to
-      load theirs modules.
+      load their modules.
 
-    :param libraries_folder_path: the paths
-    :type libraries_folder_path: list[Path]
+    Parameters
+    ----------
+    libraries_folder_paths : list[Path]
+        the paths
 
-    Example
-    ^^^^^^^
+    Examples
+    --------
 
     .. code:: python
 
@@ -78,7 +76,7 @@ def import_libraries(libraries_folder_paths: list[Path]) -> None:
             )
 
     for package_path, full_package_name in packages_absolute_paths:
-        _import_modules_recursivly_at_path(package_path, full_package_name)
+        _import_modules_recursively_at_path(package_path, full_package_name)
 
 
 def _get_full_package_name(package_path: Path) -> str:
@@ -107,7 +105,7 @@ def _is_package(dir_path: Path) -> bool:
     )
 
 
-def _import_modules_recursivly_at_path(
+def _import_modules_recursively_at_path(
     package_path: Path, full_package_name: str
 ) -> None:
     for module_info in pkgutil.walk_packages([str(package_path)]):
@@ -144,7 +142,7 @@ def _import_modules_recursivly_at_path(
                 )
 
         if module_info.ispkg is True:
-            # recursivle load packa submodules
-            _import_modules_recursivly_at_path(
+            # recursively load package submodules
+            _import_modules_recursively_at_path(
                 package_path / module_info.name, full_module_name
             )

@@ -24,4 +24,4 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-""" "Module defining the available model components"""
+"""Module defining the available model components."""

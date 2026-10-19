@@ -57,7 +57,7 @@ only-include = ["physioblocks", "references"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "coverage"]
-doc = ["sphinx", "sphinx_rtd_theme", "sphinxcontrib-tikz"]
+doc = ["sphinx", "pydata-sphinx-theme", "sphinxcontrib-tikz"]
 quality = ["ruff", "mypy"]
 tox = ["tox>=4"]
 

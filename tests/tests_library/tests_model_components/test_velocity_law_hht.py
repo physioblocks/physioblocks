@@ -26,11 +26,10 @@
 
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.model_components.velocity_law import (
     VelocityLawHHTModelComponent,
 )
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
@@ -48,7 +47,7 @@ def ref_block() -> VelocityLawHHTModelComponent:
 
 class TestVelocityLawHHTModelComponent:
     def test_check_gradient(self, ref_block: VelocityLawHHTModelComponent):
-        state = State()
+        state = QuantitiesRegistry()
         state["disp"] = ref_block.disp
         state["vel"] = ref_block.vel
         state["accel"] = ref_block.accel

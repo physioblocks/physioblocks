@@ -23,10 +23,12 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Handle the launcher simulation folder configuration."""
 
 import json
 import logging
 import shutil
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +53,21 @@ _logger = logging.getLogger(__name__)
 
 
 def create_simulation_folder_path(series_path: Path, info: SimulationInfo) -> Path:
+    """Create the simulation folder at the given path based on the simulation infos.
+
+    Parameters
+    ----------
+    series_path : Path
+        The series path to save the simulation folder
+    info : SimulationInfo
+        the simulation info
+
+    Returns
+    -------
+    Path
+        the created folder path
+
+    """
     sim_folder_name = info.reference
     simulation_folder_path = series_path / sim_folder_name
     simulation_folder_path.mkdir()
@@ -59,18 +76,22 @@ def create_simulation_folder_path(series_path: Path, info: SimulationInfo) -> Pa
 
 
 def check_target_launcher_directory(launcher_dir_path: Path) -> bool:
-    """
-    Check that the given directory is suitable to welcome a new launcher directory.
+    """Check that the given directory is suitable to welcome a new launcher directory.
 
     It should either not exist (and therefore it will be created) or
     be an empty dir (to avoid erasing existing files)
 
-    :param launcher_dir_path: the directory path
-    :type launcher_dir_path: Path
+    Parameters
+    ----------
+    launcher_dir_path : Path
+        the directory path
 
-    :return: True if the launcher dir can be created at this location,
-      False otherwise
-    :rtype: boolean
+    Returns
+    -------
+    bool
+        True if the launcher dir can be created at this location,
+        False otherwise
+
     """
     return launcher_dir_path.exists() is False or (
         launcher_dir_path.is_dir() and not any(launcher_dir_path.iterdir())
@@ -78,14 +99,18 @@ def check_target_launcher_directory(launcher_dir_path: Path) -> bool:
 
 
 def check_launcher_directory(launcher_dir_path: Path) -> bool:
-    """
-    Check that the given directory can launch a simulation.
+    """Check that the given directory can launch a simulation.
 
-    :param launcher_dir_path: the directory path
-    :type launcher_dir_path: Path
+    Parameters
+    ----------
+    launcher_dir_path : Path
+        the directory path
 
-    :return: True if a simulation can be launched at this location, False otherwise
-    :rtype: boolean
+    Returns
+    -------
+    bool
+        True if a simulation can be launched at this location, False otherwise
+
     """
     return (
         launcher_dir_path.exists() is True
@@ -105,11 +130,13 @@ def check_launcher_directory(launcher_dir_path: Path) -> bool:
 
 
 def setup_launcher_directory(launcher_dir_path: Path) -> None:
-    """
-    Configure the launcher directory at the given path.
+    """Configure the launcher directory at the given path.
 
-    :param launcher_dir_path:
-    :type launcher_dir_path: Path
+    Parameters
+    ----------
+    launcher_dir_path : Path
+        the directory path
+
     """
     # Create the root simulation directory if it doesn't exist
     if launcher_dir_path.exists() is False:
@@ -136,11 +163,13 @@ def setup_launcher_directory(launcher_dir_path: Path) -> None:
             dirs_exist_ok=False,
         )
     else:
-        _logger.warning(
+        warnings.warn(
             str.format(
                 "No references configuration folder at: {0}",
                 str(physioblocks_references_folder_path),
-            )
+            ),
+            category=UserWarning,
+            stacklevel=2,
         )
 
     # create the user library directory
@@ -158,10 +187,6 @@ def setup_launcher_directory(launcher_dir_path: Path) -> None:
     launcher_user_aliases_dir_path = launcher_dir_path / LAUNCHER_USER_ALIASES_DIR_NAME
     if launcher_user_aliases_dir_path.exists() is False:
         launcher_user_aliases_dir_path.mkdir()
-
-    # create a empty log file
-    launcher_log_file_path = launcher_dir_path / LAUNCHER_LOG_FILE_NAME
-    launcher_log_file_path.touch()
 
     # create the launcher configuration file
     base_library_dir_path = Path(physioblocks.library.__file__).parent
@@ -191,14 +216,18 @@ def setup_launcher_directory(launcher_dir_path: Path) -> None:
 
 
 def get_launcher_configuration(root_sim_directory: Path) -> Any:
-    """
-    Get the launcher configuration for the given simulation directory.
+    """Get the launcher configuration for the given simulation directory.
 
-    :param root_sim_directory: the path to the launcher directory.
-    :type root_sim_directory: Path
+    Parameters
+    ----------
+    root_sim_directory : Path
+        the path to the launcher directory.
 
-    :return: the configuration
-    :rtype: dict
+    Returns
+    -------
+    dict
+        the configuration
+
     """
     launcher_config_path = root_sim_directory / LAUNCHER_CONFIGURATION_FILE_NAME
     launcher_configuration = json.load(launcher_config_path.open("r"))
@@ -206,11 +235,13 @@ def get_launcher_configuration(root_sim_directory: Path) -> Any:
 
 
 def import_configured_libraries(launcher_configuration: dict[str, Any]) -> None:
-    """
-    Dynamicaly import libraries in the given configuration
+    """Dynamically import libraries in the given configuration.
 
-    :param launcher_configuration: the layncher configuration
-    :type launcher_configuration: dict[str, Any]
+    Parameters
+    ----------
+    launcher_configuration : dict[str, Any]
+        the launcher configuration
+
     """
     libraries_paths = [
         Path(lib_path)
@@ -221,11 +252,13 @@ def import_configured_libraries(launcher_configuration: dict[str, Any]) -> None:
 
 
 def import_configured_aliases(launcher_configuration: dict[str, Any]) -> None:
-    """
-    Dynamicaly import all alias at the given paths in configuration
+    """Dynamically import all aliases at the given paths in configuration.
 
-    :param launcher_configuration: the launcher configuration
-    :type launcher_configuration: dict[str, Any]
+    Parameters
+    ----------
+    launcher_configuration : dict[str, Any]
+        the launcher configuration
+
     """
     for alias_path in launcher_configuration[LAUNCHER_CONFIGURATION_ALIAS_ID]:
         load_aliases(alias_path)

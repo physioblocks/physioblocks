@@ -34,7 +34,8 @@ In this chapter we will learn how to write **JSON configuration files** that can
 
 We will first look at **PhysioBlocks main objects** and how it is **assembling global system**.
 We will then see how to write a JSON describing a **Net** and use it to create a **full simulation configuration**.
-Finally, we will see how to **simplify configuration files** using configuration **Aliases**.
+Then, we will see how to **simplify configuration files** using configuration **Aliases**.
+Finally, we will see how configure an **estimation simulations** to estimate **models parameters** using **measurements** on the system.
 
 .. toctree::
    :glob:
@@ -44,3 +45,4 @@ Finally, we will see how to **simplify configuration files** using configuration
    level_2/create_net
    level_2/create_simulation
    level_2/aliases
+   level_2/estimation

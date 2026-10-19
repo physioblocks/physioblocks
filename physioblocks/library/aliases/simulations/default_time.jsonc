@@ -1,8 +1,7 @@
 {
-    "type": "time",
-    // The parameter "start" and "end" must be provided
-    // "start":,
-    // "duration": ,
-    "step_size": 0.001,
-    "min_step": 6.25e-5
+    "type": "range",
+    // The duration parameter can be set with "time.duration" key.
+    "step_size": "time.step_size",
+    "start": "time.start",
+    "length": "time.duration"
 }

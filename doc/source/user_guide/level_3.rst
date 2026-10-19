@@ -35,8 +35,10 @@ In this chapter will learn how to write specific objects in the physioblocks API
 First, we will present how to install optional tools to test the source code.
 We will then present how to write:
 
-   * Blocks and model components
-   * Pre and post-process scripts
+* Blocks and model components
+* Pre and post-process scripts
+* Simulation functions
+* Estimation filters
 
 .. toctree::
    :glob:
@@ -45,3 +47,5 @@ We will then present how to write:
    level_3/specific_installations
    level_3/blocks
    level_3/processes
+   level_3/functions
+   level_3/filters

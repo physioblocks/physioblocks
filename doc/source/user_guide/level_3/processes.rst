@@ -59,9 +59,9 @@ It is **called at each phase of the pipeline** to run all the processes of a pha
 
 For each process in the order of definition in the configuration, it: 
 
-    1. Checks the process is properly initialized calling the ``can_run`` property
-    2. Checks that all required inputs are available in the data dictionary.
-    3. Calls the process run method and updates the data dictionary with the outputs IDs
+1. Checks the process is properly initialized calling the ``can_run`` property
+2. Checks that all required inputs are available in the data dictionary.
+3. Calls the process run method and updates the data dictionary with the outputs IDs
 
 .. note:: 
 
@@ -83,6 +83,7 @@ Here's a basic example:
 
 .. code-block:: python
 
+    from pandas import DataFrame
     from physioblocks.simulation.process import AbstractProcess
     from physioblocks.registers.type_register import register_type
     
@@ -135,7 +136,9 @@ Let's take our previous example and check that a new parameter `my_positive_floa
 
 .. code-block:: python
 
-    from __future__ import annotation
+    from __future__ import annotations
+
+    from physioblocks.simulation.process import run_method_checkers
 
     # declare checker function
     def my_positive_checker(process: MyProcess) -> bool:
@@ -156,10 +159,12 @@ Let's use it in our example to check all attributes are initialized.
 
 .. code-block:: python
 
-    from __future__ import annotation
+    from __future__ import annotations
+
+    from physioblocks.base.function_factories import attribute_checker
 
     @register_type("my_process")
-    @run_method_checkers(attribute_checker("my_positive_float"), attribute_checker("my_parameter"), my_positive_checker) # Register the checkers
+    @run_method_checkers(attribute_checker("my_positive_float"), attribute_checker("my_parameter")) # Register the checkers
     class MyProcess(AbstractProcess):
         
         # process-specific parameter annotation
@@ -173,10 +178,10 @@ Special processes:
 
 There are two other types of process inheriting from :class:`~physioblocks.simulation.process.AbstractProcess`
 
-* :class:`~physioblocks.simulation.runtime.AbstractSimulationProcess`: process that has access to its **parent simulation**.
-  The simulation parameters is initialized by the simulation when it runs all processes.
+* :class:`~physioblocks.simulation.base.AbstractSimulationProcess`: process that has access to its **parent simulation model factory**.
+  The ``model_factory`` parameters is initialized by the parent simulation when it runs all processes.
   An example of implementation is the :class:`~physioblocks.library.processes.espvr_edpvr_process.EspvrEdpvrProcess`.
 * :class:`~physioblocks.simulation.process.AbstractPlotProcess`: process that has ``plot_name`` and ``folder_path`` parameters.
   The parameters are initialized to the **process name and the simulation folder path** respectively before launching the plot processes phase.
   Therefore, users do not have to set them in the configuration.
-  The :class:`~physioblocks.library.processes.plot_processes.PlotProcess` and :class:`~physioblocks.library.processes.plot_processes.SubplotProcess` are already implemented in the library and cover most of the needs for plot processes.
+  The :class:`~physioblocks.library.processes.plot_processes.SubplotProcess` (``plot`` type) is already implemented in the library and covers most of the needs for plot processes.

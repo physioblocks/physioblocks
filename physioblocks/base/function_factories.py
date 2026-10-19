@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define factories creating functions
-"""
+"""Define factories creating functions."""
 
 from collections.abc import Callable
 from typing import TypeVar
@@ -35,14 +33,18 @@ T = TypeVar("T")
 
 
 def attribute_checker(attribute_name: str) -> Callable[[T], bool]:
-    """
-    Factory for functions checking an attribute is in a given object.
+    """Create a function that checks if an object defines an attribute.
 
-    :param attribute_name: the name of the attribute to check.
-    :type attribute_name: str
+    Parameters
+    ----------
+    attribute_name : str
+        the name of the attribute to check.
 
-    :return: the name of the attribute to check.
-    :type attribute_name: Callable[[Any], bool]
+    Returns
+    -------
+    Callable[[T], bool]
+        a function that checks the attribute is defined in an object.
+
     """
 
     def attribute_checker_func(obj: T) -> bool:

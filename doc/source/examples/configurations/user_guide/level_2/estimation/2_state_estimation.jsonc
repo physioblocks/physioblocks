@@ -1,0 +1,103 @@
+{
+    "type": "estimation_simulation",
+    "filter_type": "unscented_kalman_filter",
+    "solver": {"type": "linear_solver"},
+    "time": {
+        "type": "range",
+        "start": 0.0,
+        "length": 10.0,
+        "step_size": 0.001
+    },
+    "simulation_options": {
+        "model_noise_stdev": {
+            "A.pressure": 0.0005,
+            "B.pressure": 0.0005
+        }
+    },
+    "net": {
+        "type": "simple_circulation_net",
+        "boundaries_conditions": {
+            "C": [{
+                "type": "condition",
+                "condition_type": "pressure",
+                "condition_id": "C.pressure"
+            }],
+            "A": [{
+                "type": "condition",
+                "condition_type": "flow",
+                "condition_id": "A.flow"
+            }]
+        }
+    },
+    "state": {
+        "A.pressure": {
+            "type": "quantity",
+            "value": 0.0,
+            "magnitude": 1e5,
+            "stdev": 0.05
+        },
+        "B.pressure": {
+            "type": "quantity",
+            "value": 0.0,
+            "magnitude": 1e5,
+            "stdev": 0.05
+        }
+    },
+    "parameters": {
+        "Ca": 2.0e-10,
+        "Ra": 8.0e6,
+        "Cb": 1.7e-08,
+        "Rb": 1.0e8,
+        "C.pressure": 1.6e3,
+        "heartbeat_duration": 1.0
+    },
+    "update_functions": {
+        "A.flow": {"type": "flow_pulse_function"}
+    },
+    "data": {
+        "measurements": {
+            "type": "read_data",
+            "filepath": "simulations_results/user_guide/level_2/estimation/1_synthetic_data/synthetic_data.csv"
+        }
+    },
+    "preprocesses": {
+        "rename_measurements": {
+            "type": "rename_process",
+            "inputs": ["measurements"],
+            "outputs": ["measurements"],
+            "mapping": {"A.pressure": "measurement.A.pressure"}
+        }
+    },
+    "observer": {
+        "type": "observer",
+        "observations": {
+            "observation.A.pressure": {
+                "type": "observation",
+                "measurement": "measurement.A.pressure",
+                "operator": {
+                    "type": "watch_quantity",
+                    "evaluation_quantities": {"quantity": "A.pressure"}
+                },
+                "magnitude": 1e5,
+                "stdev": 0.1
+            }
+        }
+    },
+    "plots": {
+        "state_estimation": {
+            "type": "subplots_estimation",
+            "abscissas": "time",
+            "inputs": ["main", "measurements"],
+            "subplots": ["A.pressure", "B.pressure"],
+            // show the first cycle only
+            "layout": {
+                "xaxis1": {"range": [0.0, 1.0]},
+                "xaxis2": {"range": [0.0, 1.0]},
+                "xaxis1_title": "time (s)",
+                "xaxis2_title": "time (s)",
+                "yaxis1_title": "pressure (Pa)",
+                "yaxis2_title": "pressure (Pa)"
+            }
+        }
+    }
+}

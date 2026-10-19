@@ -147,6 +147,7 @@ def saved_config_ref(ref_config: Configuration) -> Configuration:
         ModelComponentB: MODEL_B_TYPE_ID,
     },
 )
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_get_block_config(
     saved_config_ref: Configuration, ref_block_desc: BlockDescription
 ):

@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Declare a generic **Solver** class and solver implementations"""
+"""Declare a generic solver class and solver implementations."""
 
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from physioblocks.computing.assembling import EqSystem
+from physioblocks.computing.quantities import QuantitiesRegistry
 from physioblocks.registers.type_register import register_type
-from physioblocks.simulation.state import State
 from physioblocks.utils.exceptions_utils import log_exception
 
 _logger = logging.getLogger(__name__)
@@ -45,33 +45,41 @@ _logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Solution:
-    """
-    Represent the solution return by a solver.
+    """Represent the solution returned by a solver.
+
+    Parameters
+    ----------
+    x : NDArray[np.float64]
+        the actual solution
+    converged : bool
+        get if the solver converged.
+
     """
 
     x: NDArray[np.float64]
-    """the actual solution"""
 
     converged: bool
-    """get if the solver converged."""
 
 
 class ConvergenceError(Exception):
-    """
-    Error raised when the solver did not converged.
-    """
+    """Error raised when the solver did not converge."""
 
 
 class AbstractSolver(ABC):
-    """
-    Base class for solvers.
+    """Base class for solvers.
+
+    Attributes
+    ----------
+    iteration_max : int
+        the solver maximum allowed number of iterations. Default is 10.
+    tolerance : float
+        the solver tolerance. Default is 1e-9.
+
     """
 
     iteration_max: int
-    """the solver maximum allowed number of iterations"""
 
     tolerance: float
-    """the solver tolerance"""
 
     def __init__(
         self,
@@ -82,12 +90,21 @@ class AbstractSolver(ABC):
         self.iteration_max = iteration_max
 
     @abstractmethod
-    def solve(self, state: State, system: EqSystem) -> Solution:
-        """
-        Child classes have to override this method
+    def solve(self, state: QuantitiesRegistry, system: EqSystem) -> Solution:
+        """Child classes have to override this method.
 
-        :return: the solution of the solver
-        :rtype: _Array
+        Parameters
+        ----------
+        state : QuantitiesRegistry
+            the state holding the system variables
+        system : EqSystem
+            the equation system to solve
+
+        Returns
+        -------
+        Solution
+            the solution of the solver
+
         """
 
 
@@ -96,22 +113,40 @@ LINEAR_SOLVER = "linear_solver"
 
 @register_type(LINEAR_SOLVER)
 class LinearSolver(AbstractSolver):
-    """
-    Implementation of the :class:`~.AbstractSolver` class for linear problems.
+    """Implementation of the :class:`~.AbstractSolver` class for linear problems.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "linear_solver"
+        }
+
     """
 
-    def solve(self, state: State, system: EqSystem) -> Solution:
-        """
-        Solve the equation system directly
+    def solve(self, state: QuantitiesRegistry, system: EqSystem) -> Solution:
+        """Solve the equation system directly.
 
-        :return: the solution
-        :rtype: Solution
+        Parameters
+        ----------
+        state : QuantitiesRegistry
+            the state holding the system variables
+        system : EqSystem
+            the equation system to solve
+
+        Returns
+        -------
+        Solution
+            the solution
+
         """
         res = system.compute_residual()
         grad = system.compute_gradient()
 
         xn = np.linalg.solve(grad, res)
-        x = state.state_vector - xn
+        x = state.vector - xn
 
         return Solution(x, True)
 
@@ -122,8 +157,22 @@ NEWTON_SOLVER_TYPE_ID = "newton_solver"
 
 @register_type(NEWTON_SOLVER_TYPE_ID)
 class NewtonSolver(AbstractSolver):
-    """
-    Implementation of the :class:`~.AbstractSolver` class using a **Newton method**.
+    """Newton method solver implementation.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "newton_solver",
+            "tolerance": "<float>",   // Tolerance of the stop criteria, relative
+                                      // to each variable magnitude
+                                      // (optional, default: 1e-9)
+            "iteration_max": "<int>"  // Maximum number of iterations
+                                      // (optional, default: 10)
+        }
+
     """
 
     def _compute_residual_and_gradient(
@@ -135,13 +184,13 @@ class NewtonSolver(AbstractSolver):
 
     def _compute_new_state(
         self,
-        state: State,
+        state: QuantitiesRegistry,
         res: NDArray[np.float64],
         grad: NDArray[np.float64],
         state_mag: NDArray[np.float64],
     ) -> NDArray[np.float64]:
         res_grad_sol = np.linalg.solve(grad, res)
-        x = state.state_vector - res_grad_sol * state_mag
+        x = state.vector - res_grad_sol * state_mag
         return x
 
     def _compute_res_grad_mag(
@@ -168,29 +217,37 @@ class NewtonSolver(AbstractSolver):
         grad_rescaled = gradient * grad_mag_inv
         return res_rescaled, grad_rescaled
 
-    def solve(self, state: State, system: EqSystem) -> Solution:
-        """
-        Solve the equation system using the Newton method.
+    def solve(self, state: QuantitiesRegistry, system: EqSystem) -> Solution:
+        """Solve the equation system using the Newton method.
 
-        :return: the solution
-        :rtype: Solution
-        """
+        Parameters
+        ----------
+        state : QuantitiesRegistry
+            the state holding the system variables
+        system : EqSystem
+            the equation system to solve
 
+        Returns
+        -------
+        Solution
+            the solution
+
+        """
         with np.errstate(all="raise"):
             try:
                 i = 0
                 # initialize residual and magnitude
-                res = np.ones(state.state_vector.shape)
+                res = np.ones(state.vector.shape)
 
-                # step 0 outside ou the loop to compute the residual and gradient
+                # step 0 outside of the loop to compute the residual and gradient
                 # magnitude
                 res, grad = self._compute_residual_and_gradient(system)
                 res_mag_inv, grad_mag_inv = self._compute_res_grad_mag(
-                    grad, state.state_magnitudes
+                    grad, state.magnitudes_vector
                 )
                 res, grad = self._rescale_res_grad(res, res_mag_inv, grad, grad_mag_inv)
-                x = self._compute_new_state(state, res, grad, state.state_magnitudes)
-                state.update_state_vector(x)
+                x = self._compute_new_state(state, res, grad, state.magnitudes_vector)
+                state.update_vector(x)
 
                 # Begin loop at iteration 1 (0 already done)
                 i = 1
@@ -203,15 +260,15 @@ class NewtonSolver(AbstractSolver):
                         res, res_mag_inv, grad, grad_mag_inv
                     )
                     x = self._compute_new_state(
-                        state, res, grad, state.state_magnitudes
+                        state, res, grad, state.magnitudes_vector
                     )
-                    state.update_state_vector(x)
+                    state.update_vector(x)
                     i += 1
 
                 sol = Solution(
-                    state.state_vector,
+                    state.vector,
                     (
-                        bool(np.linalg.norm(res) <= self.tolerance)
+                        bool(np.linalg.norm(res, ord=np.inf) <= self.tolerance)
                         and (True in np.isnan(x) or True in np.isinf(x)) is False
                     ),
                 )

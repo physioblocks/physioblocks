@@ -24,12 +24,11 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from unittest.mock import Mock, patch
 
 import pytest
 
 from physioblocks.computing.quantities import Quantity
-from physioblocks.library.functions.watchers import SumBlocksQuantity, WatchQuantity
+from physioblocks.library.functions.watchers import WatchQuantity
 
 
 @pytest.fixture
@@ -38,16 +37,5 @@ def scalar_qty() -> Quantity:
 
 
 def test_eval_watch_quantity(scalar_qty: Quantity):
-    func = WatchQuantity(scalar_qty)
-    assert func.eval() == pytest.approx(0.1)
-
-
-@patch("physioblocks.computing.quantities.Quantity")
-@patch("physioblocks.description.blocks.Block")
-def test_eval_sum_blocks_quantity(mock_block: Mock, mock_qty: Mock):
-    mock_qty.current = 0.1
-    mock_block.scalar = mock_qty
-
-    block_list = [mock_block, mock_block, mock_block]
-    func = SumBlocksQuantity("scalar", block_list)
-    assert func.eval() == pytest.approx(0.3)
+    func = WatchQuantity()
+    assert func.eval(scalar_qty.current) == pytest.approx(0.1)

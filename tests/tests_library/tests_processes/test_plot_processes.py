@@ -25,12 +25,10 @@
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
 
-from pathlib import Path
-
 import pandas as pd
 import pytest
 
-from physioblocks.library.processes.plot_processes import PlotProcess, SubplotProcess
+from physioblocks.library.processes.plot_processes import SubplotProcess
 
 
 @pytest.fixture
@@ -55,129 +53,17 @@ def sample_dataframe_2():
     )
 
 
-class TestPlotProcess:
-    def test_init_with_all_parameters(self):
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure", "flow"],
-            layout={"title": "Test Plot"},
-            file_format="html",
-            inputs=["main"],
-            outputs=["plot"],
-            folder_path=Path("/tmp"),
-            plot_name="test",
-        )
-        assert process.abscissas == "time"
-        assert process.ordinates == ["pressure", "flow"]
-        assert process.layout == {"title": "Test Plot"}
-        assert process.file_format == "html"
-
-    def test_init_with_default_parameters(self):
-        process = PlotProcess(abscissas="time")
-        assert process.abscissas == "time"
-        assert process.ordinates == []
-        assert process.layout == {}
-        assert process.file_format == "html"
-
-    def test_run_with_single_dataframe(self, sample_dataframe_1, tmp_path):
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure", "flow"],
-            folder_path=tmp_path,
-            plot_name="test",
-        )
-
-        result = process.run(sample_dataframe_1)
-
-        assert len(result) == 1
-        pd.testing.assert_frame_equal(result[0], sample_dataframe_1)
-
-        plot_file = tmp_path / "test.html"
-        assert plot_file.exists() is True
-
-    def test_run_with_multiple_dataframes(
-        self, sample_dataframe_1, sample_dataframe_2, tmp_path
-    ):
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure", "flow"],
-            folder_path=tmp_path,
-            plot_name="test",
-        )
-
-        result = process.run(sample_dataframe_1, sample_dataframe_2)
-
-        assert len(result) == 2
-        pd.testing.assert_frame_equal(result[0], sample_dataframe_1)
-        pd.testing.assert_frame_equal(result[1], sample_dataframe_2)
-
-        plot_file = tmp_path / "test.html"
-        assert plot_file.exists() is True
-
-    def test_run_with_missing_abscissa(self, tmp_path, sample_dataframe_1):
-        sample_dataframe_1.pop("time")
-
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure", "flow"],
-            folder_path=tmp_path,
-            plot_name="test",
-        )
-
-        result = process.run(sample_dataframe_1)
-
-        assert len(result) == 1
-        pd.testing.assert_frame_equal(result[0], sample_dataframe_1)
-
-        plot_file = tmp_path / "test.html"
-        assert plot_file.exists() is False
-
-    def test_run_with_json_format(self, sample_dataframe_1, tmp_path):
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure"],
-            file_format="json",
-            folder_path=tmp_path,
-            plot_name="test",
-        )
-
-        result = process.run(sample_dataframe_1)
-
-        assert len(result) == 1
-        pd.testing.assert_frame_equal(result[0], sample_dataframe_1)
-
-        plot_file = tmp_path / "test.json"
-        assert plot_file.exists() is True
-
-    def test_run_with_png_format(self, sample_dataframe_1, tmp_path):
-        process = PlotProcess(
-            abscissas="time",
-            ordinates=["pressure"],
-            file_format="png",
-            folder_path=tmp_path,
-            plot_name="test",
-        )
-
-        result = process.run(sample_dataframe_1)
-
-        assert len(result) == 1
-        pd.testing.assert_frame_equal(result[0], sample_dataframe_1)
-
-        plot_file = tmp_path / "test.png"
-        assert plot_file.exists() is False
-
-
 class TestSubplotProcess:
     def test_init_with_all_parameters(self):
         process = SubplotProcess(
             abscissas="time",
-            ordinates=["pressure", "flow"],
+            subplots=["pressure", "flow"],
             layout={"title": "Test Subplot"},
             file_format="html",
             rows_height=400.0,
         )
         assert process.abscissas == "time"
-        assert process.ordinates == ["pressure", "flow"]
+        assert process.subplots == ["pressure", "flow"]
         assert process.layout == {"title": "Test Subplot"}
         assert process.file_format == "html"
         assert process.rows_height == 400.0
@@ -185,7 +71,7 @@ class TestSubplotProcess:
     def test_init_with_default_parameters(self):
         process = SubplotProcess(abscissas="time")
         assert process.abscissas == "time"
-        assert process.ordinates == []
+        assert process.subplots == []
         assert process.layout == {}
         assert process.file_format == "html"
         assert process.rows_height == 300.0
@@ -193,7 +79,7 @@ class TestSubplotProcess:
     def test_run_with_single_dataframe(self, sample_dataframe_1, tmp_path):
         process = SubplotProcess(
             abscissas="time",
-            ordinates=["pressure", "flow"],
+            subplots=["pressure", "flow"],
             folder_path=tmp_path,
             plot_name="test",
         )
@@ -211,7 +97,7 @@ class TestSubplotProcess:
     ):
         process = SubplotProcess(
             abscissas="time",
-            ordinates=["pressure", "flow"],
+            subplots=["pressure", "flow"],
             folder_path=tmp_path,
             plot_name="test",
         )
@@ -230,7 +116,7 @@ class TestSubplotProcess:
 
         process = SubplotProcess(
             abscissas="time",
-            ordinates=["pressure", "flow"],
+            subplots=["pressure", "flow"],
             folder_path=tmp_path,
             plot_name="test",
         )

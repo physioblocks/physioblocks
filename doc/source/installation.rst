@@ -33,13 +33,14 @@ Prerequisites
 
 PhysioBlocks only needs a recent python version installed.
 
-Supported python version:
-   * 3.10 to 3.14
+Supported python versions:
+
+* 3.10 to 3.14
 
 .. note::
 
    We recommend using a python virtual environment to install PhysioBlocks.
-   You can find more informations about python virtual environment in the documentation : https://docs.python.org/3/library/venv.html
+   You can find more information about python virtual environment in the documentation: https://docs.python.org/3/library/venv.html
 
 Here are the instructions to create a virtual environment:
 

@@ -26,107 +26,160 @@
 
 
 from dataclasses import dataclass
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from pandas import DataFrame
 
-from physioblocks.computing.models import Block
+from physioblocks.computing.models import (
+    Block,
+    declares_flux,
+    declares_internal_equation,
+    declares_saved_quantity,
+)
 from physioblocks.computing.quantities import Quantity
 from physioblocks.description.blocks import BlockDescription
+from physioblocks.description.nets import Net
+from physioblocks.library.blocks.cavity import CAVITY_VOLUME_LOCAL_ID
 from physioblocks.library.processes.espvr_edpvr_process import EspvrEdpvrProcess
-from physioblocks.simulation.runtime import StaticSimulation
+from physioblocks.simulation.base import (
+    QuantityInit,
+    SimulationModelFactory,
+    SimulationRange,
+)
+from physioblocks.simulation.solvers import ConvergenceError
 
 
 @dataclass
 class SimpleCavity(Block):
     displacement: Quantity[np.float64]
-    parameter: Quantity[np.float64]
+    pressure: Quantity[np.float64]
+    internal_variable: Quantity[np.float64]
+
+    @declares_flux(0, "pressure")
+    def compute_flux(self):
+        return self.displacement.current - self.pressure.new
+
+    @compute_flux.partial_derivative("pressure")
+    def dflux_dpressure(self):
+        return -1.0
+
+    @declares_internal_equation("internal_variable")
+    def compute_internal_variable(self):
+        return self.displacement.current - self.internal_variable.new
+
+    @compute_internal_variable.partial_derivative("internal_variable")
+    def dinternal_variable_dinternal_variable(self):
+        return -1.0
+
+    @declares_saved_quantity(CAVITY_VOLUME_LOCAL_ID)
+    def compute_volume(self):
+        return self.displacement.current
 
 
 @pytest.fixture
 def simple_block_description():
     return BlockDescription(
-        "cavity", SimpleCavity, "Any", {"displacement": "cavity.displacement"}
+        "cavity", SimpleCavity, "flow", alternative_types={"cavity": SimpleCavity}
     )
 
 
-class TestEspvrEdpvrProcess:
-    def test_init_with_all_parameters(self):
-        process = EspvrEdpvrProcess(
-            alternative_cavity_id="cavity",
-            displacement_id="displacement",
-            displacement_min=0.0,
-            displacement_max=1.0,
-            displacement_step=0.1,
-        )
-        assert process.alternative_cavity_id == "cavity"
-        assert process.displacement_id == "displacement"
-        assert process.displacement_min == 0.0
-        assert process.displacement_max == 1.0
-        assert process.displacement_step == 0.1
+@pytest.fixture
+def ref_flux_dof_type_register():
+    return MagicMock(
+        flux_dof_couples={"flow": "pressure"},
+        dof_flux_couples={"pressure": "flow"},
+    )
 
-    def test_run_without_parent_simulation(self):
-        process = EspvrEdpvrProcess(
-            alternative_cavity_id="cavity",
-            displacement_id="displacement",
-            displacement_min=0.0,
-            displacement_max=1.0,
-            displacement_step=0.1,
-        )
+
+@pytest.fixture
+def simple_net(simple_block_description: BlockDescription, ref_flux_dof_type_register):
+    net = Net(ref_flux_dof_type_register)
+    net.add_node("cavity_node")
+    net.add_block("cavity", simple_block_description, {0: "cavity_node"})
+    return net
+
+
+@pytest.fixture
+def displacement_range():
+    return SimulationRange(start=0.1, length=0.2, step_size=0.1)
+
+
+@dataclass
+class DoNotConvergeCavity(Block):
+    displacement: Quantity[np.float64]
+    internal_variable: Quantity[np.float64]
+
+    @declares_internal_equation("internal_variable")
+    def compute_internal_variable(self):
+        return self.displacement.current + self.internal_variable.new**2
+
+    @compute_internal_variable.partial_derivative("internal_variable")
+    def dinternal_variable_dinternal_variable(self):
+        return 2 * self.internal_variable.new
+
+
+@pytest.fixture
+def do_not_converge_net(ref_flux_dof_type_register):
+    net = Net(ref_flux_dof_type_register)
+    block_desc = BlockDescription(
+        "cavity",
+        DoNotConvergeCavity,
+        "Any",
+        alternative_types={"cavity": DoNotConvergeCavity},
+    )
+    net.add_block("cavity", block_desc, {})
+    return net
+
+
+class TestEspvrEdpvrProcess:
+    def test_run_without_parent_simulation(self, displacement_range):
+        process = EspvrEdpvrProcess("cavity", "displacement", displacement_range)
         with pytest.raises(AttributeError):
             process.run()
 
-    def test_run_with_invalid_displacement_id(self, simple_block_description):
-        process = EspvrEdpvrProcess(
-            alternative_cavity_id="cavity",
-            displacement_id="invalid_displacement",
-            displacement_min=0.0,
-            displacement_max=1.0,
-            displacement_step=0.1,
+    def test_run(self, simple_net: Net, displacement_range: SimulationRange):
+        factory = SimulationModelFactory(
+            net=simple_net,
+            state={
+                "cavity.pressure": QuantityInit(),
+                "cavity.internal_variable": QuantityInit(),
+            },
+            parameters={"cavity.displacement": 0.0},
         )
+        process = EspvrEdpvrProcess("cavity", "cavity.displacement", displacement_range)
+        process.model_factory = factory
+        results = process.run()
 
-        altenative_net_mock = MagicMock()
-        altenative_net_mock.blocks = {"cavity": simple_block_description}
-        mock_simulation = MagicMock()
-        mock_simulation.factory.net.get_alternative_net = MagicMock(
-            return_value=altenative_net_mock
+        assert len(results) == 1
+        assert results[0].columns.size == 4
+        assert "cavity.displacement" in results[0]
+        assert results[0]["cavity.displacement"].to_list() == pytest.approx(
+            [0.1, 0.2, 0.3]
         )
-        process.parent_simulation = mock_simulation
-
-        with pytest.raises(KeyError, match="not found in simulation quantities"):
-            process.run()
-
-    def test_run_with_valid_parameters(self, simple_block_description):
-        process = EspvrEdpvrProcess(
-            alternative_cavity_id="cavity",
-            displacement_id="cavity.displacement",
-            displacement_min=0.0,
-            displacement_max=1.0,
-            displacement_step=0.1,
+        assert "cavity_node.pressure" in results[0]
+        assert results[0]["cavity_node.pressure"].to_list() == pytest.approx(
+            [0.1, 0.2, 0.3]
         )
-        altenative_net_mock = MagicMock()
-        altenative_net_mock.blocks = {"cavity": simple_block_description}
-        mock_simulation = MagicMock()
-        mock_simulation.factory.net.get_alternative_net = MagicMock(
-            return_value=altenative_net_mock
+        assert "cavity.internal_variable" in results[0]
+        assert results[0]["cavity.internal_variable"].to_list() == pytest.approx(
+            [0.1, 0.2, 0.3]
         )
-        mock_simulation.quantities = {"cavity.parameter": Quantity(5.0)}
-        process.parent_simulation = mock_simulation
+        assert "cavity.volume" in results[0]
+        assert results[0]["cavity.volume"].to_list() == pytest.approx([0.1, 0.2, 0.3])
 
-        sim_result = DataFrame({"pressure": [10.0], "volume": [20.0]})
+    def test_run_convergence_error(
+        self, do_not_converge_net: Net, displacement_range: SimulationRange
+    ):
+        factory = SimulationModelFactory(
+            net=do_not_converge_net,
+            state={"cavity.internal_variable": QuantityInit()},
+            parameters={"cavity.displacement": 0.0},
+        )
+        process = EspvrEdpvrProcess("cavity", "cavity.displacement", displacement_range)
+        process.model_factory = factory
 
-        with patch.multiple(
-            StaticSimulation,
-            __abstractmethods__=set(),
-            run=MagicMock(return_value={"espvr_edpvr": sim_result}),
+        with pytest.raises(
+            ConvergenceError, match="did not converge" and "displacement: 0.1"
         ):
-            result = process.run()
-
-        assert len(result) == 1
-        assert isinstance(result[0], DataFrame)
-
-        assert "cavity.displacement" in result[0].columns
-        assert "pressure" in result[0].columns
-        assert "volume" in result[0].columns
+            process.run()

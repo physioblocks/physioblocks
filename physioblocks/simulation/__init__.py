@@ -24,25 +24,19 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define methods to setup a simulation and run it.
-"""
+"""Setup and run simulations."""
 
 __all__ = [
     "AbstractFunction",
     "AbstractSimulation",
     "ForwardSimulation",
-    "SimulationError",
     "SimulationFactory",
-    "State",
     "Time",
 ]
-from physioblocks.simulation.functions import AbstractFunction
-from physioblocks.simulation.runtime import (
+from physioblocks.simulation.base import (
     AbstractSimulation,
-    ForwardSimulation,
-    SimulationError,
+    SimulationFactory,
 )
-from physioblocks.simulation.setup import SimulationFactory
-from physioblocks.simulation.state import State
+from physioblocks.simulation.forward import ForwardSimulation
+from physioblocks.simulation.functions import AbstractFunction
 from physioblocks.simulation.time_manager import Time

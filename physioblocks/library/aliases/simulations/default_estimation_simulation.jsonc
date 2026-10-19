@@ -1,0 +1,25 @@
+{
+    "type": "estimation_simulation",
+    "simulation_options": {
+        "min_step": 6.25e-5
+    },
+    "time": {"type": "default_time"},
+    "filter": {
+        "type": "unscented_kalman_filter"
+    },
+    "solver": {
+        "type": "newton_method_solver"
+    },
+    "plots": {
+        "main_plot": {
+            "type": "plot",
+            "inputs": ["main"],
+            "abscissas": "time"
+        }
+    },
+    "parameters":
+    {
+        "time.start": 0.0,
+        "time.step_size": 0.001
+    }
+}

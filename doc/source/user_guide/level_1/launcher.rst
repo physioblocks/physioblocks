@@ -32,7 +32,7 @@ To run a simulation from a **Configuration File**, the **Launcher Module** is th
 Functionalities
 ---------------
 
-The **Launcher** allows to :
+The **Launcher** allows to:
 
 * Run a simulation based on a configuration file
 * Save results to ``.csv`` or ``.parquet``
@@ -63,7 +63,7 @@ The ``-v`` option will produce the output:
 
 .. code::
 
-    INFO:root:Launcher directory created at $MYPATH/PhysioBlocksLauncher.
+    INFO:root:Launcher directory created at $MY_PATH/PhysioBlocksLauncher.
 
 .. note::
 

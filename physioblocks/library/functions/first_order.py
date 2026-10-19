@@ -23,6 +23,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare first order functions."""
 
 from __future__ import annotations
 
@@ -40,22 +41,46 @@ FIRST_ORDER_NAME = "first_order"
 
 @register_type(FIRST_ORDER_NAME)
 class FirstOrder(AbstractFunction):
-    """
-    Defines an evaluation method to get the value of a sum of first order functions
-    with heavyside for the given time.
+    """Evaluate the sum of first order functions with Heaviside steps.
+
+    ``times_start``, ``amplitudes`` and ``time_constants`` must have the same length.
+
+    Attributes
+    ----------
+    times_start : NDArray[np.float64]
+        Start times of first order components
+    amplitudes : NDArray[np.float64]
+        Amplitudes of first order components
+    time_constants : NDArray[np.float64]
+        Time constants of first order components
+    baseline_value : np.float64
+        Baseline value of the function
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "first_order",
+            "times_start": ["<float>"],     // Start times of the components
+            "amplitudes": ["<float>"],      // Amplitudes of the components
+            "time_constants": ["<float>"],  // Time constants of the components
+            "baseline_value": "<float>",    // Baseline value of the function
+            "evaluation_quantities": {
+                "time": "<str>"             // Global name of the time quantity
+            }
+        }
+
     """
 
     times_start: NDArray[np.float64]
-    """Start times of first order components"""
 
     amplitudes: NDArray[np.float64]
-    """Amplitudes of first order components"""
 
     time_constants: NDArray[np.float64]
-    """Time constants of first order components"""
 
     baseline_value: np.float64
-    """Baseline value of the function"""
 
     def __init__(
         self,
@@ -90,16 +115,19 @@ class FirstOrder(AbstractFunction):
         self.baseline_value = baseline_value
 
     def eval(self, time: np.float64) -> Any:
+        """Evaluate function value at the given time.
+
+        Parameters
+        ----------
+        time : np.float64
+            evaluation time
+
+        Returns
+        -------
+        np.float64
+            the function value
+
         """
-        Evaluate function value at the given time.
-
-        :param time: evaluation  time
-        :type time: np.float64
-
-        :return: the function value
-        :rtype: np.float64
-        """
-
         mask_activated = self.times_start <= time
         amplitudes_activ = self.amplitudes[mask_activated]
         time_cst_activ = self.time_constants[mask_activated]

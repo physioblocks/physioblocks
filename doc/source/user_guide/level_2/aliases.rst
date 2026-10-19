@@ -43,10 +43,10 @@ Create a configuration alias
 Any **configuration item** can be defined in its own JSON file and will be reusable in **any other configuration**.
 To create a configuration alias for any configuration item, you have to:
 
-    1. Write a JSON configuration file describing the item.
-    2. Save the file in the ``user_aliases`` folder of your configured ``launcher_directory`` (see :ref:`configure launcher section <user_guide_level_1_launcher_configuration>`).
- 
-Every alias in the folder (and in sub-folders recursivly) will be loaded when you launch a simulation from this ``launcher_directory``.
+1. Write a JSON configuration file describing the item.
+2. Save the file in the ``user_aliases`` folder of your configured ``launcher_directory`` (see :ref:`configure launcher section <user_guide_level_1_launcher_configuration>`).
+
+Every alias in the folder (and in sub-folders recursively) will be loaded when you launch a simulation from this ``launcher_directory``.
 
 .. warning:: 
 
@@ -71,19 +71,19 @@ Use re-usable configuration items
 ---------------------------------
 
 You already used aliased configuration items in the net description.
-``rc_block`` configuration item types are aliases for generic :class:`~physioblocks.description.BlockDescription` where:
+``rc_block`` configuration item types are aliases for generic :class:`~physioblocks.description.blocks.BlockDescription` where:
     
-    * the ``model_type`` is set to ``rc_block``.
-    * the ``rc_block`` time parameter is renamed to match the global simulation time name.
+* the ``model_type`` is set to ``rc_block``.
+* the ``rc_block`` time parameter is renamed to match the global simulation time name.
 
-You can find this alias and all other **provided aliases descriptions** in the :ref:`aliases section<library_aliases>` of the library.
+The provided **aliases descriptions**  are in the :class:`aliases section <physioblocks.library.blocks.capacitances.RCBlock>` of the aliased object.
 
 Now let's use another provided alias for to set the simulation type.
 
 Use an alias for the simulation type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the :ref:`simulation aliases section<library_aliases_simulation>` of the library, you will find the ``default_forward_simulation`` alias.
+In the :mod:`simulation aliases section <physioblocks.library.aliases.simulations>` of the library, you will find the ``default_forward_simulation`` alias.
 This alias set simulation type to ``forward_simulation`` and sets other default parameters.
 
 Let's use it in our configuration file.
@@ -96,8 +96,8 @@ Let's use it in our configuration file.
 
 Using the alias in our configuration file sets the:
 
-    * **Solver:** the default solver use a **Newton method**. 
-    * **Time:** we use a default time description that sets the step size and the minimum step size.
+* **Solver:** the default solver use a **Newton method**. 
+* **Time:** we use a default time description that sets the step size.
 
 Consequently, if we want to match our previous configuration, we still have to set some parameters in the simulation configuration.
 
@@ -110,7 +110,7 @@ Consequently, if we want to match our previous configuration, we still have to s
         },
         "time": {
             "start": 0.0,
-            "duration": 30.0
+            "length": 30.0
         }
     }
 
@@ -171,7 +171,7 @@ Then, you can use the in the simulation configuration and update the boundaries:
 
 .. code:: json
 
-    net: {
+    "net": {
         "type": "simple_circulation_net_example", // we use the alias
         "boundaries_conditions": {
             "C": [
@@ -206,10 +206,7 @@ At this point, the full configuration file should look like this:
         },
         "time": {
             "start": 0.0,
-            "duration": 30.0
-        },
-        "flux_dof_definitions": {
-            "flow": "pressure"
+            "length": 30.0
         },
         "net": {
             "type": "simple_circulation_net_example",
@@ -230,36 +227,49 @@ At this point, the full configuration file should look like this:
                 ]
             }
         },
-        "variables_initialization": {
-            "A.pressure":8e3,
-            "B.pressure":8e3
-        },
-        "variables_magnitudes": {
-            "A.pressure":1e5,
-            "B.pressure":1e5
+        "state": {
+            "A.pressure": {
+                "type": "quantity",
+                "value": 8e3,
+                "magnitude": 1e5
+            },
+            "B.pressure": {
+                "type": "quantity",
+                "value": 8e3,
+                "magnitude": 1e5
+            }
         },
         "parameters": {
             "Ca": 2.0e-10,
             "Ra": 8.0e6,
-            "Cb": 1.7e-08,     
+            "Cb": 1.7e-08,
             "Rb": 1.0e8,
             "C.pressure": 1.6e3,
-            "sin_period": 0.80,
+            "sin_period": 0.80
+        },
+        "update_functions": {
             "A.flow": {
                 "type": "sinus_offset",
+                "evaluation_quantities": {"time": "time"},
                 "offset_value": 1.0e-3,
                 "amplitude": 1.0e-3,
                 "frequency": {
-                        "type": "product",
-                        "factors": [1.0],
-                        "inverses": ["sin_period"]
-                    },
+                    "type": "product",
+                    "factors": [1.0],
+                    "inverses": ["sin_period"]
+                },
                 "phase_shift": 0.0
             }
         },
         "output_functions":{
-            "A.flow": {"type": "watch_quantity", "quantity": "A.flow"},
-            "Ca.volume_stored": {"type": "product", "factors": ["Ca", "A.pressure"]}
+            "A.flow": {
+                "type": "watch_quantity",
+                "evaluation_quantities": {"quantity": "A.flow"}},
+            "Ca.volume_stored": {
+                "type": "product",
+                "factors": ["Ca", "A.pressure"],
+                "evaluation_quantities": {"A.pressure": "A.pressure"}
+            }
         }
     }
 
@@ -278,11 +288,11 @@ Let's name it ``simple_circulation_net_example_forward_simulation`` and use it i
     {
         "type": "simple_circulation_net_example_forward_simulation",
         "time": {
-            "duration": 30.0
+            "length": 30.0
         },
-        "variables_initialization": {
-            "A.pressure":8e3,
-            "B.pressure":8e3
+        "state": {
+            "A.pressure": {"value": 8e3},
+            "B.pressure": {"value": 8e3}
         },
         "parameters": {
             "Ra": 8.0e6,
@@ -294,7 +304,7 @@ Let's name it ``simple_circulation_net_example_forward_simulation`` and use it i
 Here we have the same simulation configuration as before using the alias.
 
 It is up to you to determine which parameters of the configuration should be set by writing them in the higher configuration file.
-Here we will only ask for duration, input pressures, resistances and the input flow.
+Here we will only ask for duration, pressures and resistances.
 Other parameters are set from the alias.
 
 .. note::
@@ -303,8 +313,6 @@ Other parameters are set from the alias.
 
 Finally, you can set an alias for a simulation configuration an derive a lot of simple small configuration files from it.
 Composing aliases you have a lot of possibilities to define configuration items and re-use them.
-If you look into the ``physioblocks/library/aliases`` folder, you will find more examples, documented in the :ref:`alias section <library_aliases>` of the library.
+If you look into the ``physioblocks/library/aliases`` folder, you will find more examples and you can find their documentation in the **alias section** of the objects in the documentation.
 
-This concludes level 2 user guide documentation.
-The next chapter is dedicated to Level 3 use cases. 
-We will see how to write blocks and model components in that can be used with PhysioBlocks.
+Now that we know how to set aliases in the simulation configuration, let's see how to configure a new simulation type : the **Estimation Simulation**.

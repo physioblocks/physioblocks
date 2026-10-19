@@ -50,6 +50,7 @@ def ref_condition() -> BoundaryCondition:
     return BoundaryCondition(CONDITION_TYPE, CONDITION_ID)
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestBoundaryConditionConfiguration:
     def test_save_boundary_condition_config(
         self, ref_config: Configuration, ref_condition: BoundaryCondition

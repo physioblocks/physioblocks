@@ -24,14 +24,12 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines classes and functions to turn objects into a generic configuration
-that can easily be saved or loaded.
-"""
+"""Defines classes and functions to load and save objects to a generic configuration."""
 
 __all__ = ["Configuration", "load", "save", "unwrap_aliases"]
 import physioblocks.configuration.computing
 import physioblocks.configuration.description
+import physioblocks.configuration.io
 import physioblocks.configuration.simulation  # noqa: F401
 from physioblocks.configuration.aliases import unwrap_aliases
 from physioblocks.configuration.base import Configuration

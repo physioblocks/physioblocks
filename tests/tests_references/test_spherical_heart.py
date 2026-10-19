@@ -24,119 +24,116 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from copy import copy
+import pytest
 
-import pandas
-
-from physioblocks.configuration.aliases import unwrap_aliases
-from physioblocks.configuration.functions import load
-from physioblocks.io.configuration import read_json
-from physioblocks.simulation.runtime import ForwardSimulation
-from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
+from physioblocks.simulation.estimation import (
+    COVARIANCE_LABEL,
+    STDEV_MIN_LABEL,
+    STDEV_PLUS_LABEL,
+    VARIANCE_LABEL,
+)
 from physioblocks.utils.gradient_test_utils import gradient_test_from_file
 
-from .compare import results_close_to_data
-
-spherical_heart_gradient_path = (
-    "tests/tests_references/spherical_heart/spherical_heart_sim_gradient_test.json"
-)
-
-spherical_heart_path = "references/spherical_heart_sim.jsonc"
-spherical_heart_reference_path = (
-    "tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv"
-)
-spherical_heart_espvr_edpvr_reference_path = (
-    "tests/tests_references/spherical_heart/ref_spherical_heart_sim_espvr_edpvr.csv"
-)
-
-spherical_heart_respiration_path = "references/spherical_heart_respiration_sim.jsonc"
-spherical_heart_respiration_reference_path = (
-    "tests/tests_references/spherical_heart/ref_spherical_heart_respiration_sim.csv"
-)
-spherical_heart_respiration_espvr_edpvr_reference_path = (
-    "tests/tests_references/"
-    "spherical_heart/ref_spherical_heart_respiration_sim_espvr_edpvr.csv"
+from .functions import (
+    ReferenceCase,
+    ReferenceParameters,
+    get_artifact_path,
+    migration_test,
+    reference_test,
 )
 
 
 def test_spherical_heart_gradient():
-    assert gradient_test_from_file(spherical_heart_gradient_path)
-
-
-def test_spherical_heart_ref():
-    sim_config = read_json(spherical_heart_path)
-    sim_config = unwrap_aliases(sim_config)
-    sim: ForwardSimulation = load(sim_config)
-    sim.time_manager.duration = 5.0  # Shorten simulation time to avoid test too long
-    results = sim.run()
-
-    ref_df = pandas.read_csv(spherical_heart_reference_path)
-    ref_espvr_edpvr_df = pandas.read_csv(spherical_heart_espvr_edpvr_reference_path)
-
-    tol_factors = sim.state.magnitudes
-    tol_factors["active_law.activation"] = 1.0e1
-    tol_factors["valve_atrium.flux"] = 1.0e2
-    tol_factors["valve_arterial.flux"] = 1.0e2
-    tol_factors["aorta_proximal.blood_pressure"] = 1.0e2
-    tol_factors["aorta_distal.blood_pressure"] = 1.0e2
-    tol_factors["cavity.blood_pressure"] = 1.0e2
-    tol_factors["atrial.blood_pressure"] = 1.0e2
-    tol_factors["cavity.volume"] = 1.0e2
-    tol_factors["cavity.dynamics.EDPVR"] = 1.0e2
-    tol_factors["cavity.dynamics.ESPVR"] = 1.0e2
-
-    assert results_close_to_data(
-        results[sim.name].set_index(TIME_QUANTITY_ID),
-        ref_df.set_index(TIME_QUANTITY_ID),
-        1e-9,
-        tol_factors,
-        (sim.time_manager.start, sim.time_manager.start + sim.time_manager.duration),
-    )
-    assert results_close_to_data(
-        results["espvr-edpvr"].set_index("cavity.dynamics.disp"),
-        ref_espvr_edpvr_df.set_index("cavity.dynamics.disp"),
-        1e-9,
-        tol_factors,
+    assert gradient_test_from_file(
+        "tests/tests_references/spherical_heart/spherical_heart_model_gradient_test.json"
     )
 
 
-def test_spherical_heart_respiration_ref():
-    sim_config = read_json(spherical_heart_respiration_path)
-    sim_config = unwrap_aliases(sim_config)
-    # Shorten simulation time to avoid test too long
-    sim: ForwardSimulation = load(sim_config)
-    sim.time_manager.duration = 5.0
-    results = sim.run()
+@pytest.mark.parametrize(
+    "older_version_path",
+    [
+        pytest.param(
+            "tests/tests_references/spherical_heart/v1.2.0/spherical_heart_sim.jsonc",
+            id="1.2.0",
+        ),
+        pytest.param(
+            "tests/tests_references/spherical_heart/v1.2.0/spherical_heart_sim_full_configuration.jsonc",
+            id="1.2.0_full",
+        ),
+    ],
+)
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_spherical_heart_migration(older_version_path):
+    migration_test(older_version_path)
 
-    ref_df = pandas.read_csv(spherical_heart_respiration_reference_path)
-    ref_espvr_edpvr_df = pandas.read_csv(
-        spherical_heart_respiration_espvr_edpvr_reference_path
-    )
 
-    tol_factors = copy(sim.state.magnitudes)
-    tol_factors["active_law.activation"] = 1.0e1
-    tol_factors["valve_atrium.flux"] = 1.0e2
-    tol_factors["valve_arterial.flux"] = 1.0e2
-    tol_factors["aorta_proximal.blood_pressure"] = 1.0e2
-    tol_factors["aorta_distal.blood_pressure"] = 1.0e2
-    tol_factors["cavity.blood_pressure"] = 1.0e2
-    tol_factors["atrial.blood_pressure"] = 1.0e2
-    tol_factors["cavity.volume"] = 1.0e2
-    tol_factors["cavity.dynamics.EDPVR"] = 1.0e2
-    tol_factors["cavity.dynamics.ESPVR"] = 1.0e2
-    tol_factors["pleural.pressure"] = 1.0e2
+DISP_QUANTITY_ID = "cavity.dynamics.disp"
 
-    assert results_close_to_data(
-        results[sim.name].set_index(TIME_QUANTITY_ID),
-        ref_df.set_index(TIME_QUANTITY_ID),
-        1e-9,
-        tol_factors,
-        (sim.time_manager.start, sim.time_manager.start + sim.time_manager.duration),
-    )
+forward_magnitudes = {
+    "cavity.dynamics.disp": 1.0e-3,
+    "cavity.velocity_law.vel": 1.0e-2,
+    "cavity.rheology.fib_deform": 1.0e-1,
+    "cavity.rheology.active_law.active_stiffness": 1.0e5,
+    "cavity.rheology.active_law.active_energy_sqrt": 1.0e2,
+    "cavity.rheology.active_law.active_tension_discr": 1.0e4,
+    "valve_atrium.flux": 1.0e2,
+    "valve_arterial.flux": 1.0e2,
+    "cavity.blood_pressure": 1.0e2,
+    "aorta_proximal.blood_pressure": 1.0e2,
+    "aorta_distal.blood_pressure": 1.0e2,
+    "cavity.volume": 1.0e2,
+    "active_law.activation": 1.0e1,
+}
 
-    assert results_close_to_data(
-        results["espvr-edpvr"].set_index("cavity.dynamics.disp"),
-        ref_espvr_edpvr_df.set_index("cavity.dynamics.disp"),
-        1e-9,
-        tol_factors,
-    )
+estimation_magnitudes = forward_magnitudes.copy()
+estimation_magnitudes.update(
+    {
+        "circulation_aorta_distal.resistance": 1.0e8,
+        "heart_contractility": 1.0e5,
+        "cavity.velocity_law.accel": 1.0e1,
+    }
+)
+
+stdev_plus_min_magnitudes = {
+    f"{bound_label}.{field}": estimation_magnitudes.get(field, 1.0)
+    for bound_label in (STDEV_PLUS_LABEL, STDEV_MIN_LABEL)
+    for field in estimation_magnitudes
+}
+estimation_magnitudes.update(stdev_plus_min_magnitudes)
+
+FORWARD_CASE = ReferenceCase(
+    id="forward",
+    config_path="references/spherical_heart_forward_sim.jsonc",
+    references=[
+        ReferenceParameters(
+            "tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv",
+        ),
+        ReferenceParameters(
+            "tests/tests_references/spherical_heart/ref_spherical_heart_sim_espvr_edpvr.csv",
+            name="espvr-edpvr",
+            index=DISP_QUANTITY_ID,
+        ),
+    ],
+    magnitudes=forward_magnitudes,
+)
+
+ESTIMATION_CASE = ReferenceCase(
+    id="estimation",
+    config_path="references/spherical_heart_estimation_sim.jsonc",
+    references=[
+        ReferenceParameters(
+            "tests/tests_references/spherical_heart/ref_spherical_heart_estimation_sim.csv",
+            interval=(0.0, 2.0),
+            exclude_prefixes=(f"{COVARIANCE_LABEL}.", f"{VARIANCE_LABEL}."),
+        )
+    ],
+    duration=2.0,
+    magnitudes=estimation_magnitudes,
+)
+
+REFERENCE_CASES = [FORWARD_CASE, ESTIMATION_CASE]
+
+
+@pytest.mark.parametrize("case", REFERENCE_CASES, ids=lambda case: case.id)
+def test_spherical_heart_reference(case, request: pytest.FixtureRequest):
+    reference_test(case, artifact_path=get_artifact_path(request))

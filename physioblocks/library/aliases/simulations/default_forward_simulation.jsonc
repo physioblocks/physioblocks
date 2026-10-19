@@ -1,14 +1,23 @@
 {
     "type": "forward_simulation",
-    "time": {"type": "default_time"},
+    "time": {
+        "type": "default_time"},
+    "simulation_options": {
+        "min_step": 6.25e-5
+    },
     "solver": {
         "type": "newton_method_solver"
     },
     "plots": {
         "main_plot": {
-            "type": "subplot",
+            "type": "plot",
             "inputs": ["main"],
             "abscissas": "time"
         }
+    },
+    "parameters":
+    {
+        "time.start": 0.0,
+        "time.step_size": 0.001
     }
 }

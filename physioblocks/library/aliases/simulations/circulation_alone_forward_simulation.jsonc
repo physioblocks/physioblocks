@@ -1,5 +1,6 @@
 {
     "type": "default_forward_simulation",
+    "solver": {"type": "linear_solver"},
     "net": {
         "type": "circulation_alone_net",
         "boundaries_conditions": {
@@ -19,15 +20,33 @@
             ]
         }
     },
-    "variables_magnitudes": {
-        "aorta_proximal.blood_pressure":1e5,
-        "aorta_distal.blood_pressure":1e5
+    "state": {
+        "aorta_proximal.blood_pressure": {
+            "type": "quantity",
+            "value": "aorta_proximal.blood_pressure.init",
+            "magnitude": 1e5
+        },
+        "aorta_distal.blood_pressure":{
+            "type": "quantity",
+            "value": "aorta_distal.blood_pressure.init",
+            "magnitude": 1e5
+        }
     },
     "parameters": {
         "heartbeat_duration": {"type": "product", "factors": [60.0] , "inverses": ["heart_rate"]},
         "aorta_proximal.capacitance": 2.0e-10,      
+        // initialize the distal capacitance from the distal time constant and resistance (Cc = tc / Rc)
+        // Required parameters initialization is: "aorta_distal.time_constant"
+        "aorta_distal.capacitance": {
+            "type": "product",
+            "factors": ["aorta_distal.time_constant"],
+            "inverses": ["aorta_distal.resistance"]
+        }
+    },
+    "update_functions":{
         "aorta_proximal.blood_flow": {
             "type": "rescale_two_phases_function",
+            "evaluation_quantities": {"time": "time"},
             "rescaled_period": "heartbeat_duration",
             "alpha": 0.8,
             "reference_function": [
@@ -39,21 +58,12 @@
                 [0.9, "aorta_proximal.blood_flow.min"]
             ],
             "phases": [0, 0, 1, 1, 0]
-
-        },
-        // initialize the distal capacitance from the distal time constant and resistance (Cc = tc / Rc)
-        // Required parameters initialization is: "aorta_distal.time_constant"
-        "aorta_distal.capacitance": {
-            "type": "product",
-            "factors": ["aorta_distal.time_constant"],
-            "inverses": ["aorta_distal.resistance"]
         }
     },
-    "solver": {"type": "linear_solver"},
     "output_functions":{
-        "aorta_proximal.blood_flow": {"type": "watch_quantity", "quantity": "aorta_proximal.blood_flow"}
+        "aorta_proximal.blood_flow": {"type": "watch_quantity", "evaluation_quantities": {"quantity": "aorta_proximal.blood_flow"} }
     },
-    "post-processes": {
+    "postprocesses": {
         "medical_units_conversion": {
             "type": "conversion_process",
             "conversion_factors": {
@@ -63,19 +73,6 @@
             },
             "inputs": ["main"],
             "outputs": ["main"] // overwrite main simulation results
-        },
-        "compare_reference_simulation": {
-            "type": "compare_process",
-            "inputs": ["main"],
-            "outputs": ["main_error"],
-            "abscissas": "time"
-        }
-    },
-    "plots":{
-        "plot_error_main": {
-            "type": "subplot",
-            "inputs": ["main_error"],
-            "abscissas": "time"
         }
     }
 }

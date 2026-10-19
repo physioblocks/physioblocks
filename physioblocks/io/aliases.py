@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Defines methods to load aliases folders."""
+"""Define methods to load aliases folders."""
 
 import logging
 from pathlib import Path
@@ -39,26 +39,25 @@ _JSON_EXTENSIONS = [".json", ".jsonc"]
 
 
 def load_aliases(path: str) -> None:
-    """
-    Load all aliases recursively in the directory into the **Alias Register**.
+    """Load all aliases recursively in the directory into the **Alias Register**.
 
     .. warning::
 
-        The given key for each alias is its file name without extensions.
+        The given key for each alias is its file name without the path.
         It has to be unique.
 
-    :param path: the alias directory path to load.
-    :type path: Path
+    Parameters
+    ----------
+    path : str
+        the alias directory path to load.
+
+    Raises
+    ------
+    OSError
+        if the path is not an existing directory.
+
     """
     directory_path = Path(path)
-
-    if directory_path.is_dir() is False:
-        raise OSError(
-            str.format(
-                "Provided alias directory is not a folder: {0}",
-                directory_path,
-            )
-        )
 
     if directory_path.exists() is False:
         raise OSError(
@@ -68,9 +67,17 @@ def load_aliases(path: str) -> None:
             )
         )
 
+    if directory_path.is_dir() is False:
+        raise OSError(
+            str.format(
+                "Provided alias directory is not a folder: {0}",
+                directory_path,
+            )
+        )
+
     for child in directory_path.iterdir():
         if child.is_dir():
-            # recursivly load child directories
+            # recursively load child directories
             load_aliases(str(child))
         else:
             if child.suffix not in _JSON_EXTENSIONS:

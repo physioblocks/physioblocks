@@ -24,17 +24,16 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
 import physioblocks.registers.type_register as type_reg
 from physioblocks.computing.models import (
     Block,
-    BlockMetaClass,
     Expression,
-    ExpressionDefinition,
-    TermDefinition,
+    Term,
+    _BlockMetaClass,
 )
 from physioblocks.configuration import Configuration
 from physioblocks.configuration.constants import (
@@ -65,23 +64,18 @@ BLOCK_0_ID = "b0"
 
 
 @pytest.fixture
-def ref_expression():
-    return Expression(1, None)
-
-
-@pytest.fixture
 def ref_nodes():
     return {0: [FLUX_TYPE], 1: [FLUX_TYPE]}
 
 
 @pytest.fixture
-def flux_definition(ref_expression):
-    return ExpressionDefinition(ref_expression, [TermDefinition(DOF_ID, 1)])
+def flux_expression():
+    return Expression(1, None, [Term(DOF_ID, 1)])
 
 
 @pytest.fixture
-def ref_flux_expressions(flux_definition):
-    return {0: flux_definition, 1: flux_definition}
+def flux_expressions(flux_expression):
+    return {0: flux_expression, 1: flux_expression}
 
 
 @pytest.fixture
@@ -118,19 +112,21 @@ def ref_config() -> Configuration:
 
 
 @pytest.fixture
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE: DOF_TYPE},
-    _dof_types={DOF_TYPE: FLUX_TYPE},
-)
-def ref_net(ref_flux_expressions, ref_nodes) -> Net:
+def flux_dof_types_register():
+    return MagicMock(
+        flux_dof_couples={FLUX_TYPE: DOF_TYPE},
+        dof_flux_couples={DOF_TYPE: FLUX_TYPE},
+    )
+
+
+@pytest.fixture
+def ref_net(flux_dof_types_register, flux_expressions, ref_nodes) -> Net:
     with patch.multiple(
-        BlockMetaClass,
-        fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
+        _BlockMetaClass,
+        fluxes_expressions=PropertyMock(return_value=flux_expressions),
         nodes=PropertyMock(return_value=ref_nodes),
     ):
-        net = Net()
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_0_ID)
         net.add_node(NODE_1_ID)
         net.add_block(
@@ -144,12 +140,6 @@ def ref_net(ref_flux_expressions, ref_nodes) -> Net:
         return net
 
 
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE: DOF_TYPE},
-    _dof_types={DOF_TYPE: FLUX_TYPE},
-)
 @patch.object(
     type_reg,
     attribute="__type_register",
@@ -162,24 +152,25 @@ def ref_net(ref_flux_expressions, ref_nodes) -> Net:
         BoundaryCondition: BOUNDARY_CONDITION_ID,
     },
 )
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestNetConfiguration:
     def test_get_net_config(
-        self, ref_net: Net, ref_config: Configuration, ref_flux_expressions, ref_nodes
+        self, ref_net: Net, ref_config: Configuration, flux_expressions, ref_nodes
     ):
         with patch.multiple(
-            BlockMetaClass,
-            fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
+            _BlockMetaClass,
+            fluxes_expressions=PropertyMock(return_value=flux_expressions),
             nodes=PropertyMock(return_value=ref_nodes),
         ):
             net_configuration = save_net_config(ref_net)
             assert ref_config == net_configuration
 
     def test_create_net_from_config(
-        self, ref_net: Net, ref_config: Configuration, ref_nodes, ref_flux_expressions
+        self, ref_net: Net, ref_config: Configuration, ref_nodes, flux_expressions
     ):
         with patch.multiple(
-            BlockMetaClass,
-            fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
+            _BlockMetaClass,
+            fluxes_expressions=PropertyMock(return_value=flux_expressions),
             nodes=PropertyMock(return_value=ref_nodes),
         ):
             net = load_net_config(ref_config, Net)

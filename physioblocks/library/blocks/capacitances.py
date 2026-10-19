@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Module describing capacitance blocks"""
+"""Describe capacitance blocks."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -53,52 +53,103 @@ C_BLOCK_PRESSURE_ID = "pressure"
 @register_type(C_BLOCK_TYPE_ID)
 @dataclass
 class CBlock(Block):
-    r"""
-    C Block quantities and flux definitions
+    r"""C Block quantities and flux definitions.
+
+    Scheme
+    ------
 
     .. tikz:: C Block scheme
 
         \draw (0,1) to[short, -*, i=$Q$] (0,3) node[right]{$P$}
             (0,1) to[C=$C$] (0,0) node[ground]{};
 
-    **Node 1:**
+    Fluxes
+    ------
 
-       :math:`Q = - C\dot{P}`
+    *Node 1:*
 
-    **Discretisation:**
+    .. math::
+
+        Q = - C\dot{P}
+
+    Discretization
+    --------------
 
     .. math::
 
         Q^{n + \frac{1}{2}} = - C\ \frac{P^{n + 1} - P^{n}}{\Delta t^n}
 
+    Parameters
+    ----------
+    pressure : Quantity[np.float64]
+        :math:`P` the pressure
+    capacitance : Quantity[np.float64]
+        :math:`C` the capacitance
+    time : Time
+        :math:`t` the simulation time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "c_block",
+            "flux_type": "<str>",    // Type of flux exchanged by the block
+            "nodes": {"1": "<str>"}, // Net node name of the local node 1
+            "capacitance": "<str>",  // Parameter global name (optional)
+            "time": "<str>"          // Simulation time name
+        }
+
+    Aliases
+    -------
+
+    .. _alias_c_block:
+
+    **c_block**
+        Aliases :class:`~.BlockDescription`
+        (``block_description``) with ``model_type`` set to ``c_block`` and the ``time``
+        quantity bound to the global simulation ``time``.
+
+        .. code-block:: json
+
+            {
+                "type": "c_block",
+                "flux_type": "<str>",    // Type of flux exchanged by the block
+                "nodes": {"1": "<str>"}, // Net node name of the local node 1
+                "capacitance": "<str>"   // Parameter global name (optional)
+            }
+
     """
 
     pressure: Quantity[np.float64]
-    """Pressure quantity"""
 
     capacitance: Quantity[np.float64]
-    """Block capacitance quantity"""
 
     time: Time
-    """Simulation time"""
 
     @declares_flux(1, C_BLOCK_PRESSURE_ID)
     def flux(self) -> Any:
-        """
-        Compute the flux at local node 1
+        """Compute the flux at local node 1.
 
-        :return: the flux
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux
+
         """
         return -self.capacitance.current * diff(self.pressure) * self.time.inv_dt
 
     @flux.partial_derivative(C_BLOCK_PRESSURE_ID)
     def dflux_dpressure(self) -> Any:
-        """
-        Compute the flux at local node 1 partial derivative for pressure
+        """Compute the flux at local node 1 partial derivative for pressure.
 
-        :return: the flux derivative
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux derivative
+
         """
         return -self.capacitance.current * self.time.inv_dt
 
@@ -118,8 +169,10 @@ RC_BLOCK_PRESSURE_2_DOF_ID = "pressure_2"
 @register_type(RC_BLOCK_TYPE_ID)
 @dataclass
 class RCBlock(Block):
-    r"""
-    RC Block quantities and fluxes definitions
+    r"""RC Block quantities and fluxes definitions.
+
+    Scheme
+    ------
 
     .. tikz:: RC Block scheme
 
@@ -129,15 +182,23 @@ class RCBlock(Block):
         \draw (4,3) to[C=$C$] (4,0) node[ground]{};
         \draw (4,3) to[short, -*, i=$Q_{2}$] (6,3) node[below]{$P_{2}$};
 
-    **Node 1:**
+    Fluxes
+    ------
 
-        :math:`Q_1 = \frac{P_2 - P_1}{R}`
+    *Node 1:*
 
-    **Node 2:**
+    .. math::
 
-        :math:`Q_2 =  \frac{P_1 - P_2}{R} - C\dot{P_2}`
+        Q_1 = \frac{P_2 - P_1}{R}
 
-    **Discretisation:**
+    *Node 2:*
+
+    .. math::
+
+        Q_2 =  \frac{P_1 - P_2}{R} - C\dot{P_2}
+
+    Discretization
+    --------------
 
     .. math::
 
@@ -148,30 +209,77 @@ class RCBlock(Block):
         Q_2^{n + \frac{1}{2}} = \frac{P_1^{n + \frac{1}{2}} - P_2^{n + \frac{1}{2}}}{R}
         - C\ \frac{P_2^{n + 1} - P_2^{n}}{\Delta t^n}
 
+    Parameters
+    ----------
+    pressure_1 : Quantity[np.float64]
+        Pressure at local node 1 of the block
+    pressure_2 : Quantity[np.float64]
+        Pressure at local node 2 of the block
+    resistance : Quantity[np.float64]
+        Resistance value of the block
+    capacitance : Quantity[np.float64]
+        Capacitor value of the block
+    time : Time
+        The simulation time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "rc_block",
+            "flux_type": "<str>",   // Type of flux exchanged by the block
+            "nodes": {"1": "<str>", "2": "<str>"}, // Net node names of the local nodes
+                                                   // 1 and 2
+            "resistance": "<str>",  // Resistance value of the block
+            "capacitance": "<str>", // Capacitor value of the block
+            "time": "<str>"         // Simulation time
+        }
+
+    Aliases
+    -------
+
+    .. _alias_rc_block:
+
+    **rc_block**
+        Aliases :class:`~.BlockDescription`
+        (``block_description``) with ``model_type`` set to ``rc_block`` and the ``time``
+        quantity bound to the global ``time`` quantity.
+
+        .. code-block:: json
+
+            {
+                "type": "rc_block",
+                "flux_type": "<str>",   // Type of flux exchanged by the block
+                "nodes": {"1": "<str>", "2": "<str>"}, // Net node names of the local
+                                                       // nodes 1 and 2
+                "resistance": "<str>",  // Resistance global name (optional)
+                "capacitance": "<str>"  // Capacitance global name (optional)
+            }
+
     """
 
     pressure_1: Quantity[np.float64]
-    """Pressure at local node 1 of the block"""
 
     pressure_2: Quantity[np.float64]
-    """Pressure at local node 2 of the block"""
 
     resistance: Quantity[np.float64]
-    """Resistance value of the block"""
 
     capacitance: Quantity[np.float64]
-    """Capacitor value of the block"""
 
     time: Time
-    """The simulation time"""
 
     @declares_flux(1, RC_BLOCK_PRESSURE_1_DOF_ID)
     def flux_1(self) -> Any:
-        """
-        Computes the outlet flux at local node 1.
+        """Compute :math:`Q_1` the outlet flux at local node 1.
 
-        :return: the flux value for current block values
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux value for current block values
+
         """
         pressure_1 = mid_point(self.pressure_1)
         pressure_2 = mid_point(self.pressure_2)
@@ -179,31 +287,37 @@ class RCBlock(Block):
 
     @flux_1.partial_derivative(RC_BLOCK_PRESSURE_1_DOF_ID)
     def dflux_1_dpressure_1(self) -> Any:
-        """
-        Computes the outlet flux at node 1 derivative for pressure_1.
+        """Compute the outlet flux at node 1 derivative for pressure_1.
 
-        :return: the flux derivative for pressure_1
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux derivative for pressure_1
+
         """
         return -0.5 / self.resistance.current
 
     @flux_1.partial_derivative(RC_BLOCK_PRESSURE_2_DOF_ID)
     def dflux_1_dpressure_2(self) -> Any:
-        """
-        Computes the outlet flux at node 1 derivative for pressure_2.
+        """Compute the outlet flux at node 1 derivative for pressure_2.
 
-        :return: the flux derivative for pressure_2
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux derivative for pressure_2
+
         """
         return 0.5 / self.resistance.current
 
     @declares_flux(2, RC_BLOCK_PRESSURE_2_DOF_ID)
     def flux_2(self) -> Any:
-        """
-        Computes the outlet flux at node 2.
+        """Compute :math:`Q_2` the outlet flux at node 2.
 
-        :return: the flux value for current block values
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux value for current block values
+
         """
         pressure_1 = mid_point(self.pressure_1)
         pressure_2 = mid_point(self.pressure_2)
@@ -215,21 +329,25 @@ class RCBlock(Block):
 
     @flux_2.partial_derivative(RC_BLOCK_PRESSURE_1_DOF_ID)
     def dflux_2_dpressure_1(self) -> Any:
-        """
-        Computes the outlet flux at node 2 derivative for pressure_1.
+        """Compute the outlet flux at node 2 derivative for pressure_1.
 
-        :return: the flux derivative for pressure_1
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux derivative for pressure_1
+
         """
         return 0.5 / self.resistance.current
 
     @flux_2.partial_derivative(RC_BLOCK_PRESSURE_2_DOF_ID)
     def dflux_2_dpressure_2(self) -> Any:
-        """
-        Computes the outlet flux at node 2 derivative for pressure_2.
+        """Compute the outlet flux at node 2 derivative for pressure_2.
 
-        :return: the flux derivative for pressure_2
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux derivative for pressure_2
+
         """
         return (
             -0.5 / self.resistance.current - self.capacitance.current * self.time.inv_dt
@@ -242,7 +360,7 @@ class RCBlock(Block):
 RCR_BLOCK_TYPE_ID = "rcr_block"
 
 # Constant for the rcr block volume saved quantity
-RCR_BLOCK_VOLUME_OUTPUT_ID = "volume_stored"
+RCR_BLOCK_VOLUME_OUTPUT_ID = "volume"
 
 # Constant for the rcr block pressure at the mid point
 RCR_BLOCK_PRESSURE_MID_ID = "pressure_mid"
@@ -257,8 +375,10 @@ RCR_BLOCK_PRESSURE_2_ID = "pressure_2"
 @register_type(RCR_BLOCK_TYPE_ID)
 @dataclass
 class RCRBlock(Block):
-    r"""
-    RCR Block quantities and flux definitions
+    r"""RCR Block quantities and flux definitions.
+
+    Scheme
+    ------
 
     .. tikz::
 
@@ -270,70 +390,147 @@ class RCRBlock(Block):
         \draw (4,3) to[short, -*] (5,3) node[above]{$P_2$};
         \draw (0,3) to[C=$C$] (0,0) node[ground]{};
 
-    **Node 1:**
+    Fluxes
+    ------
 
-        :math:`Q_1 = \frac{P_{mid} - P_1}{R_1}`
+    *Node 1:*
 
-    **Node 2:**
+    .. math::
 
-        :math:`Q_2 = \frac{P_{mid} - P_2}{R_2}`
+        Q_1 = \frac{P_{mid} - P_1}{R_1}
 
-    **Internal equation:**
+    *Node 2:*
 
-        .. math::
+    .. math::
 
-            \frac{P_1 - P_{mid}}{R_1} + \frac{P_2 - P_{mid}}{R_2} - C\dot{P}_{mid} = 0
+        Q_2 = \frac{P_{mid} - P_2}{R_2}
 
-    **Discretization:**
+    Internal Equations
+    ------------------
 
-        .. math::
+    .. math::
 
-            Q_1^{n + \frac{1}{2}} = \frac{P_{mid}^{n + \frac{1}{2}}
-            - P_1^{n + \frac{1}{2}}}{R_1}
+        \frac{P_1 - P_{mid}}{R_1} + \frac{P_2 - P_{mid}}{R_2} - C\dot{P}_{mid} = 0
 
-        .. math::
+    Discretization
+    --------------
 
-            Q_2^{n + \frac{1}{2}} = \frac{P_{mid}^{n + \frac{1}{2}}
-            - P_2^{n + \frac{1}{2}}}{R_2}
+    .. math::
 
-        .. math::
+        Q_1^{n + \frac{1}{2}} = \frac{P_{mid}^{n + \frac{1}{2}}
+        - P_1^{n + \frac{1}{2}}}{R_1}
 
-            \frac{P_1^{n + \frac{1}{2}} - P_{mid}^{n + \frac{1}{2}}}{R_1}
-            + \frac{P_2^{n + \frac{1}{2}} - P_{mid}^{n + \frac{1}{2}}}{R_2}
-            - C\ \frac{P_{mid}^{n + 1} - P_{mid}^{n}}{\Delta t^n} = 0
+    .. math::
 
-    """
+        Q_2^{n + \frac{1}{2}} = \frac{P_{mid}^{n + \frac{1}{2}}
+        - P_2^{n + \frac{1}{2}}}{R_2}
+
+    .. math::
+
+        \frac{P_1^{n + \frac{1}{2}} - P_{mid}^{n + \frac{1}{2}}}{R_1}
+        + \frac{P_2^{n + \frac{1}{2}} - P_{mid}^{n + \frac{1}{2}}}{R_2}
+        - C\ \frac{P_{mid}^{n + 1} - P_{mid}^{n}}{\Delta t^n} = 0
+
+    Saved Quantities
+    ----------------
+
+    Volume stored in the capacitance:
+
+    .. math::
+
+        V = CP_{mid}
+
+
+    Parameters
+    ----------
+    pressure_1 : Quantity[np.float64]
+        Pressure at the input of the block
+    pressure_2 : Quantity[np.float64]
+        Pressure at the output of the block
+    pressure_mid : Quantity[np.float64]
+        Pressure at the mid node (capacitance) of the block
+    resistance_1 : Quantity[np.float64]
+        Resistance in value of the block
+    capacitance : Quantity[np.float64]
+        Capacitor value of the block
+    resistance_2 : Quantity[np.float64]
+        Resistance out value of the block
+    time : Time
+        The simulation time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "rcr_block",
+            "flux_type": "<str>",                   // Type of flux exchanged by the block
+            "nodes": {"1": "<str>", "2": "<str>"},  // Net node names of the local nodes
+                                                    // 1 and 2
+            "pressure_mid": "<str>",                // Pressure at the mid node global name
+                                                    // (internal variable) (optional)
+            "resistance_1": "<str>",                // Resistance 1 global name (optional)
+            "capacitance": "<str>",                 // Capacitance global name (optional)
+            "resistance_2": "<str>",                // Resistance 2 global name (optional)
+            "time": "<str>",                        // Simulation time global name
+            "volume": "<str>"                       // Volume stored in the capacitance global name
+                                                    // (saved quantity) (optional)
+        }
+
+    Aliases
+    -------
+
+    .. _alias_rcr_block:
+
+    **rcr_block**
+        Aliases :class:`~.BlockDescription`
+        (``block_description``) with ``model_type`` set to ``rcr_block`` and the
+        ``time`` quantity bound to the global ``time`` quantity.
+
+        .. code-block:: json
+
+            {
+                "type": "rcr_block",
+                "flux_type": "<str>",                   // Type of flux exchanged by the block
+                "nodes": {"1": "<str>", "2": "<str>"},  // Net node names of the local
+                                                        // nodes 1 and 2
+                "pressure_mid": "<str>",                // Pressure at the mid node global name
+                                                        // (internal variable) (optional)
+                "resistance_1": "<str>",                // Resistance 1 global name (optional)
+                "capacitance": "<str>",                 // Capacitance global name (optional)
+                "resistance_2": "<str>",                // Resistance 2 global name (optional)
+                "volume": "<str>"                       // Volume stored in the capacitance global name
+                                                        // (saved quantity) (optional)
+            }
+
+    """  # noqa: E501
 
     pressure_1: Quantity[np.float64]
-    """Pressure at the input of the block"""
 
     pressure_2: Quantity[np.float64]
-    """Pressure at the output of the block"""
 
     pressure_mid: Quantity[np.float64]
-    """Pressure at the output of the block"""
 
     resistance_1: Quantity[np.float64]
-    """Resistance in value of the block"""
 
     capacitance: Quantity[np.float64]
-    """Capacitor value of the block"""
 
     resistance_2: Quantity[np.float64]
-    """Resistance out value of the block"""
 
     time: Time
-    """The simulation time"""
 
     @declares_flux(1, RCR_BLOCK_PRESSURE_1_ID)
     def flux_1(self) -> Any:
-        """
-        Computes the outlet flux at node 1.
+        """Compute :math:`Q_1` the outlet flux at node 1.
 
-        :return: the flux value
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the flux value
 
+        """
         pressure_1_discr = mid_point(self.pressure_1)
         pressure_mid_discr = mid_point(self.pressure_mid)
 
@@ -341,33 +538,37 @@ class RCRBlock(Block):
 
     @flux_1.partial_derivative(RCR_BLOCK_PRESSURE_1_ID)
     def dflux_1_dp_1(self) -> Any:
-        """
-        Computes the outlet flux at node 1 derivative for pressure_1.
+        """Compute the outlet flux at node 1 derivative for pressure_1.
 
-        :return: flux derivative for pressure_1
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            flux derivative for pressure_1
 
+        """
         return -0.5 / self.resistance_1.current
 
     @flux_1.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def dflux_1_dp_mid(self) -> Any:
-        """
-        Computes the outlet flux at node 1 derivative for pressure_mid.
+        """Compute the outlet flux at node 1 derivative for pressure_mid.
 
-        :return: flux derivative for pressure_2
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            flux derivative for pressure_mid
 
+        """
         return 0.5 / self.resistance_1.current
 
     @declares_flux(2, RCR_BLOCK_PRESSURE_2_ID)
     def flux_2(self) -> Any:
-        """
-        Computes the flux at node 2.
+        """Compute :math:`Q_2` the flux at node 2.
 
-        :return: the flux value
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the flux value
+
         """
         pressure_2_discr = mid_point(self.pressure_2)
         pressure_mid_discr = mid_point(self.pressure_mid)
@@ -376,35 +577,38 @@ class RCRBlock(Block):
 
     @flux_2.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def dflux_2_dp_mid(self) -> Any:
-        """
-        Computes the outlet flux at node 2 derivative for pressure_mid.
+        """Compute the outlet flux at node 2 derivative for pressure_mid.
 
-        :return: flux derivative for pressure_mid
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            flux derivative for pressure_mid
 
+        """
         return 0.5 / self.resistance_2.current
 
     @flux_2.partial_derivative(RCR_BLOCK_PRESSURE_2_ID)
     def dflux_2_dp_2(self) -> Any:
-        """
-        Computes the outlet flux at node 2 derivative for pressure_2.
+        """Compute the outlet flux at node 2 derivative for pressure_2.
 
-        :return: flux derivative for pressure_2
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            flux derivative for pressure_2
 
+        """
         return -0.5 / self.resistance_2.current
 
     @declares_internal_equation(RCR_BLOCK_PRESSURE_MID_ID)
     def pressure_mid_residual(self) -> Any:
-        """
-        Compute the residual representing dynamics of the mid node pressure.
+        """Compute the residual representing dynamics of the mid node pressure.
 
-        :return: the residual value
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual value
 
+        """
         p_1_discr = mid_point(self.pressure_1)
         p_mid_discr = mid_point(self.pressure_mid)
         p_2_discr = mid_point(self.pressure_2)
@@ -417,48 +621,52 @@ class RCRBlock(Block):
 
     @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_1_ID)
     def pressure_mid_residual_dp_1(self) -> Any:
-        """
-        Compute the residual derivative for pressure_1
+        """Compute the residual derivative for pressure_1.
 
-        :return: the residual derivative for pressure_1
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual derivative for pressure_1
 
+        """
         return 0.5 / self.resistance_1.current
 
     @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_2_ID)
     def pressure_mid_residual_dp_2(self) -> Any:
-        """
-        Compute the residual derivative for pressure_2
+        """Compute the residual derivative for pressure_2.
 
-        :return: the residual derivative for pressure_2
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual derivative for pressure_2
 
+        """
         return 0.5 / self.resistance_2.current
 
     @pressure_mid_residual.partial_derivative(RCR_BLOCK_PRESSURE_MID_ID)
     def pressure_mid_residual_dp_mid(self) -> Any:
-        """
-        Compute the residual derivative for pressure_mid
+        """Compute the residual derivative for pressure_mid.
 
-        :return: the residual derivative for pressure_mid
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual derivative for pressure_mid
 
+        """
         return (
             -self.capacitance.current * self.time.inv_dt
             - 0.5 / self.resistance_1.current
             - 0.5 / self.resistance_2.current
         )
 
-    @declares_saved_quantity("volume")
+    @declares_saved_quantity(RCR_BLOCK_VOLUME_OUTPUT_ID)
     def compute_volume_stored(self) -> Any:
-        """
-        Computes volume stored in the capacitance.
+        """Compute volume stored in the capacitance.
 
-        :return: volume stored in the capacitance
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            volume stored in the capacitance
 
+        """
         return self.capacitance.current * self.pressure_mid.current

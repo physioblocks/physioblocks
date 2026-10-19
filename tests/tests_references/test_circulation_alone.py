@@ -24,50 +24,79 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
+import pytest
 
-import pandas
-
-from physioblocks.configuration.aliases import unwrap_aliases
-from physioblocks.configuration.functions import load
-from physioblocks.io.configuration import read_json
-from physioblocks.simulation.runtime import ForwardSimulation
-from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
 from physioblocks.utils.gradient_test_utils import gradient_test_from_file
 
-from .compare import results_close_to_data
-
-reference_path = (
-    "tests/tests_references/circulation_alone/ref_circulation_alone_sim.csv"
+from .functions import (
+    ReferenceCase,
+    ReferenceParameters,
+    get_artifact_path,
+    migration_test,
+    reference_test,
 )
-circulation_alone_path = "references/circulation_alone_sim.jsonc"
-circulation_alone_gradient_test_path = (
-    "tests/tests_references/circulation_alone/circulation_alone_sim_gradient_test.json"
-)
-
-
-def test_circulation_alone_ref():
-    sim_config = read_json(circulation_alone_path)
-    sim_config = unwrap_aliases(sim_config)
-    sim: ForwardSimulation = load(sim_config)
-    sim.time_manager.duration = 5.0  # Shorten simulation time to avoid test too long
-    results = sim.run()
-
-    ref_df = pandas.read_csv(reference_path)
-
-    tol_factors = {
-        "aorta_proximal.blood_flow": 1.0,
-        "aorta_proximal.blood_pressure": 1.0e2,
-        "aorta_distal.blood_pressure": 1.0e2,
-    }
-
-    assert results_close_to_data(
-        results[sim.name].set_index(TIME_QUANTITY_ID),
-        ref_df.set_index(TIME_QUANTITY_ID),
-        1e-9,
-        tol_factors,
-        (sim.time_manager.start, sim.time_manager.start + sim.time_manager.duration),
-    )
 
 
 def test_circulation_alone_gradient():
-    assert gradient_test_from_file(circulation_alone_gradient_test_path)
+    assert gradient_test_from_file(
+        "tests/tests_references/circulation_alone/circulation_alone_model_gradient_test.json"
+    )
+
+
+FORWARD_CASE = ReferenceCase(
+    id="forward",
+    config_path="references/circulation_alone_forward_sim.jsonc",
+    references=[
+        ReferenceParameters(
+            "tests/tests_references/circulation_alone/ref_circulation_alone_forward_sim.csv",
+            interval=(0.0, 5.0),
+        )
+    ],
+    duration=5.0,
+    use_state_magnitudes=True,
+)
+
+ESTIMATION_CASE = ReferenceCase(
+    id="estimation",
+    config_path="references/circulation_alone_estimation_sim.jsonc",
+    references=[
+        ReferenceParameters(
+            "tests/tests_references/circulation_alone/ref_circulation_alone_estimation_ukf_sim.csv",
+            interval=(0.0, 1.0),
+        )
+    ],
+    duration=1.0,
+    magnitudes={
+        "aorta_distal.resistance": 1e8,
+        "stdev_plus.aorta_distal.resistance": 1e8,
+        "stdev_min.aorta_distal.resistance": 1e8,
+    },
+    use_state_magnitudes=True,
+)
+
+REFERENCE_CASES = [FORWARD_CASE, ESTIMATION_CASE]
+
+
+@pytest.mark.parametrize(
+    "case", REFERENCE_CASES, ids=[case.id for case in REFERENCE_CASES]
+)
+def test_circulation_alone_reference(case, request: pytest.FixtureRequest):
+    reference_test(case, artifact_path=get_artifact_path(request))
+
+
+@pytest.mark.parametrize(
+    "older_version_path",
+    [
+        pytest.param(
+            "tests/tests_references/circulation_alone/v1.2.0/circulation_alone_sim.jsonc",
+            id="1.2.0",
+        ),
+        pytest.param(
+            "tests/tests_references/circulation_alone/v1.2.0/circulation_alone_sim_full.jsonc",
+            id="1.2.0_full",
+        ),
+    ],
+)
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_circulation_alone_migration(older_version_path):
+    migration_test(older_version_path)

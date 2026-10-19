@@ -24,12 +24,10 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Declares functions to handle configuration aliases.
+"""Declares functions to handle configuration aliases.
 
-**Aliases** are :class:`~physioblocks.configuration.base.Configuration`
-instances representing a complete or incomplete type and that can be loaded
-and completed or overwritten with the load function.
+**Aliases** are :class:`~.Configuration` instances representing a complete or incomplete
+type and that can be loaded and completed or overwritten with the load function.
 """
 
 import functools
@@ -47,14 +45,22 @@ __aliases_register: dict[str, ConfigurationAlias] = {}
 
 
 def add_alias(alias_key: str, alias: ConfigurationAlias) -> None:
-    """
-    Add an alias to the global alias register
+    """Add an alias to the global alias register.
 
-    :param alias_key: the alias unique key
-    :type alias_key: str
+    Parameters
+    ----------
+    alias_key : str
+        the alias unique key
+    alias : ConfigurationAlias
+        the alias to register
 
-    :param alias_key: the alias unique key
-    :type alias_key: str
+    Raises
+    ------
+    KeyError
+        if the alias key is already registered.
+    TypeError
+        if the alias is not a :class:`~.Configuration` or a dict.
+
     """
     if alias_key in __aliases_register:
         raise KeyError(str.format("Alias key {0} is already registered.", alias_key))
@@ -72,14 +78,18 @@ def add_alias(alias_key: str, alias: ConfigurationAlias) -> None:
 
 
 def has_alias(alias_key: str) -> bool:
-    """
-    Get if an alias is defined for the given key.
+    """Check if the alias is registered.
 
-    :param alias_key: the key to test
-    :type alias_key: str
+    Parameters
+    ----------
+    alias_key : str
+        the alias key
 
-    :return: True if an alias is defined for the key, False otherwise
-    :rtype: bool
+    Returns
+    -------
+    bool
+        True if the alias is registered, False otherwise
+
     """
     if alias_key in __aliases_register:
         return True
@@ -93,14 +103,24 @@ def has_alias(alias_key: str) -> bool:
 @functools.singledispatch
 def unwrap_aliases(item: Any) -> Any:
     """
-    Process the given item and create a new one with all its alias replaced with
-    their matching configuration object recursivly.
+    Replace all aliases in the item with their configuration recursively.
 
-    :param item: the item to process
-    :param item: Configuration | dict | list
+    Parameters
+    ----------
+    item : Configuration | dict | list
+        the item to process
 
-    :return: the item to process
-    :rtype: Configuration | dict | list
+    Returns
+    -------
+    Configuration | dict | list
+        the unwrapped configuration
+
+    Raises
+    ------
+    TypeError
+        if the item type can't be read as an alias (it is not a
+        :class:`~.Configuration`, dict or list)
+
     """
     raise TypeError(str.format("Type {0} can not load aliases.", type(item).__name__))
 
@@ -147,16 +167,19 @@ def _unwrap_aliases_list(items: list) -> list[Any]:  # type: ignore
 
 
 def get_alias(alias_key: str) -> Any:
+    """Get an alias from the global alias register.
+
+    Parameters
+    ----------
+    alias_key : str
+        the alias unique key
+
+    Returns
+    -------
+    Configuration | dict | list
+        the alias equivalent configuration
+
     """
-    Get an alias from the global alias register.
-
-    :param alias_key: the alias unique key
-    :type alias_key: str
-
-    :return: the alias
-    :rtype: Configuration | dict | list
-    """
-
     alias_config = None
     if alias_key in __aliases_register:
         alias_config = copy(__aliases_register[alias_key])
@@ -194,10 +217,12 @@ def _recursive_update(
 
 
 def remove_alias(alias_key: str) -> None:
-    """
-    Remove an alias from the global alias register
+    """Unregister an alias from the global alias register.
 
-    :param alias_key: the alias unique key
-    :type alias_key: str
+    Parameters
+    ----------
+    alias_key : str
+        the alias unique key
+
     """
     __aliases_register.pop(alias_key)

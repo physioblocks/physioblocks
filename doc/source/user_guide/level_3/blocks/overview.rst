@@ -41,16 +41,16 @@ The combination of the two allows to use blocks in nets.
 
 The :class:`~physioblocks.computing.models.Block` are simple objects, they allow to compute quantities. They :
 
-  1. Declare the **Quantities** they need to perform computations.
-  2. Declare the functions to compute the **Fluxes**, **Internal Equations** and **Saved Quantities** from those quantities.
+1. Declare the **Quantities** they need to perform computations.
+2. Declare the functions to compute the **Fluxes**, **Internal Equations** and **Saved Quantities** from those quantities.
 
 
 The :class:`~physioblocks.description.blocks.BlockDescription` are generic objects that provide the interface between a block and the net. They:
 
-  1. Hold a reference to a specific :class:`~physioblocks.computing.models.Block` instance.
-  2. Hold the **global name** in the net for every **parameter local name** in the block.
-  3. Hold the **flux descriptions** and match them with a **global node** in the net.
-  4. Extend the block definitions holding model component descriptions.
+1. Hold a reference to a specific :class:`~physioblocks.computing.models.Block` instance.
+2. Hold the **global name** in the net for every **parameter local name** in the block.
+3. Hold the **flux descriptions** and match them with a **global node** in the net.
+4. Extend the block definitions holding model component descriptions.
 
 .. note::
 
@@ -62,20 +62,20 @@ Block Definition
 
 Any :class:`~physioblocks.computing.models.Block` implementation define functions to compute:
     
-  * **Fluxes:** terms summed with other fluxes of the same type at the node of the net.
-    They are always **expressed toward the outlet of the block**.
-    They are always **discretized with a mid-point time scheme** to ensure stability and consistency in the coupling between blocks.
-  * **Internal Equations:** (optional) Equations concatenated to the global system.
-    They are expressed in a **residual form**.
-  * **Saved Quantities:** (Optional) Additional quantities computation **to output in a result file** along with the variables.
-    They are computed once at each time step.
-  * Fluxes and internal equations **partial derivatives** along every possible variable.
+* **Fluxes:** terms summed with other fluxes of the same type at the node of the net.
+  They are always **expressed toward the outlet of the block**.
+  They are always **discretized with a mid-point time scheme** to ensure stability and consistency in the coupling between blocks.
+* **Internal Equations:** (optional) Equations concatenated to the global system.
+  They are expressed in a **residual form**.
+* **Saved Quantities:** (Optional) Additional quantities computation **to output in a result file** along with the variables.
+  They are computed once at each time step.
+* Fluxes and internal equations **partial derivatives** along every possible variable.
 
 If we take a closer look at this last point, it means that you should define partial derivatives along:
 
-  * **DOFs** quantities of the block
-  * **internal variables** quantities of the block
-  * any other term that could be a variable in the global system (ie. potential DOFs and internal variables of other blocks)
+* **DOFs** quantities of the block
+* **internal variables** quantities of the block
+* any other term that could be a variable in the global system (ie. potential DOFs and internal variables of other blocks)
 
 .. note::
 
@@ -90,8 +90,8 @@ ModelComponents and ModelComponentDescription
 :class:`~physioblocks.computing.models.ModelComponent` and :class:`~physioblocks.description.blocks.ModelComponentDescription` objects are :class:`~physioblocks.computing.models.Block` and :class:`~physioblocks.description.blocks.BlockDescription` base definitions.
 Everything that we say here about blocks is also true for model components, except:
 
-  * Model components do not define fluxes.
-  * :class:`~physioblocks.description.blocks.ModelComponentDescription` and :class:`~physioblocks.description.blocks.BlockDescription` objects can only hold :class:`~physioblocks.description.blocks.ModelComponentDescription` sub-models, never a :class:`~physioblocks.description.blocks.BlockDescription` sub-model.
+* Model components do not define fluxes.
+* :class:`~physioblocks.description.blocks.ModelComponentDescription` and :class:`~physioblocks.description.blocks.BlockDescription` objects can only hold :class:`~physioblocks.description.blocks.ModelComponentDescription` sub-models, never a :class:`~physioblocks.description.blocks.BlockDescription` sub-model.
 
 .. note::
 

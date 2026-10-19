@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define decorators to register any type with a name in a dedicated register.
-"""
+"""Define decorators to register types with a name."""
 
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -40,14 +38,18 @@ T = TypeVar("T")
 
 
 def register_type(type_id: str) -> Callable[[T], T]:
-    """
-    Class decorator to register the class type with the given name.
+    """Class decorator to register the class type with the given name.
 
-    :param type_id: the defined type id for the class type
-    :type type_id: str
+    Parameters
+    ----------
+    type_id : str
+        the defined type id for the class type
 
-    :return: the class decorator
-    :rtype: Callable
+    Returns
+    -------
+    Callable
+        the class decorator
+
     """
 
     def class_decorator(registered_type: T) -> T:
@@ -59,39 +61,61 @@ def register_type(type_id: str) -> Callable[[T], T]:
 
 
 def get_registered_type(type_id: str) -> Any:
-    """
-    Get a registered type.
+    """Get a registered type.
 
-    :param type_id: the registered type id
-    :type type_id: str
+    Parameters
+    ----------
+    type_id : str
+        the registered type id
 
-    :return: the registered type
-    :rtype: type
+    Returns
+    -------
+    type
+        the registered type
+
+    Raises
+    ------
+    KeyError
+        if no type is registered with the given id.
+
     """
     return __type_register[type_id]
 
 
 def get_registered_type_id(registered_type: type) -> Any:
-    """
-    Get a registered type name for the matching type.
+    """Get a registered type name for the matching type.
 
-    :param registered_type: the registered type id
-    :type registered_type: type
+    Parameters
+    ----------
+    registered_type : type
+        the registered type
 
-    :return: the registered type id
-    :rtype: str
+    Returns
+    -------
+    str
+        the registered type id
+
+    Raises
+    ------
+    KeyError
+        if the type is not registered.
+
     """
     return __type_register[registered_type]
 
 
 def is_registered(key: Any) -> bool:
-    """
-    Get if the given value is registered as a type or type id.
+    """Get if the given value is registered as a type or type id.
 
-    :param key: the key to test
-    :type key: Any
+    Parameters
+    ----------
+    key : Any
+        the key to test
 
-    :return: True if the key is registered, False otherwise
-    :rtype: bool
+    Returns
+    -------
+    bool
+        True if the key is registered, False otherwise
+
     """
     return key in __type_register

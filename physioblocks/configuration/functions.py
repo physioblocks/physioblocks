@@ -24,42 +24,47 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Declares functions to load and save PhysioBlocks object to generic
-:class:`~physioblocks.configuration.base.Configuration` objects.
+"""Declares functions to load and save objects to generic configuration objects.
 
 Before using generic :func:`load` and :func:`save` functions on a PhysioBlocks object,
-the object type must be registered with the
-:func:`~physioblocks.registers.type_register.register_type` decorator.
+the object type must be registered with the :func:`~.register_type` decorator.
 
-To define a specific behavior when saving or loading an registered object with the
+To define a specific behavior when saving or loading a registered object with the
 generic :func:`load` or :func:`save` functions, declare a function decorated with
-:func:`~physioblocks.registers.load_function_register.loads` or
-:func:`~physioblocks.registers.save_function_register.saves`.
+:func:`~.loads` or :func:`~.saves`.
+
+Generic load and save functions exist for every type registered with the
+:func:`~.register_type` decorator.
+
+The configuration label is then the registered type and the configuration
+items match the constructor parameters.
+
 
 .. note::
 
-    If you want to create a **Configurable Item** for a dataclass type,
-    you will not have to register a specific save or load function.
+    You can use the ``@dataclass`` decorator so the constructor exactly matches the
+    class attributes.
 
-    Registering the type the :func:`~physioblocks.registers.type_register.register_type`
-    decorator will suffice to create a configuration item that needs the same parameters
-    as the dataclass.
-
-See :doc:`register module <./registers>` to for decorators documentation to
-:func:`~physioblocks.registers.type_register.register_type` as well as
-:func:`~physioblocks.registers.load_function_register.loads` and
-:func:`~physioblocks.registers.save_function_register.saves`.
+See Also
+--------
+~.register_type
+    Register a type with a str key to define a configurable type.
+~.loads
+    Register a load function.
+~.saves
+    Register a save function.
 """
 
 import functools
 from collections.abc import Iterable, Mapping, Sequence
-from inspect import signature
+from inspect import Parameter, signature
 from typing import Any, TypeAlias, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 
 from physioblocks.configuration.base import Configuration, ConfigurationError
+from physioblocks.configuration.migrations import migrate
 from physioblocks.registers.load_function_register import get_load_function, loads
 from physioblocks.registers.save_function_register import (
     get_save_function,
@@ -70,8 +75,9 @@ from physioblocks.registers.type_register import (
     get_registered_type_id,
     is_registered,
 )
+from physioblocks.utils.exceptions_utils import experimental
 
-BaseTypes: TypeAlias = float | int | bool | str
+_BaseTypes: TypeAlias = float | int | bool | str
 """Type alias for basic types usable in a Configuration File"""
 
 
@@ -83,39 +89,42 @@ def load(
     configuration_references: dict[str, Any] | None = None,
     configuration_sort: bool = False,
 ) -> Any:
-    """
-    Generic load an object from the given configuration item.
+    """Load an object from the given configuration item.
 
     The method can load:
-      - :class:`~physioblocks.configuration.base.Configuration`: Use the matching
-        registered load function.
-      - `dict` and `list`: recursivly load values in the collection
+      - :class:`~.Configuration`: Use the matching registered load function.
+      - `dict` and `list`: recursively load values in the collection
 
-    :param configuration: the configuration to load
-    :type configuration: Any
+    Parameters
+    ----------
+    configuration : Any
+        the configuration to load
+    configuration_key : str
+        (optional) key of the configuration in the parent
+        configuration item.
+    configuration_object : Any
+        (optional) The object to configure.
+        If empty, the object is first instantiated then configured.
+    configuration_type : type[Any]
+        (optional) the type of the object to configure.
+        If empty, it is determined from the configuration object.
+    configuration_references : dict[str, Any]
+        (optional) mapping of configuration item keys
+        with already configured objects to use in the current configured object.
+    configuration_sort : bool
+        (optional) flag to signal that configuration items
+        should be sorted before they are loaded. Default is False.
 
-    :param configuration_key: (optional) key of the configuration in the parent
-      configuration item.
-    :type configuration_key: str
+    Returns
+    -------
+    Any
+        the configured object
 
-    :param configuration_object: (optional) The object to configure.
-      If empty, a the object is first instanciated then configured.
-    :type configuration_object: Any
+    Raises
+    ------
+    TypeError
+        if the configuration type can not be loaded.
 
-    :param configuration_type: (optional) the type of the object to configure.
-      If empty, it is determined from the configuration object.
-    :type configuration_type: Any
-
-    :param configuration_references: (optional) mapping of configuration item keys
-      with already configured objects to use in the current configured object.
-    :type configuration_references: dict[str, Any]
-
-    :param configuration_sort: (optional) flag to signal that configuration items
-      should be sorted be sorted before they are loaded. Default is False.
-    :type configuration_sort: dict[str, Any]
-
-    :return: the configured object
-    :rtype: Any
     """
     if (
         isinstance(configuration, str)
@@ -131,6 +140,8 @@ def load(
 
     elif configuration_type is not None:
         load_func = get_load_function(configuration_type)
+        if isinstance(configuration, Configuration):
+            configuration = migrate(configuration)
         return load_func(
             configuration,
             configuration_key=configuration_key,
@@ -139,7 +150,7 @@ def load(
             configuration_references=configuration_references,
             configuration_sort=configuration_sort,
         )
-    elif isinstance(configuration, BaseTypes):
+    elif isinstance(configuration, _BaseTypes):
         # No load function required
         return configuration
 
@@ -188,38 +199,34 @@ def load_configuration(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
+    """Load a :class:`~.Configuration` object.
+
+    It recursively loads any configuration item used in the ``configuration`` parameter.
+
+    Parameters
+    ----------
+    configuration : Configuration
+        the configuration item to load
+    configuration_key : str
+        (optional) key of the configuration in the parent
+        configuration item.
+    configuration_object : Any
+        (optional) The object to configure.
+        If empty, the object is first instantiated then configured.
+    configuration_references : dict[str, Any]
+        (optional) mapping of configuration item keys
+        with already configured objects to use in the current configured object.
+    configuration_sort : bool
+        (optional) flag to signal that configuration items
+        should be sorted before they are loaded. Default is False.
+
+    Returns
+    -------
+    Any
+        the configured object
+
     """
-    Specific load function for a
-    :class:`~physioblocks.configuration.base.Configuration`: configuration item.
-
-    It recursivly loads any configuration item used in the ``configuration`` parameter.
-
-    :param configuration: the configuration item to load
-    :type configuration: Configuration
-
-    :param configuration_key: (optional) key of the configuration in the parent
-      configuration item.
-    :type configuration_key: str
-
-    :param configuration_object: (optional) The object to configure.
-      If empty, a the object is first instanciated then configured.
-    :type configuration_object: Any
-
-    :param configuration_type: (optional) the type of the object to configure.
-      If empty, it is determined from the configuration object.
-    :type configuration_type: Any
-
-    :param configuration_references: (optional) mapping of configuration item keys
-      with already configured objects to use in the current configured object.
-    :type configuration_references: dict[str, Any]
-
-    :param configuration_sort: (optional) flag to signal that configuration items
-      should be sorted be sorted before they are loaded. Default is False.
-    :type configuration_sort: dict[str, Any]
-
-    :return: the configured object
-    :rtype: Any
-    """
+    configuration = migrate(configuration)
     configuration = (
         configuration
         if configuration_sort is False
@@ -247,36 +254,29 @@ def load_dict(
     *args: Any,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """
-    Specific load function for a `Mapping` configuration item.
+    """Load a `Mapping`.
 
-    It recursivly loads any configuration item used in the mapping values.
+    It recursively loads any configuration item used in the mapping values.
 
-    :param configuration: the configuration item to load
-    :type configuration: Configuration
+    Parameters
+    ----------
+    configuration : Mapping[str, Any]
+        the configuration item to load
+    configuration_object : dict[str, Any] | None
+        (optional) The dict to update.
+        If empty, a new dict is created then configured.
+    configuration_references : dict[str, Any]
+        (optional) mapping of configuration item keys
+        with already configured objects to use in the current configured object.
+    configuration_sort : bool
+        (optional) flag to signal that configuration items
+        should be sorted before they are loaded. Default is False.
 
-    :param configuration_key: (optional) key of the configuration in the parent
-      configuration item.
-    :type configuration_key: str
+    Returns
+    -------
+    dict[str, Any]
+        the configured dict
 
-    :param configuration_object: (optional) The object to configure.
-      If empty, a the object is first instanciated then configured.
-    :type configuration_object: Any
-
-    :param configuration_type: (optional) the type of the object to configure.
-      If empty, it is determined from the configuration object.
-    :type configuration_type: Any
-
-    :param configuration_references: (optional) mapping of configuration item keys
-      with already configured objects to use in the current configured object.
-    :type configuration_references: dict[str, Any]
-
-    :param configuration_sort: (optional) flag to signal that configuration items
-      should be sorted be sorted before they are loaded. Default is False.
-    :type configuration_sort: dict[str, Any]
-
-    :return: the configured object
-    :rtype: Any
     """
     configuration = (
         configuration
@@ -299,7 +299,7 @@ def load_dict(
             configuration_object=configuration_object.get(key),
             configuration_type=type(configuration_object.get(key))
             if configuration_object.get(key) is not None
-            and not isinstance(configuration_object.get(key), BaseTypes)
+            and not isinstance(configuration_object.get(key), _BaseTypes)
             else None,
             configuration_references=updated_references,
             configuration_sort=configuration_sort,
@@ -322,38 +322,30 @@ def load_list(
     *args: Any,
     **kwargs: Any,
 ) -> Sequence[Any]:
+    """Load a `Sequence`.
+
+    It recursively loads any configuration item used in the sequence values.
+
+    Parameters
+    ----------
+    configuration : Sequence[Any]
+        the configuration item to load
+    configuration_object : list[Any] | None
+        (optional) The list whose items are configured.
+        If empty, new items are created then configured.
+    configuration_references : dict[str, Any]
+        (optional) mapping of configuration item keys
+        with already configured objects to use in the current configured object.
+    configuration_sort : bool
+        (optional) flag to signal that configuration items
+        should be sorted before they are loaded. Default is False.
+
+    Returns
+    -------
+    Sequence[Any]
+        the configured list
+
     """
-    Specific load function for a `Sequence` configuration item.
-
-    It recursivly loads any configuration item used in the sequence values.
-
-    :param configuration: the configuration item to load
-    :type configuration: Configuration
-
-    :param configuration_key: (optional) key of the configuration in the parent
-      configuration item.
-    :type configuration_key: str
-
-    :param configuration_object: (optional) The object to configure.
-      If empty, a the object is first instanciated then configured.
-    :type configuration_object: Any
-
-    :param configuration_type: (optional) the type of the object to configure.
-      If empty, it is determined from the configuration object.
-    :type configuration_type: Any
-
-    :param configuration_references: (optional) mapping of configuration item keys
-      with already configured objects to use in the current configured object.
-    :type configuration_references: dict[str, Any]
-
-    :param configuration_sort: (optional) flag to signal that configuration items
-      should be sorted be sorted before they are loaded. Default is False.
-    :type configuration_sort: dict[str, Any]
-
-    :return: the configured object
-    :rtype: Any
-    """
-
     if configuration_object is None:
         configuration_object = []
 
@@ -365,7 +357,7 @@ def load_list(
             else None,
             configuration_type=type(configuration_object[index])
             if index < len(configuration_object)
-            and not isinstance(configuration[index], BaseTypes)
+            and not isinstance(configuration[index], _BaseTypes)
             else None,
             configuration_references=configuration_references,
             configuration_sort=configuration_sort,
@@ -401,24 +393,35 @@ def _base_load(
     *args: Any,
     **kwargs: Any,
 ) -> T:
-    """
-    Load function called when no other load function is defined.
+    """Load function called when no other load function is defined.
 
-    :param configuration: the configuration to load
-    :type configuration: Configuration
+    Parameters
+    ----------
+    configuration : Configuration
+        the configuration to load
+    configuration_object : Any
+        The object to configure.
+        If empty, a new object is created and configured.
+    configuration_type : type[Any] | None
+        The type of the object to configure.
+        If empty, the type of ``configuration_object`` is used.
 
-    :param configuration_object: The object to configure.
-      If empty, a new object is created and configured.
-    :type configuration_object: Any
+    Returns
+    -------
+    Any
+        the configured object
 
-    :return: the configured object
-    :rtype: Any
+    Raises
+    ------
+    ConfigurationError
+        if the object can not be created or configured.
+
     """
     if configuration_type is None and configuration_object is not None:
         configuration_type = type(configuration_object)
     elif configuration_type is None:
         raise ConfigurationError(
-            str.format("Missing configuration type for {0}:{1}.", configuration_key)
+            str.format("Missing configuration type for {0}.", configuration_key)
         )
 
     config_args: list[Any] = []
@@ -450,7 +453,7 @@ def _base_load(
             configuration_object = configuration_type(*config_args, **config_kwargs)
         except Exception as exception:
             raise ConfigurationError(
-                str.format("Error while initialising key {0}", configuration_key)
+                str.format("Error while initializing key {0}", configuration_key)
             ) from exception
     else:
         if len(config_args) == 0:
@@ -470,30 +473,39 @@ def _base_load(
 
 
 @functools.singledispatch
+@experimental
 def save(
     obj: Any,
     configuration_references: dict[str, Any] | None = None,
     *args: Any,
     **kwargs: Any,
 ) -> Any:
+    """Save an object to a configuration.
+
+    It first checks if the object has a ``save`` function registered and uses it.
+
+    When no specific ``save`` function is registered for an object type,
+    it saves recursively every parameter of the object constructor.
+
+    Parameters
+    ----------
+    obj : Any
+        the object to save
+    configuration_references : dict[str, Any] | None
+        (optional) mapping of configuration keys with already configured
+        objects. Objects found in the references are saved as their key.
+
+    Returns
+    -------
+    Any
+        the object configuration
+
+    Raises
+    ------
+    ConfigurationError
+        If the object can not be saved to a configuration.
+
     """
-    Save an object to a configuration.
-
-    It first check if the object has a ``save`` function registered and use it.
-
-    When no specific ``save`` function is registered for a object type,
-    it saves recursivly every annotated parameters of the object class.
-
-    :param obj: the object to save
-    :type obj: Any
-
-    :return: the object configuration
-    :rtype: Any
-
-    :raise ConfigurationError: raise a Configuration Error when the
-      object can not be saved to a configuration.
-    """
-
     # try to replace the object with a reference when possible.
     if configuration_references is not None:
         obj_reference = next(
@@ -553,6 +565,11 @@ def _save_list(obj: Sequence, *args: Any, **kwargs: Any) -> list[Any]:  # type: 
     ]
 
 
+@save.register
+def _save_type(obj: type, *args: Any, **kwargs: Any) -> Any:
+    return get_registered_type_id(obj)
+
+
 @save.register(float)
 @save.register(str)
 @save.register(int)
@@ -586,12 +603,17 @@ def _save_array(obj: NDArray[Any], *args: Any, **kwargs: Any) -> Any:
     return float(obj) if obj.size == 1 else obj.tolist()
 
 
-def _get_init_parameters(obj_type: type[T]) -> list[str]:
-    # get parameters of the constructor
-    obj_cstr_sig = signature(obj_type.__init__)
-    # remove first argument (self)
-    parameters_ids = list(obj_cstr_sig.parameters.keys())[1:]
-    return parameters_ids
+def _get_init_parameters(obj_type: type[T]) -> dict[str, str]:
+    parameters: dict[str, str] = {}
+    for parent_type in obj_type.__mro__:
+        type_init_sig = signature(parent_type)
+        for name, parameter in list(type_init_sig.parameters.items()):
+            if (
+                parameter.kind not in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD)
+                and name not in parameters
+            ):
+                parameters[name] = parameter.name
+    return parameters
 
 
 def __sort_configuration(configuration: Mapping[str, Any]) -> Any:

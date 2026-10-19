@@ -28,7 +28,7 @@ Specific installations
 **********************
 
 When cloning the repository, you may want to run tests on the source code.
-From the repository directory, you can add install options to the ``pip install -e .`` command to install specific dependencies for PhysioBlocks.
+From the repository directory, you can add install options to the ``pip install -e .[option_name]`` command to install specific dependencies for PhysioBlocks.
 
 * ``test``: Install dependencies to run tests and code coverage.
 * ``doc``: Install dependencies to build the documentation.
@@ -90,8 +90,13 @@ With a ``doc`` option installation, from the repository directory:
 
 .. code:: bash
 
-   cd doc
-   make html
+   sphinx-build -b html doc/source/ doc/build/html/
+
+If you do not want to regenerate the results for the examples, set the ``run_examples`` option to ``0``:
+
+.. code:: bash
+
+   sphinx-build -D run_examples=0 -b html doc/source/ doc/build/html/
 
 The documentation will be available in the ``doc/build`` folder.
 
@@ -109,7 +114,7 @@ With a ``quality`` option installation, from the repository directory:
    ruff check
 
    # Check typing with mypy:
-   mypy PhysioBlocks --strict --ignore-missing-imports
+   mypy physioblocks --strict --ignore-missing-imports
 
 
 Run the automated package tests

@@ -202,11 +202,13 @@ def ref_can_not_convert_values():
     "physioblocks.registers.type_register.__type_register",
     new={FunctionValues: FUNC_ID},
 )
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_config_values(ref_function_values, ref_config_values):
     config = save(ref_function_values)
     assert config == ref_config_values
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 @patch(
     "physioblocks.registers.type_register.__type_register",
     new={FunctionReferences: FUNC_ID},
@@ -223,6 +225,7 @@ def test_to_config_references(
     assert config == ref_config_references
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 @patch(
     "physioblocks.registers.type_register.__type_register",
     new={FunctionReferences: FUNC_ID},

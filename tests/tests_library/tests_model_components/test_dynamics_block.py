@@ -27,18 +27,19 @@
 import numpy as np
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.model_components.dynamics import (
     SphericalDynamicsModelComponent,
+    exp_diff,
+    power_diff,
 )
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
 
 @pytest.fixture
 def ref_block() -> SphericalDynamicsModelComponent:
-    return SphericalDynamicsModelComponent(
+    model = SphericalDynamicsModelComponent(
         disp=Quantity(0.00002),
         fib_deform=Quantity(0.000054),
         pressure=Quantity(10000.0),
@@ -52,17 +53,19 @@ def ref_block() -> SphericalDynamicsModelComponent:
         hyperelastic_cst=Quantity(np.array([638.4135, 2.3724, 99.12522, 5.5326])),
         time=Time(0.0),
     )
+    model.time.update(0.001)
+    return model
 
 
 @pytest.fixture
 def state(ref_block: SphericalDynamicsModelComponent):
-    state = State()
+    state = QuantitiesRegistry()
     state["disp"] = ref_block.disp
     state["fib_deform"] = ref_block.fib_deform
     state["pressure"] = ref_block.pressure
     state["pressure_external"] = ref_block.pressure_external
     state["vel"] = ref_block.vel
-    state.set_variables_magnitudes(
+    state.set_magnitudes(
         {
             "disp": 0.013,
             "fib_deform": 0.4,
@@ -75,8 +78,49 @@ def state(ref_block: SphericalDynamicsModelComponent):
 
 
 class TestSphericalDynamicsModelComponent:
+    def test_raise_value_error_big_negative_disp(
+        self, ref_block: SphericalDynamicsModelComponent
+    ):
+        ref_block.hyperelastic_cst.initialize(
+            [620.0026747646299, 2.9, 96.35176702423303, 6.5]
+        )
+        ref_block.radius.initialize(0.0256)
+        ref_block.thickness.initialize(0.0085)
+        ref_block.pressure.initialize(900.0)
+        ref_block.pressure_external.initialize(0.0)
+        ref_block.damping_coef.initialize(70.0)
+        ref_block.series_stiffness.initialize(1e8)
+        ref_block.vol_mass.initialize(1e3)
+        ref_block.disp.initialize(0.0)
+        ref_block.vel.initialize(0.0)
+        ref_block.fib_deform.initialize(0.0)
+
+        with pytest.raises(
+            ValueError, match="Displacement" and "negative" and "greater" and "radius"
+        ):
+            ref_block.initialize()
+
     def test_check_gradient_small_disp_diff(self, ref_block, state):
         assert gradient_test_from_model(ref_block, state)
 
     def test_check_gradient_big_disp_diff(self, ref_block, state):
         assert gradient_test_from_model(ref_block, state)
+
+
+class TestDiffFunction:
+    @pytest.mark.parametrize(
+        "a", [0.15, 0.12 * np.arange(1, 4)], ids=["scalar", "vector"]
+    )
+    def test_exp_diff(self, a):
+        diff = 1e-6 if np.isscalar(a) else 1e-6 * np.ones_like(a)
+        b = a - diff
+        assert exp_diff(a, b, diff) == pytest.approx(np.exp(a) - np.exp(b))
+
+    @pytest.mark.parametrize("n", [5, -5, 0], ids=["n_positive", "n_negative", "n_nul"])
+    @pytest.mark.parametrize(
+        "a", [0.15, 0.12 * np.arange(1, 4)], ids=["scalar", "vector"]
+    )
+    def test_power_diff(self, a, n):
+        diff = 1e-6 if np.isscalar(a) else 1e-6 * np.ones_like(a)
+        b = a - diff
+        assert power_diff(a, b, diff, n) == pytest.approx(a**n - b**n)

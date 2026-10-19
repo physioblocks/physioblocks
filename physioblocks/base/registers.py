@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Define functions to update two-way :type:`dict` using common :type:`dict`"""
+"""Define functions to update two-way :class:`dict` using common :class:`dict`."""
 
 from typing import Any
 
@@ -32,20 +32,22 @@ from typing import Any
 def register(
     register: dict[Any, Any], registered_key: Any, registered_value: Any
 ) -> None:
-    """
-    Register the key and value to the provided register.
+    """Register the key and value to the provided register.
 
-    :param register: the register to fill.
-    :type dict[Any, Any]:
+    Parameters
+    ----------
+    register : dict[Any, Any]
+        the register to fill.
+    registered_key : Any
+        the key to register.
+    registered_value : Any
+        the value to register.
 
-    :param registered_key: the key to register.
-    :type Any:
+    Raises
+    ------
+    RegisterError
+        if either the key or value is already registered.
 
-    :param registered_value: the value to register.
-    :type Any:
-
-    :raise ValueError: Raises a ValueError if either the key or value
-      is already registered in the provided register.
     """
     if registered_key in register or registered_value in register:
         raise RegisterError(
@@ -63,25 +65,27 @@ def register(
 def check_key_value_type(
     key: Any, key_type: type[Any], value: Any, value_type: type[Any]
 ) -> None:
-    """
-    Check if key and params are of the expected types.
+    """Check if key and value are of the expected types.
 
     If not, it raises a type error.
 
-    :param key: the key value
-    :type key: Any
+    Parameters
+    ----------
+    key : Any
+        the key value
+    key_type : type
+        the expected type for the key
+    value : Any
+        the value
+    value_type : type
+        the expected type for the value
 
-    :param key_type: the expected type for the key
-    :type key_type: type
+    Raises
+    ------
+    TypeError
+        raise a type error if key or value param is not of the expected
+        types
 
-    :param value: the value
-    :type value: Any
-
-    :param value_type: the expected type for the value
-    :type value_type: type
-
-    :raises TypeError: raise a type error if key or value param is not of the expected
-      types
     """
     if isinstance(key, key_type) is False:
         raise TypeError(
@@ -104,5 +108,3 @@ def check_key_value_type(
 
 class RegisterError(Exception):
     """Error Raised when a key or value has already been registered."""
-
-    pass

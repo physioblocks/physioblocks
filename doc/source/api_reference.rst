@@ -30,15 +30,8 @@
 API Reference
 #############
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Modules:
-   
-   api_reference/base
-   api_reference/computing.rst
-   api_reference/description
-   api_reference/simulation
-   api_reference/configuration
-   api_reference/registers
-   api_reference/io
-   api_reference/utils
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   physioblocks
