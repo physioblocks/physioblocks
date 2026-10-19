@@ -25,6 +25,7 @@
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -37,8 +38,9 @@ def results_close_to_data(
     results: pd.DataFrame,
     ref: pd.DataFrame,
     tol: float,
-    tol_factors: dict[str, float],
+    magnitudes: dict[str, float],
     interval: tuple[float, float] | None = None,
+    output_dir: str | Path | None = None,
 ) -> bool:
     # if interval is provided, shorten the dataframes to
     # the provided interval
@@ -50,8 +52,9 @@ def results_close_to_data(
     for data_id in results_df.columns:
         result_array = results_df[data_id].to_numpy()
         ref_array = ref_df[data_id].to_numpy()
-
-        if result_array != pytest.approx(ref_array, abs=tol * tol_factors[data_id]):
+        if result_array != pytest.approx(
+            ref_array, rel=tol, abs=tol * magnitudes.get(data_id, 1.0)
+        ):
             found_differences = True
             message = str.format(
                 "Results differ from reference for outputs: {0}", data_id
@@ -75,5 +78,11 @@ def results_close_to_data(
                     str.format("absolute error median: {0}", median_abs_error)
                 )
                 _logger.debug(str.format("absolute error max: {0}", max_abs_error))
+
+    if found_differences and output_dir is not None:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        results_df.to_csv(output_path / "result.csv")
+        ref_df.to_csv(output_path / "reference.csv")
 
     return not found_differences

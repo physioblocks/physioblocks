@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Module describing Valve Blocks
-"""
+"""Module describing Valve Blocks."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -61,10 +59,12 @@ VALVE_RL_BLOCK_PRESSURE_2_DOF_ID = "pressure_2"
 @dataclass
 @register_type(VALVE_RL_BLOCK_ID)
 class ValveRLBlock(Block):
-    r"""
-    Describes valve RL block quantities and flux definitions
+    r"""Describes valve RL block quantities and flux definitions.
 
-    .. tikz:: Valve RC Scheme
+    Scheme
+    ------
+
+    .. tikz:: Valve RL Scheme
 
         \draw (1,2) to[short, i=$Q_2$] (1,1) to[short, -*] (1,0) node[right]{$P_2$};
         \draw (1,2) to[short, L=$L$] (1,4);
@@ -78,67 +78,131 @@ class ValveRLBlock(Block):
         \draw (1,9) to[short, i=$Q_1$] (1,10) to [short, -*] (1,10.5)
         node[right]{$P_1$};
 
-    **Node 1:**
 
-        :math:`Q_1 = - Q`
+    Fluxes
+    ------
+    *Node 1:*
 
-    **Node 2:**
+    .. math::
 
-        :math:`Q_2 = Q`
+        Q_1 = - Q
 
-    **Internal Equations:**
+    *Node 2:*
 
-        .. math::
+    .. math::
 
-            L\ \dot{Q} + P_2 - P_1 +
-            \begin{cases}
-            RQ \text{ if Q $>$ 0 } \\
-            R_{\text{back}}Q \text{ else }
-            \end{cases} = 0
+        Q_2 = Q
 
-    **Discretization:**
+    Internal Equations
+    ------------------
 
+    .. math::
 
-        .. math:: Q_1^{{n + \frac{1}{2}}} = - Q^{{n + \frac{1}{2}}}
+        L\ \dot{Q} + P_2 - P_1 +
+        \begin{cases}
+        RQ \text{ if Q $>$ 0 } \\
+        R_{\text{back}}Q \text{ else }
+        \end{cases} = 0
 
-        .. math:: Q_2^{{n + \frac{1}{2}}} = Q^{{n + \frac{1}{2}}}
+    Discretization
+    --------------
 
-        .. math::
+    .. math:: Q_1^{{n + \frac{1}{2}}} = - Q^{{n + \frac{1}{2}}}
 
-            L\ \frac{Q^{n + 1} - Q^{n}}{\Delta t^n}
-            + P_2^{n + \frac{1}{2}} - P_1^{n + \frac{1}{2}}
-            + \begin{cases}
-                RQ^{{n + \theta}} \text{ if } Q^{{n + \theta}} > 0 \\
-                R_{\text{back}}Q^{{n + \theta}} \text{ else }
-            \end{cases} = 0
+    .. math:: Q_2^{{n + \frac{1}{2}}} = Q^{{n + \frac{1}{2}}}
 
-    """
+    .. math::
+
+        L\ \frac{Q^{n + 1} - Q^{n}}{\Delta t^n}
+        + P_2^{n + \frac{1}{2}} - P_1^{n + \frac{1}{2}}
+        + \begin{cases}
+            RQ^{{n + \theta}} \text{ if } Q^{{n + \theta}} > 0 \\
+            R_{\text{back}}Q^{{n + \theta}} \text{ else }
+        \end{cases} = 0
+
+    Parameters
+    ----------
+    flux : Quantity[np.float64]
+        :math:`Q` the flux traversing the block
+    pressure_1 : Quantity[np.float64]
+        :math:`P_1` the pressure at local node 1
+    pressure_2 : Quantity[np.float64]
+        :math:`P_2` the pressure at local node 2
+    inductance : Quantity[np.float64]
+        :math:`L` the inductance.
+    conductance : Quantity[np.float64]
+        :math:`K = \frac{1}{R}` the conductance quantity for positive flux
+    backward_conductance : Quantity[np.float64]
+        :math:`K_{\text{back}} = \frac{1}{R_{\text{back}}}` the conductance quantity for
+        negative flux.
+    scheme_ts_flux : Quantity[np.float64]
+        :math:`\theta` the scheme time shift for flux
+    time : Time
+        :math:`t` the simulation time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "valve_rl_block",
+            "flux_type": "<str>",      // Type of flux exchanged by the block
+            "nodes": {"1": "<str>", "2": "<str>"}, // Net node names of the local nodes
+                                                   // 1 and 2
+            "flux": "<str>",           // Flux global name (internal variable) (optional)
+            "inductance": "<str>",     // Inductance global name (optional)
+            "conductance": "<str>",    // Conductance for positive flux global name (optional)
+            "backward_conductance": "<str>", // Conductance for negative flux global name (optional)
+            "scheme_ts_flux": "<str>", // time scheme shift for flux global name (optional)
+            "time": "<str>"            // Simulation time global name
+        }
+
+    Aliases
+    -------
+
+    .. _alias_valve_rl_block:
+
+    **valve_rl_block**
+        Aliases :class:`~.BlockDescription`
+        (``block_description``) with ``model_type`` set to ``valve_rl_block`` and the
+        ``time`` quantity bound to the global ``time`` quantity.
+
+        .. code-block:: json
+
+            {
+                "type": "valve_rl_block",
+                "flux_type": "<str>",      // Type of flux exchanged by the block
+                "nodes": {"1": "<str>", "2": "<str>"}, // Net node names of the local
+                                                       // nodes 1 and 2
+                "flux": "<str>",           // Flux global name (internal variable) (optional)
+                "inductance": "<str>",     // Inductance global name (optional)
+                "conductance": "<str>",    // Conductance global name for positive flux (optional)
+                "backward_conductance": "<str>", // Conductance global name for negative flux (optional)
+                "scheme_ts_flux": "<str>"  // Scheme time shift for flux global name (optional)
+            }
+
+    """  # noqa: E501
 
     flux: Quantity[np.float64]
-    """Flux traversing the block"""
 
     pressure_1: Quantity[np.float64]
-    """Pressure quantity at local node 1"""
 
     pressure_2: Quantity[np.float64]
-    """Pressure quantity at local node 2"""
 
     inductance: Quantity[np.float64]
-    """Inductance quantity"""
 
     conductance: Quantity[np.float64]
-    """Conductance quantity for positive flux """
 
     backward_conductance: Quantity[np.float64]
-    """Conductance quantity for negative flux"""
 
     scheme_ts_flux: Quantity[np.float64]
-    """Scheme time shift for flux"""
 
     time: Time
-    """Simulation time"""
 
     def initialize(self) -> None:
+        """Initialize block constant values."""
         self.k_0 = (
             2.0
             * (self.conductance.current * self.backward_conductance.current)
@@ -147,13 +211,14 @@ class ValveRLBlock(Block):
 
     @declares_internal_equation(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def flux_residual(self) -> Any:
-        """
-        Compute the residual giving the dynamics on the flux in the valve.
+        """Compute the residual giving the dynamics on the flux in the valve.
 
-        :return: the residual value
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual value
 
+        """
         q_mid_alpha = mid_alpha(self.flux, self.scheme_ts_flux.current)
         pressure_1_mid_point = mid_point(self.pressure_1)
         pressure_2_mid_point = mid_point(self.pressure_2)
@@ -171,11 +236,13 @@ class ValveRLBlock(Block):
 
     @flux_residual.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def flux_residual_dflux(self) -> Any:
-        """
-        Compute the residual partial derivative for ``flux``
+        """Compute the residual partial derivative for ``flux``.
 
-        :return: the residual partial derivative for ``flux``
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the residual partial derivative for ``flux``
+
         """
         q_mid_alpha = mid_alpha(self.flux, self.scheme_ts_flux.current)
         conductance = self.conductance.current
@@ -191,64 +258,72 @@ class ValveRLBlock(Block):
 
     @flux_residual.partial_derivative(VALVE_RL_BLOCK_PRESSURE_1_DOF_ID)
     def flux_residual_dp1(self) -> Any:
-        """
-        Compute the residual partial derivative for ``pressure_1``
+        """Compute the residual partial derivative for ``pressure_1``.
 
-        :return: the residual partial derivative for ``pressure_1``
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual partial derivative for ``pressure_1``
 
+        """
         return -0.5
 
     @flux_residual.partial_derivative(VALVE_RL_BLOCK_PRESSURE_2_DOF_ID)
     def flux_residual_dp2(self) -> Any:
-        """
-        Compute the residual partial derivative for ``pressure_2``
+        """Compute the residual partial derivative for ``pressure_2``.
 
-        :return: the residual partial derivative for ``pressure_2``
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the residual partial derivative for ``pressure_2``
 
+        """
         return 0.5
 
     @declares_flux(1, VALVE_RL_BLOCK_PRESSURE_1_DOF_ID)
     def flux_1(self) -> Any:
-        """
-        Compute the block flux at node 1
+        """Compute the block flux at node 1.
 
+        Returns
+        -------
+        np.float64
+            the block flux at node 1
 
-        :return: the block flux at node 1
-        :rtype: np.float64
         """
         return -mid_point(self.flux)
 
     @flux_1.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def dflux_1_dflux(self) -> Any:
-        """
-        Compute the block flux at node 1 partial derivative for ``flux``
+        """Compute the block flux at node 1 partial derivative for ``flux``.
 
+        Returns
+        -------
+        np.float64
+            the block flux at node 1 partial derivative for ``flux``
 
-        :return: the block flux at node 1 partial derivative for ``flux``
-        :rtype: np.float64
         """
         return -0.5
 
     @declares_flux(2, VALVE_RL_BLOCK_PRESSURE_2_DOF_ID)
     def flux_2(self) -> Any:
-        """
-        Compute the block flux at node 2
+        """Compute the block flux at node 2.
 
-        :return: the block flux at node 2
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the block flux at node 2
+
         """
         return mid_point(self.flux)
 
     @flux_2.partial_derivative(VALVE_RL_BLOCK_FLUX_VAR_ID)
     def dflux_2_dflux(self) -> Any:
-        """
-        Compute the block flux at node 2 partial derivative for ``flux``
+        """Compute the block flux at node 2 partial derivative for ``flux``.
 
-        :return: the block flux at node 2 partial derivative for ``flux``
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the block flux at node 2 partial derivative for ``flux``
+
         """
         return 0.5

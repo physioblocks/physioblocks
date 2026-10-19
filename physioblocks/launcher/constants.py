@@ -24,15 +24,15 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Define constants for the launcher scripts"""
+"""Define constants for the launcher scripts."""
 
 # SIMULATION INFO
 
 LAUNCHER_DATE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-"""Launcher format the represent date and time"""
+"""Launcher format to represent date and time"""
 
 LAUNCHER_HOSTNAME_SEPARATOR = "."
-"""Launcher format the represent date and time"""
+"""Separator used to extract the machine name from the host name"""
 
 LAUNCHER_REFERENCE_SEPARATOR = "_"
 """Separator for SimulationInfo reference"""
@@ -59,7 +59,7 @@ LAUNCHER_LOG_COLUMNS = [
     LAUNCHER_VERSION_COLUMN,
     LAUNCHER_NOTES_COLUMN,
 ]
-"""The logged simulation info informations"""
+"""The logged simulation information columns"""
 
 LAUNCHER_LOG_FILE_SEPARATOR = ";"
 """the launcher log separator"""
@@ -71,9 +71,6 @@ LAUNCHER_SERIES_DIR_NAME = "simulations"
 
 LAUNCHER_LOG_FILE_NAME = "launcher.log"
 """name of the log file."""
-
-LAUNCHER_CONFIGURATION_FILE_NAME = "launcher.json"
-"""name of the configuration file."""
 
 LAUNCHER_GITIGNORE_FILE_NAME = ".gitignore"
 """name of the gitignore file."""

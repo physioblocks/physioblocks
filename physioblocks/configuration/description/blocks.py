@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define how to configure block.
-"""
+"""Declare methods to load and save block configurations."""
 
 from typing import Any
 
@@ -61,16 +59,19 @@ SAVED_QUANTITIES_ITEM_ID = "saved_quantities"
 def save_model_component_config(
     model_component: ModelComponentDescription, *args: Any, **kwargs: Any
 ) -> Configuration:
+    """Create a :class:`~.Configuration` for a model description.
+
+    Parameters
+    ----------
+    model_component : ModelComponentDescription
+        the model_component description
+
+    Returns
+    -------
+    Configuration
+        the configuration
+
     """
-    Create a Configuration for a model description.
-
-    :param model_component: the model_component description
-    :type model_component: ModelComponentDescription
-
-    :return: the configuration
-    :rtype: Configuration
-    """
-
     description_type_id = get_registered_type_id(type(model_component))
     model_type_id = get_registered_type_id(model_component.described_type)
     config = Configuration(description_type_id)
@@ -92,6 +93,19 @@ def save_model_component_config(
 def save_block_description_config(
     block_description: BlockDescription, *args: Any, **kwargs: Any
 ) -> Configuration:
+    """
+    Save a block description to a configuration.
+
+    Parameters
+    ----------
+    block_description : BlockDescription
+        the block description to save.
+
+    Returns
+    -------
+    Configuration
+        the block description configuration.
+    """
     config: Configuration = save_model_component_config(block_description)
     config[BLOCK_FLUX_TYPE_ITEM_ID] = block_description.flux_type
     return config
@@ -129,14 +143,28 @@ def load_model_component_config(
     *args: Any,
     **kwargs: Any,
 ) -> ModelComponentDescription:
-    """
-    Load a model component description from a configuration.
+    """Load a model component description from a configuration.
 
-    :param config: the configuration
-    :type config: Configuration
+    Parameters
+    ----------
+    configuration : Configuration
+        the configuration
+    configuration_key : str
+        the configuration item key, used as the model name.
+    configuration_type : type[ModelComponentDescription]
+        the type of the configured model component.
+    configuration_object : BlockDescription | None
+        Reference for the description to update.
+        Default is None, then a new description is created.
+    additional_model_arguments : dict[str, Any] | None
+        additional keyword arguments passed to the description constructor.
+        Default is None.
 
-    :return: the model description
-    :rtype: ModelComponentDescription
+    Returns
+    -------
+    ModelComponentDescription
+        the model description
+
     """
     additional_model_arguments = (
         {} if additional_model_arguments is None else additional_model_arguments
@@ -187,6 +215,31 @@ def load_block_description_config(
     *args: Any,
     **kwargs: Any,
 ) -> BlockDescription:
+    """
+    Load the block description configuration.
+
+    Parameters
+    ----------
+    configuration : Configuration
+        the configuration to load
+    configuration_key : str
+        the configuration item key
+    configuration_type : type[ModelComponentDescription]
+        the type of the configured object.
+    configuration_object : BlockDescription | None
+        Reference for the block description to configure.
+        Default is None, then a new block description is created.
+
+    Returns
+    -------
+    BlockDescription
+        the configured block description
+
+    Raises
+    ------
+    ConfigurationError
+        if the block flux type is missing from the configuration.
+    """
     if BLOCK_FLUX_TYPE_ITEM_ID not in configuration:
         raise ConfigurationError(
             str.format(

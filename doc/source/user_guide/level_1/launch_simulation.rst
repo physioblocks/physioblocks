@@ -53,8 +53,8 @@ Here are the instruction **to run the simulation** from a configuration file:
 
     You can provide a **configured Laucher Folder** path with the ``-d`` option and it will produce the same results.
 
-The simulations results can be found in the ``simulation/Z`` series of your configured launcher folder.
-The simulation creates a folder named with your machine name, the current serie name (default is Z) and the current simulation number.
+The simulations results can be found in the ``simulations/Z`` series of your configured launcher folder.
+The simulation creates a folder named with your machine name, the current series name (default is Z) and the current simulation number.
 This folder should contain:
 
 * **a csv file**: the simulation results
@@ -63,37 +63,38 @@ This folder should contain:
 
 .. note::
 
-    A log of main informations about the simulation run is kept in the main **Launcher Log File** located at the root of the **Launcher Folder**.
+    A log of main information about the simulation run is kept in the main **Launcher Log File** located at the root of the **Launcher Folder**.
 
-With the launcher options, we will be able to update simulation informations, destination folder and generated files.
+With the launcher options, we will be able to update simulation information, destination folder and generated files.
 
 Launcher options
 ----------------
 
-You can view all the launcher option with ``-h``. We can break the options into four main categories.
+You can view all the launcher option with ``-h``.
+We can break the options into three main categories.
 
-Informations options
+Information options
 ^^^^^^^^^^^^^^^^^^^^
 
-This options will attach more informations to the simulation.
+This options will attach more information to the simulation.
 
-    * **Serie:** the ``-s`` option allows to provide a serie name for the configuration. The result of the simulation will be saved in the matching series folder.
-    * **Message:** the ``-m`` option attaches a message to the current simulation. This message will be written both in the generated log file for the simulation and the launcher directory main log file, associated with the simulation informations.
+* **Series:** the ``-s`` option allows to provide a series name for the configuration. The result of the simulation will be saved in the matching series folder.
+* **Message:** the ``-m`` option attaches a message to the current simulation. This message will be written both in the generated log file for the simulation and the launcher directory main log file, associated with the simulation information.
 
 Log options
 ^^^^^^^^^^^
 
 These options control the console logs of the simulation.
 
-    * **Verbose:** the ``-v`` option prints the simulation logs to the console.
-    * **Log level:** the ``-l`` set the level console logs. Possible options are ``INFO``, ``DEBUG``, ``WARNING``, ``ERROR`` or ``CRITICAL``. Default is ``INFO``.
+* **Verbose:** the ``-v`` option prints the simulation logs to the console.
+* **Debug:** the ``--DEBUG`` option also prints ``DEBUG`` level logs to the console when used with ``-v``. Default console level is ``INFO``.
 
 File format options
 ^^^^^^^^^^^^^^^^^^^
 
 A single option to update the format of the simulation result.
 
-    * **file extension:** the ``-ext`` option update the result file format. Supported options are currently ``csv`` and ``parquet``.
+* **file extension:** the ``-ext`` option update the result file format. Supported options are currently ``csv`` and ``parquet``.
 
 
 Update configuration files
@@ -104,10 +105,10 @@ If you open one of the reference configuration file provided in the ``references
 
 * **type**: the configuration file type. This will be useful at a higher user levels (see section on :ref:`how to write configuration files<user_guide_level_2>` ).
 * **time**: here you can update the simulation **start time and duration**.
-* **variable_initialization**: Here you can provide the **initial value for the variables** of the model.
-  Note that you can initialise them with a float or a string reference to the key of any parameters in the **parameter** configuration entry.
+* **state**: Here you can provide the **initial value for the variables** of the model, their magnitudes and standard deviation if applicable.
+  Note that you can initialize any value with a float, a list a floats for vectors, or a string reference to the key of any parameters initialized in the **parameter** fields.
 * **parameters**: they are the updatable parameters for the model.
-* **output_function**: Your simulation configuration produces results based on the underlying models it uses.
+* **output_functions**: Your simulation configuration produces results based on the underlying models it uses.
   If you want to add computations to the result file, you can use this entry to add functions to produce the desired output.
   In the :ref:`next section<user_guide_level_2>` we will detail how to use the functions in the configuration files.
 

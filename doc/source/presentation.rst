@@ -49,12 +49,15 @@ Principles
 Interactions
 ============
 
-**Level 1:** Configure and run a simulation : JSON
-    * Update the model parameters
+**Level 1:** Configure and run a simulation: JSON
 
-**Level 2:** Create Nets : JSON
-    * Declare the nodes, the blocks, and the block-nodes connections
+* Update the model parameters
+
+**Level 2:** Create Nets: JSON
+
+* Declare the nodes, the blocks, and the block-nodes connections
 
 **Level 3:** Write and add models to the library: Python
-    * Declare the quantities to be used in the model
-    * Write the fluxes and internal equations
+
+* Declare the quantities to be used in the model
+* Write the fluxes and internal equations

@@ -31,8 +31,8 @@ Overview
 
 To launch a simulation, most of the time you will need two configuration files:
 
-    * the **Net Description**
-    * the **Simulation Configuration** based on the Net Description
+* the **Net Description**
+* the **Simulation Configuration** based on the Net Description
 
 Then the simulation is launched from the simulation configuration as seen in the :ref:`previous chapter <user_guide_level_1>`
 
@@ -43,20 +43,20 @@ Main concepts
 
 Here are the main objects object you will have to handle to build **Net Configuration** files.
 
-    * **Net**: a set of **Blocks** connected with **Nodes**.
-    * **Block**: it defines a set of **Fluxes** and **Internal Equations** that can be enhanced with **Model Components** if necessary.
-    * **Node**: it represents a location in the **Net** where the connected blocks share their **Fluxes**.
-      Every node exposes one quantity named **DOF** (degree or freedom) per flux type exchanged at the node.
-      The **DOFs** are exposed to every **Block** connected at the **Node**.
-    * **Model Components**: they can be added to blocks to concatenante additional **Internal Equations** to blocks.
+* **Net**: a set of **Blocks** connected with **Nodes**.
+* **Block**: it defines a set of **Fluxes** and **Internal Equations** that can be enhanced with **Model Components** if necessary.
+* **Node**: it represents a location in the **Net** where the connected blocks share their **Fluxes**.
+  Every node exposes one quantity named **DOF** (degree or freedom) per flux type exchanged at the node.
+  The **DOFs** are exposed to every **Block** connected at the **Node**.
+* **Model Components**: they can be added to blocks to concatenante additional **Internal Equations** to blocks.
 
 Assembling process
 ------------------
 
 Based on the Net layout, we build the **Global System**: 
 
-    * Concatenating equations defined by the **sum of the Fluxes** shared at each **Node**.
-    * Concatenating **Internal Equation** provided by **Blocks** and their **Model Components**.
+* Concatenating equations defined by the **sum of the Fluxes** shared at each **Node**.
+* Concatenating **Internal Equation** provided by **Blocks** and their **Model Components**.
 
 .. tikz:: Assembling process scheme for a simplified net
     :include: ../../schemes/assembling_example_scheme.tex

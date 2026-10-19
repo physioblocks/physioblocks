@@ -18,10 +18,10 @@ They are several use cases for PhysioBlocks depending on the user profile:
 
 ## Interactions
 
-__Level 1:__ Configure and run a simulation : JSON
+__Level 1:__ Configure and run a simulation: JSON
 * Update the model parameters
 
-__Level 2:__ Create Nets : JSON
+__Level 2:__ Create Nets: JSON
 * Declare the nodes, the blocks, and the block - nodes connections
 
 __Level 3:__ Write and add models to the library: Python
@@ -73,7 +73,7 @@ python -m physioblocks.launcher references/spherical_heart_sim.jsonc -v -s Quick
 ```
 
 
-Results will be available in the `$LAUNCHER_FOLDER_PATH$/simulations/QuickStart` series folder:
+Results will be available in the `$LAUNCHER_FOLDER_PATH/simulations/QuickStart` series folder:
 * the csv files contain the simulation results.
 * the html files allow you to visualize the results.
 * the log and json files are here for debug purposes.

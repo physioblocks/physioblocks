@@ -24,273 +24,332 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define the configuration of simulations
-"""
+"""Declares simulations save and load functions."""
 
 from collections.abc import Iterable
 from os import linesep
 from typing import Any
 
+from physioblocks.computing.quantities import QuantityInit
 from physioblocks.configuration.base import Configuration, ConfigurationError
 from physioblocks.configuration.constants import (
+    DATA_ID,
     DEFAULT_SIMULATION_NAME,
-    INIT_VARIABLES_ID,
     NET_ID,
+    OBSERVER_CONFIGURATION_ID,
     OUTPUTS_FUNCTIONS_ID,
     PARAMETERS_ID,
+    PLOTS_CONFIGURATION_ID,
     POST_PROCESSES_ID,
     PRE_PROCESSES_ID,
     SIMULATION_NAME,
     SIMULATION_OPTIONS,
+    SIMULATION_TYPE_ID,
     SOLVER_ID,
-    TIME_MANAGER_ID,
-    VARIABLES_MAGNITUDES,
+    STATE_ID,
+    TIME_ID,
+    UPDATE_FUNCTIONS,
 )
 from physioblocks.configuration.functions import load, save
+from physioblocks.description.flux import FluxDofTypesRegister
+from physioblocks.description.nets import Net
 from physioblocks.registers.load_function_register import loads
 from physioblocks.registers.save_function_register import saves
-from physioblocks.registers.type_register import get_registered_type_id
-from physioblocks.simulation import AbstractFunction
-from physioblocks.simulation.functions import (
-    is_state_function,
-    is_time_function,
+from physioblocks.registers.type_register import get_registered_type
+from physioblocks.simulation import AbstractSimulation
+from physioblocks.simulation.base import (
+    MODEL_FACTORY_ID,
+    SimulationFactory,
+    SimulationModelFactory,
+    SimulationRange,
 )
-from physioblocks.simulation.runtime import AbstractSimulation
-from physioblocks.simulation.setup import SimulationFactory
-from physioblocks.simulation.state import STATE_NAME_ID
-from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
+from physioblocks.simulation.estimation import (
+    ESTIMATED_PARAMETERS_ID,
+    FILTER_OPTIONS_ID,
+    FILTER_TYPE_ID,
+    OBSERVER_FACTORY_ID,
+    EstimationSimulation,
+    ObserverFactory,
+)
+from physioblocks.simulation.forward import ForwardSimulation
+from physioblocks.simulation.functions import (
+    SimulationFunctionFactory,
+)
+from physioblocks.simulation.solvers import NewtonSolver
 
 
-@loads(AbstractSimulation)  # type: ignore
-def load_simulation_config(
+@loads(SimulationFactory)
+def load_simulation_factory(
     config: Configuration,
-    configuration_type: type,
-    configuration_object: AbstractSimulation | None = None,
     *args: Any,
     **kwargs: Any,
-) -> AbstractSimulation:
+) -> SimulationFactory[Any]:
     """
-    Load a simulation from a configuration.
+    Load a simulation factory configuration.
 
-    :param config: the configuration
-    :type config: Configuration
+    Parameters
+    ----------
+    config : Configuration
+        the configuration to load.
 
-    :return: the simulation
-    :rtype: AbstractSimulation
+    Returns
+    -------
+    SimulationFactory[Any]
+        the configured simulation factory.
     """
+    config_copy = config.copy()
 
-    if configuration_object is None:
-        net = None
+    name = config_copy.get(SIMULATION_NAME, DEFAULT_SIMULATION_NAME)
+    sim_type: type[AbstractSimulation] = get_registered_type(config_copy.label)
+    solver = (
+        load(config_copy[SOLVER_ID]) if SOLVER_ID in config_copy else NewtonSolver()
+    )
+    net = (
+        load(config_copy[NET_ID])
+        if NET_ID in config_copy
+        else Net(FluxDofTypesRegister())
+    )
+    parameters_init = (
+        load(config_copy[PARAMETERS_ID], configuration_sort=True)
+        if PARAMETERS_ID in config_copy
+        else {}
+    )
+    time = (
+        load(config_copy[TIME_ID], configuration_references=parameters_init)
+        if TIME_ID in config_copy
+        else SimulationRange()
+    )
 
-        sim_name = (
-            load(config[SIMULATION_NAME])
-            if SIMULATION_NAME in config
-            else DEFAULT_SIMULATION_NAME
+    update_functions_factories: dict[str, SimulationFunctionFactory[Any]] = (
+        _load_update_functions(config_copy[UPDATE_FUNCTIONS], parameters_init)
+        if UPDATE_FUNCTIONS in config_copy
+        else {}
+    )
+
+    state_init = (
+        load(config_copy[STATE_ID], configuration_references=parameters_init)
+        if STATE_ID in config_copy
+        else {}
+    )
+    output_functions_factories: dict[str, SimulationFunctionFactory[Any]] = (
+        _load_update_functions(
+            config_copy[OUTPUTS_FUNCTIONS_ID],
+            parameters_init,
         )
+        if OUTPUTS_FUNCTIONS_ID in config_copy
+        else {}
+    )
+    data = load(config_copy[DATA_ID]) if DATA_ID in config_copy else {}
+    preprocesses = (
+        load(config_copy[PRE_PROCESSES_ID], configuration_references=parameters_init)
+        if PRE_PROCESSES_ID in config_copy
+        else {}
+    )
+    postprocesses = (
+        load(config_copy[POST_PROCESSES_ID], configuration_references=parameters_init)
+        if POST_PROCESSES_ID in config_copy
+        else {}
+    )
+    sim_options = (
+        load(config_copy[SIMULATION_OPTIONS], configuration_references=parameters_init)
+        if SIMULATION_OPTIONS in config_copy
+        else {}
+    )
+    simulation_model_factory = SimulationModelFactory(
+        net, time, state_init, parameters_init, update_functions_factories, solver
+    )
+    return SimulationFactory(
+        name,
+        sim_type,
+        simulation_model_factory,
+        output_functions_factories,
+        data,
+        preprocesses,
+        postprocesses,
+        sim_options,
+    )
 
-        if NET_ID in config:
-            net = load(config[NET_ID])
 
-        # Solver
-        solver = None
-        if SOLVER_ID in config:
-            solver = load(config[SOLVER_ID])
-
-        simulation_options = None
-        if SIMULATION_OPTIONS in config:
-            simulation_options = load(config[SIMULATION_OPTIONS])
-
-        sim_factory = SimulationFactory(
-            sim_name,
-            configuration_type,
-            solver,
-            net,
-            simulation_options=simulation_options,
+def _load_update_functions(
+    update_functions: dict[str, Any], references: dict[str, Any]
+) -> dict[str, SimulationFunctionFactory[Any]]:
+    return {
+        param_id: load(
+            update_function_config,
+            configuration_references=references,
+            configuration_type=SimulationFunctionFactory,
         )
-
-        configuration_object = sim_factory.create_simulation()
-
-    _configure_simulation(config, configuration_object)
-
-    return configuration_object
+        for param_id, update_function_config in update_functions.items()
+    }
 
 
-def _save_sim_factory(factory: SimulationFactory) -> Configuration:
-    simulation_type_id = get_registered_type_id(factory.simulation_type)
-    sim_factory_config_item = Configuration(simulation_type_id)
-    sim_factory_config_item[NET_ID] = save(factory.net)
+@loads(ForwardSimulation)
+def load_forward_simulation_config(
+    config: Configuration,
+    *args: Any,
+    **kwargs: Any,
+) -> ForwardSimulation:
+    """Load a forward simulation configuration.
 
-    return sim_factory_config_item
+    Parameters
+    ----------
+    config : Configuration
+        the configuration
+
+    Returns
+    -------
+    ForwardSimulation
+        the simulation
+
+    Raises
+    ------
+    ConfigurationError
+        if parameters or state variables are missing in the configuration.
+
+    """
+    config_copy = config.copy()
+    if PLOTS_CONFIGURATION_ID in config_copy:
+        config_copy.configuration_items.pop(PLOTS_CONFIGURATION_ID)
+
+    simulation_factory: SimulationFactory[ForwardSimulation] = load(
+        config_copy, configuration_type=SimulationFactory
+    )
+
+    forward_simulation = simulation_factory.create_simulation()
+
+    # Check parameters initialization
+    all_parameters = list(simulation_factory.simulation_model_factory.parameters.keys())
+    all_parameters.extend(
+        simulation_factory.simulation_model_factory.update_functions.keys()
+    )
+    _check_missing_keys(
+        PARAMETERS_ID,
+        all_parameters,
+        forward_simulation.simulation_model.parameters,
+    )
+    _check_missing_keys(
+        STATE_ID,
+        simulation_factory.simulation_model_factory.state,
+        forward_simulation.simulation_model.state,
+    )
+
+    return forward_simulation
+
+
+@loads(EstimationSimulation)
+def load_estimation_simulation_config(
+    config: Configuration,
+    *args: Any,
+    **kwargs: Any,
+) -> EstimationSimulation:
+    """Load an estimation simulation configuration.
+
+    Parameters
+    ----------
+    config : Configuration
+        the configuration
+
+    Returns
+    -------
+    EstimationSimulation
+        the simulation
+
+    Raises
+    ------
+    ConfigurationError
+        if parameters or state variables are missing in the configuration.
+
+    """
+    config_copy = config.copy()
+    if PLOTS_CONFIGURATION_ID in config_copy:
+        config_copy.configuration_items.pop(PLOTS_CONFIGURATION_ID)
+
+    simulation_factory: SimulationFactory[EstimationSimulation] = load(
+        config_copy, configuration_type=SimulationFactory
+    )
+
+    filter_type: str = config_copy.configuration_items[FILTER_TYPE_ID]
+    filter_options: dict[str, Any] = config_copy.configuration_items.get(
+        FILTER_OPTIONS_ID, {}
+    )
+
+    observer_factory: ObserverFactory = (
+        load(
+            config_copy[OBSERVER_CONFIGURATION_ID],
+            configuration_references=simulation_factory.simulation_model_factory.parameters,
+        )
+        if OBSERVER_CONFIGURATION_ID in config_copy
+        else ObserverFactory()
+    )
+
+    estimated_parameters: dict[str, QuantityInit] = (
+        load(
+            config_copy[ESTIMATED_PARAMETERS_ID],
+            configuration_references=simulation_factory.simulation_model_factory.parameters,
+        )
+        if ESTIMATED_PARAMETERS_ID in config_copy
+        else {}
+    )
+
+    simulation_factory.simulation_options.update(
+        {
+            FILTER_TYPE_ID: filter_type,
+            FILTER_OPTIONS_ID: filter_options,
+            OBSERVER_FACTORY_ID: observer_factory,
+            ESTIMATED_PARAMETERS_ID: estimated_parameters,
+        }
+    )
+    estimation_simulation = simulation_factory.create_simulation()
+
+    # Check parameters initialization
+    all_parameters = list(simulation_factory.simulation_model_factory.parameters.keys())
+    all_parameters.extend(
+        simulation_factory.simulation_model_factory.update_functions.keys()
+    )
+    all_parameters.extend(estimated_parameters.keys())
+    _check_missing_keys(
+        PARAMETERS_ID,
+        all_parameters,
+        estimation_simulation.simulation_model.parameters,
+    )
+    _check_missing_keys(
+        STATE_ID,
+        simulation_factory.simulation_model_factory.state,
+        estimation_simulation.simulation_model.state,
+    )
+
+    return estimation_simulation
 
 
 @saves(AbstractSimulation)
 def save_simulation_config(
     simulation: AbstractSimulation, *args: Any, **kwargs: Any
 ) -> Configuration:
+    """Save a simulation configuration.
+
+    Parameters
+    ----------
+    simulation : AbstractSimulation
+        the simulation to save
+
+    Returns
+    -------
+    Configuration
+        the configuration
+
     """
-    Save a simulation in a configuration.
+    sim_config: Configuration = save(simulation.factory)
+    sim_type = sim_config.configuration_items.pop(SIMULATION_TYPE_ID)
+    sim_config.label = sim_type
 
-    :param sim: the simulation to save
-    :type sim: AbstractSimulation
-
-    :param simulation_type_id: the simulation type id
-    :type simulation_type_id: str
-
-    :return: the configuration
-    :rtype: Configuration
-    """
-
-    sim_config = _save_sim_factory(simulation.factory)
-
-    sim_config[TIME_MANAGER_ID] = save(simulation.time_manager)
-    sim_config[SOLVER_ID] = save(simulation.solver)
-
-    # State
-    variable_init_values = save(simulation.state.variables)
-    if isinstance(variable_init_values, dict):
-        sim_config[INIT_VARIABLES_ID] = variable_init_values
-    else:
-        raise ConfigurationError(
-            str.format(
-                "Expected a dict for {0} configuration, got {1}.",
-                INIT_VARIABLES_ID,
-                type(variable_init_values).__name__,
-            )
-        )
-    sim_config[VARIABLES_MAGNITUDES] = save(simulation.state.magnitudes)
-
-    # Parameters
-    # Get quantities
-    parameters: dict[str, Any] = {
-        key: qty
-        for key, qty in simulation.parameters.items()
-        if key not in simulation.update_functions
-    }
-    references: dict[str, Any] = simulation.models.copy()
-    parameters_config: dict[str, Any] = save(
-        parameters, configuration_references=references
+    model_factory_configuration: Configuration = sim_config.configuration_items.pop(
+        MODEL_FACTORY_ID
     )
-    references.update(parameters)
-
-    # update with fonctions
-    function_config = save(
-        simulation.update_functions, configuration_references=references
+    sim_config.configuration_items.update(
+        model_factory_configuration.configuration_items
     )
-    parameters_config.update(function_config)
-    sim_config[PARAMETERS_ID] = parameters_config
-
-    # All the quantities (with update function in the references)
-    references.update(simulation.parameters)
-
-    if len(simulation.outputs_functions) > 0:
-        sim_config[OUTPUTS_FUNCTIONS_ID] = save(
-            simulation.outputs_functions,
-            configuration_references=references,
-        )
 
     return sim_config
-
-
-def _configure_simulation(
-    config: Configuration, simulation: AbstractSimulation
-) -> None:
-    # Set initial values
-
-    # ParameterRegister
-    _check_exising_config(PARAMETERS_ID, config)
-    _check_missing_keys(PARAMETERS_ID, config[PARAMETERS_ID], simulation.parameters)
-
-    constants_config = {
-        key: value
-        for key, value in config[PARAMETERS_ID].items()
-        if isinstance(value, Configuration) is False
-    }
-    functions_config = {
-        key: value
-        for key, value in config[PARAMETERS_ID].items()
-        if isinstance(value, Configuration) is True
-    }
-
-    # first load the constants
-    load(constants_config, configuration_object=simulation.parameters)
-
-    # then load functions
-    references: dict[str, Any] = simulation.quantities
-    references.update(simulation.models)
-    loaded_functions = load(
-        functions_config, configuration_references=references, configuration_sort=True
-    )
-    __initialize_functions(simulation, loaded_functions)
-
-    # Time Manager
-    _check_exising_config(TIME_MANAGER_ID, config)
-    load(config[TIME_MANAGER_ID], configuration_object=simulation.time_manager)
-
-    # State
-    _check_exising_config(INIT_VARIABLES_ID, config)
-    _check_missing_keys(INIT_VARIABLES_ID, config[INIT_VARIABLES_ID], simulation.state)
-
-    load(
-        config[INIT_VARIABLES_ID],
-        configuration_object=simulation.state,
-        configuration_references=simulation.quantities,
-    )
-
-    # magnitudes
-    if VARIABLES_MAGNITUDES in config:
-        magnitudes = load(config[VARIABLES_MAGNITUDES])
-        simulation.state.set_variables_magnitudes(magnitudes)
-
-    references.update(simulation.quantities)
-    references.update(simulation.models)
-
-    if OUTPUTS_FUNCTIONS_ID in config:
-        outputs = load(
-            config[OUTPUTS_FUNCTIONS_ID], configuration_references=references
-        )
-        __configure_outputs(simulation, outputs)
-
-    # processes
-    if PRE_PROCESSES_ID in config:
-        preprocesses = load(config[PRE_PROCESSES_ID])
-        simulation.preprocesses.update(preprocesses)
-
-    if POST_PROCESSES_ID in config:
-        postprocesses = load(config[POST_PROCESSES_ID])
-        simulation.postprocesses.update(postprocesses)
-
-
-def __initialize_functions(
-    sim: AbstractSimulation, functions_parameters: dict[str, AbstractFunction]
-) -> None:
-    for param_id, param_value in functions_parameters.items():
-        if param_id in sim.parameters:
-            arguments: dict[str, Any] = {}
-            if is_time_function(param_value):
-                sim.register_timed_parameter_update(param_id, param_value)
-                arguments[TIME_QUANTITY_ID] = sim.time_manager.time.current
-            if is_state_function(param_value):
-                arguments[STATE_NAME_ID] = sim.state
-            sim.parameters[param_id].initialize(param_value.eval(**arguments))
-
-
-def __configure_outputs(
-    sim: AbstractSimulation, config: dict[str, AbstractFunction]
-) -> None:
-    for output_id, update_func in config.items():
-        sim.register_output_function(output_id, update_func)
-
-
-def _check_exising_config(key: str, config: Configuration) -> None:
-    if key not in config:
-        raise ConfigurationError(
-            str.format(
-                "Missing key {0} in {1} configuration.",
-                key,
-                config.label,
-            )
-        )
 
 
 def _check_missing_keys(

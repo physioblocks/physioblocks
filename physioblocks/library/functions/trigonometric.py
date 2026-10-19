@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Declare configuration function to set parameter with trigonometric function.
-"""
+"""Declare configuration functions to set parameters with trigonometric functions."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -43,34 +41,59 @@ SINUS_OFFSET_NAME = "sinus_offset"
 @register_type(SINUS_OFFSET_NAME)
 @dataclass
 class SinusOffset(AbstractFunction):
-    """
-    Defines an evaluation method to get the value of a offset sinus
-    function.
+    """Defines an evaluation method to get the value of an offset sine function.
+
+    Attributes
+    ----------
+    offset_value : float
+        Offset value of the function
+    amplitude : float
+        Peak amplitude of the function
+    frequency : float
+        Frequency of the function
+    phase_shift : float
+        Phase shift of the function
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "sinus_offset",
+            "offset_value": "<float>",        // Offset value of the sinus
+            "amplitude": "<float>",           // Peak amplitude of the sinus
+            "frequency": "<float>",           // Frequency of the sinus
+            "phase_shift": "<float>",         // Phase shift of the sinus
+            "evaluation_quantities": {
+                "time": "<str>"               // Global name of the time quantity
+            }
+        }
+
     """
 
     offset_value: float
-    """Offset value of the function"""
 
     amplitude: float
-    """Peak amplitude of the function"""
 
     frequency: float
-    """Frequency of the function"""
 
     phase_shift: float
-    """Phase shift of the function"""
 
     def eval(self, time: float) -> Any:
+        """Evaluate function value at the given time.
+
+        Parameters
+        ----------
+        time : float
+            evaluation time
+
+        Returns
+        -------
+        np.float64
+            the function value
+
         """
-        Evaluate function value at the given time.
-
-        :param time: evaluation  time
-        :type time: float
-
-        :return: the function value
-        :rtype: np.float64
-        """
-
         output = self.offset_value + self.amplitude * np.sin(
             2 * np.pi * self.frequency * time + self.phase_shift
         )

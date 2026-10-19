@@ -1,0 +1,71 @@
+{
+    "type": "circulation_alone_estimation_simulation",
+    "filter":{
+        "type": "test_filter"
+    },
+    "data": {
+        "measurements": {
+            "type": "read_data",
+            "filepath": "./references/synthetic_data/proximal_flow_pressure_shifted.csv"
+        }
+    },
+    "preprocesses":{
+        "interpolate_measurements":{
+            "type": "interpolation_process",
+            "inputs": ["measurements"],
+            "outputs": ["measurements"], // override data
+            "abscissas": "time",
+            "abscissas_start": "time.start",
+            "abscissas_step": "time.step_size",
+            "abscissas_length": "time.duration"
+        },
+        "SI_unit_conversion": {
+            "type": "conversion_process",
+            "inputs": ["measurements"],
+            "outputs": ["measurements"], // override data
+            "conversion_factors": {
+                "p_flow": 1.0e-6, // mL/s to m3/s
+                "p_pressure": 133.32231202220615 // mmHg to Pa
+            }
+        }
+    },
+    "observer":{
+        "type": "observer",
+        "measurements":{
+            "p_pressure": {
+                "type":"quantity",
+                "magnitude": 1e4,
+                "stdev": 1.0
+            },
+            "p_flow": {
+                "type":"quantity",
+                "magnitude": 1e-3,
+                "stdev": 1.0e-5
+            }
+        },
+        "operators": {
+            "p_pressure": {
+                "type": "watch_quantity",
+                "evaluation_quantities": {"quantity": "aorta_proximal.blood_pressure"}
+            },
+            "p_flow":{
+                "type": "watch_quantity",
+                "evaluation_quantities": {"quantity": "aorta_proximal.blood_flow"}
+            }
+        }
+    },
+    "parameters": {
+        "time.duration": 25.0,
+        "time.step_size": 0.001003,
+        // "time.step_size": 0.00089,
+        "aorta_proximal.blood_pressure.init": 10760.0,
+        "aorta_distal.blood_pressure.init": 10760.0,
+        "heart_rate": 60.0, // in beats / min
+        "aorta_proximal.resistance": 7.0e6,
+        "aorta_distal.resistance": 1.1e8,
+        "aorta_distal.time_constant": 2.0,
+        "venous.blood_pressure": 1600.0,
+        "aorta_proximal.blood_flow.min": 0.0,
+        "aorta_proximal.blood_flow.max": 0.5e-3
+    }
+}

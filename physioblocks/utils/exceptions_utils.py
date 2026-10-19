@@ -24,13 +24,15 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Declares a functions to log exceptions and to caught unhandled exceptions"""
+"""Declares functions to log exceptions and to catch unhandled exceptions."""
 
+import functools
 import logging
 import traceback
+import warnings
 from collections.abc import Callable
 from types import TracebackType
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 ExceptionHandlerFunction: TypeAlias = Callable[
     [type[BaseException], BaseException, TracebackType | None], None
@@ -41,18 +43,20 @@ ExceptionHandlerFunction: TypeAlias = Callable[
 def create_uncaught_exception_logger_handler(
     logger: logging.Logger,
 ) -> ExceptionHandlerFunction:
-    """create_uncaught_exception_logger_handler(logger: Logger) -> ExceptionHandlerFunction
+    """Create a handler that logs an uncaught exception.
 
-    Create an handler that log an uncaught exception.
+    Parameters
+    ----------
+    logger : Logger
+        the logger to use to log the exception
 
-    :param logger: the logger to use to log the exception
-    :type logger: Logger
+    Returns
+    -------
+    Callable
+        the exception handler
 
-    :return: the exception handler
-    :rtype: Callable
-
-    Example
-    ^^^^^^^
+    Examples
+    --------
 
     .. code:: python
 
@@ -64,7 +68,7 @@ def create_uncaught_exception_logger_handler(
         # register a hook to log uncaught exceptions to the logger
         sys.excepthook = create_uncaught_exception_logger_handler(_root_logger)
 
-    """  # noqa: E501
+    """
 
     def log_handler(
         exception_type: type[BaseException],
@@ -83,28 +87,25 @@ def log_exception(
     tb: TracebackType | None,
     loglevel: int = logging.ERROR,
 ) -> None:
-    """
-    Log the provided exception.
+    """Log the provided exception.
 
     .. note:: Type and message of the exception are logged with the provided
-      ``loglevel``, while the traceback informations are logged as ``DEBUG``.
+      ``loglevel``, while the traceback information is logged as ``DEBUG``.
 
-    :param logger: the logger used to log
-    :type logger: Logger
+    Parameters
+    ----------
+    logger : Logger
+        the logger used to log
+    exc_type : type[BaseException]
+        the exception type
+    exception : BaseException
+        the exception to log
+    tb : TracebackType | None
+        the traceback
+    loglevel : int
+        The loglevel. Default is ``logging.ERROR``.
 
-    :param exc_type: the exception type
-    :type exception: type[BaseException]
-
-    :param exception: the exception to log
-    :type exception: Exception
-
-    :param tb: the traceback
-    :type exception: TracebackType
-
-    :param loglevel: The loglevel, default is error
-    :type loglevel: int
     """
-
     logger.log(loglevel, str.format("{0}: {1}", exc_type.__name__, exception))
 
     if tb is not None:
@@ -112,3 +113,69 @@ def log_exception(
             "", traceback.format_exception(exc_type, value=exception, tb=tb)
         )
         logger.debug(exception_tb)
+
+
+def create_warning_logger_handler(
+    logger: logging.Logger,
+) -> Callable[..., None]:
+    """Create a handler to log issued warnings.
+
+    Parameters
+    ----------
+    logger : Logger
+        the logger to use to log the warning
+
+    Returns
+    -------
+    Callable[..., None]
+        the warning handler
+
+    Examples
+    --------
+
+    .. code:: python
+
+        # get a logger
+        _root_logger = logging.getLogger()
+        _root_logger.setLevel(logging.DEBUG)
+
+        # register a hook to log warnings to the logger
+        warnings.showwarning = create_warning_logger_handler(_root_logger)
+
+    """
+
+    def warning_handler(
+        message: Warning | str, category: type[Warning], *args: Any, **kwargs: Any
+    ) -> None:
+        logger.warning(f"{category.__name__}: {message}")
+
+    return warning_handler
+
+
+def experimental(func: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Notify the user the wrapped function might not work as expected.
+
+    When the wrapped function is called, it issues a UserWarning.
+
+    Parameters
+    ----------
+    func : Callable[..., Any]
+        the function to wrap
+
+    Returns
+    -------
+    Callable[..., Any]
+        the wrapped function
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        warnings.warn(
+            f"{func.__qualname__} is experimental and may not work correctly.",
+            category=UserWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    return wrapper

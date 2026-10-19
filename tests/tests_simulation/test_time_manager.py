@@ -24,6 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
+import numpy as np
 import pytest
 
 from physioblocks.simulation.time_manager import Time, TimeManager
@@ -55,7 +56,7 @@ class TestTime:
         assert time.current == pytest.approx(zero)
         assert time.new == pytest.approx(zero)
         assert time.dt == pytest.approx(zero)
-        assert time.inv_dt == pytest.approx(zero)
+        assert time.inv_dt == np.inf
 
     def test_initialize(self, zero, step):
         time = Time(zero)
@@ -64,7 +65,7 @@ class TestTime:
         assert time.current == pytest.approx(step)
         assert time.new == pytest.approx(step)
         assert time.dt == pytest.approx(zero)
-        assert time.inv_dt == pytest.approx(zero)
+        assert time.inv_dt == np.inf
 
     def test_update(self, zero, step):
         time = Time(zero)
@@ -92,78 +93,53 @@ class TestTime:
 
 
 class TestTimeManager:
-    def test_constructor(self, zero, step, end):
-        time_manager = TimeManager(zero, end, step)
+    def test_constructor(self):
+        time_manager = TimeManager(0.1, 1.0, 0.2)
         assert time_manager.ended is False
-        assert time_manager.time.current == zero
-        assert time_manager.time.new == zero
+        assert time_manager.time.current == pytest.approx(0.1)
+        assert time_manager.time.new == pytest.approx(0.1)
+        assert time_manager.step_size == pytest.approx(0.2)
+        assert time_manager.duration == pytest.approx(1.0)
+        assert time_manager.end == pytest.approx(1.1)
+        assert time_manager.start == pytest.approx(0.1)
 
-        with pytest.raises(ValueError):
-            time_manager = TimeManager(end, zero, step)
+    def test_default_constructor(self):
+        time_manager = TimeManager()
+        assert time_manager.ended is False
+        assert time_manager.time.current == pytest.approx(0.0)
+        assert time_manager.time.new == pytest.approx(0.0)
+        assert time_manager.step_size == pytest.approx(0.001)
+        assert time_manager.duration == pytest.approx(0.001)
+        assert time_manager.end == pytest.approx(0.001)
+        assert time_manager.start == pytest.approx(0.0)
 
-        with pytest.raises(ValueError):
-            time_manager = TimeManager(zero, end, -step)
+    def test_constructor_error_duration_negative(self):
+        with pytest.raises(ValueError, match=f"{-1.0}"):
+            TimeManager(0.0, -1.0, 0.1)
 
-        with pytest.raises(AttributeError):
-            time_manager.time = Time(zero)
+    def test_constructor_error_step_size_negative(self):
+        with pytest.raises(ValueError, match=f"{-0.1}"):
+            TimeManager(0.0, 1.0, -0.1)
 
-        with pytest.raises(ValueError):
-            TimeManager(zero, end, step, 0.0)
+    def test_set_step_negative_error(self):
+        time_manager = TimeManager(0.0, 1.0, 0.1)
+        with pytest.raises(ValueError, match=f"{-0.1}"):
+            time_manager.step_size = -0.1
 
-        with pytest.raises(ValueError):
-            TimeManager(zero, end, step, step + 0.1)
+    def test_set_duration_negative_error(self):
+        time_manager = TimeManager(0.0, 1.0, 0.1)
+        with pytest.raises(ValueError, match=f"{-1.0}"):
+            time_manager.duration = -1.0
 
-    def test_set(self, zero, step, end):
-        time_manager = TimeManager(
-            zero,
-            end,
-            step,
-        )
-
-        # start
-        assert time_manager.start == zero
-        time_manager.start = step
-        assert time_manager.end == time_manager.duration + step
-        assert time_manager.start == step
-
-        # step
-        assert time_manager.step_size == step
-        with pytest.raises(ValueError):
-            time_manager.step_size = -step
-
-        # duration
-        time_manager.duration = end + step
-        assert time_manager.end == end + 2 * step
-        with pytest.raises(ValueError):
-            time_manager.duration = zero - step
-
-    def test_update(self, zero, step, end):
-        time_manager = TimeManager(zero, end, step)
-
-        time_manager.update_time()
-        assert time_manager.time.current == zero
-        assert time_manager.time.new == step
-
-        time_manager.update_time()
-        assert time_manager.time.current == step
-        assert time_manager.time.new == (step + step)
-
-    def test_ended(self, zero, step):
-        time_manager = TimeManager(zero, step, step)
-        time_manager.update_time()
+    def test_ended(self):
+        time_manager = TimeManager(0.0, 0.1, 0.1)
+        assert time_manager.ended is False
+        time_manager.time.update(0.1)
         assert time_manager.ended is True
-        assert time_manager.time.current == zero
-        assert time_manager.time.new == step
 
-        time_manager.update_time()
-        assert time_manager.ended is True
-        assert time_manager.time.current == step
-        assert time_manager.time.new == step
-
-    def test_initialize(self, zero, step, end):
-        time_manager = TimeManager(zero, step, end)
-        time_manager.update_time()
-        time_manager.update_time()
+    def test_initialize(self):
+        time_manager = TimeManager(0.0, 0.1, 0.1)
         time_manager.initialize()
-        assert time_manager.time.current == zero
-        assert time_manager.time.new == zero
+        assert time_manager.time.current == pytest.approx(0.0)
+        assert time_manager.time.new == pytest.approx(0.1)
+        assert time_manager.ended is True

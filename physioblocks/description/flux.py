@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Declares **Flux** and **DOF** related objects.
-"""
+"""Declares **Flux** and **DOF** related objects."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -35,7 +33,7 @@ FLUX_TYPE_REGISTER_ID = "flux_type_register"
 
 
 class FluxDofTypesRegister:
-    """Stores relations between **Flux types** and **DOFs types**"""
+    """Stores relations between **Flux types** and **DOFs types**."""
 
     def __init__(self) -> None:
         # Stores relations between flux types and dof types
@@ -48,8 +46,11 @@ class FluxDofTypesRegister:
     def flux_dof_couples(self) -> dict[str, str]:
         """Get all **Flux-DOF** types couples.
 
-        :return: the **Flux-DOF** couples
-        :rtype: dict[str, str]
+        Returns
+        -------
+        dict[str, str]
+            the **Flux-DOF** couples
+
         """
         return self._fluxes_types.copy()
 
@@ -57,34 +58,65 @@ class FluxDofTypesRegister:
     def dof_flux_couples(self) -> dict[str, str]:
         """Get all **DOF-Flux** types couples.
 
-        :return: the **DOF-Flux** couples
-        :rtype: dict[str, str]
+        Returns
+        -------
+        dict[str, str]
+            the **DOF-Flux** couples
+
         """
         return self._dof_types.copy()
 
     def __type_registered(self, type_id: str) -> bool:
         return type_id in self._fluxes_types or type_id in self._dof_types
 
-    def get(self, value: str) -> str | None:
-        return self.flux_dof_couples.get(value, None)
+    def get(self, value: str, default: str | None = None) -> str | None:
+        """
+        Get the flux or dof type matching the given dof or flux type.
+
+        Parameters
+        ----------
+        value : str
+            the flux or dof type
+
+        Returns
+        -------
+        str | None
+            the matching dof or flux type.
+        """
+        matching_type = self.flux_dof_couples.get(value)
+        matching_type = (
+            self.dof_flux_couples.get(value) if matching_type is None else matching_type
+        )
+        return matching_type if matching_type is not None else default
 
     def update(self, mapping: Mapping[str, str]) -> None:
+        """
+        Update the flux-dof register with the mapping.
+
+        Parameters
+        ----------
+        mapping : Mapping[str, str]
+            the mapping to add to flux-dof register.
+        """
         for key, value in mapping.items():
             if value not in self.dof_flux_couples or key not in self.flux_dof_couples:
                 self.register_flux_dof_couple(key, value)
 
     def register_flux_dof_couple(self, flux_type: str, dof_type: str) -> None:
-        """
-        Register a matching **Flux-DOF** type couple.
+        """Register a matching **Flux-DOF** type couple.
 
-        :param flux_type: The flux type to register
-        :type flux_type: str
+        Parameters
+        ----------
+        flux_type : str
+            The flux type to register
+        dof_type : str
+            The matching DOF type
 
-        :param dof_type: The matching DOF type
-        :type dof_type: str
+        Raises
+        ------
+        ValueError
+            if either the **Flux** or the **DOF** type is already registered.
 
-        :raise ValueError: Raise a ValueError when either the **Flux** or the **DOF**
-          type is already registered.
         """
         if self.__type_registered(flux_type) is True:
             raise ValueError(str.format("{0} is already registered", flux_type))
@@ -95,14 +127,18 @@ class FluxDofTypesRegister:
         self._dof_types[dof_type] = flux_type
 
     def unregister_flux_dof_couple(self, type_id: str) -> None:
-        """
-        Unregister the flux or DOF type and its matching type.
+        """Unregister the flux or DOF type and its matching type.
 
-        :param type_id: The flux or DOF type to unregister
-        :type type_id: str
+        Parameters
+        ----------
+        type_id : str
+            The flux or DOF type to unregister
 
-        :raise ValueError: Raises a ValueError when no flux or DOF type with
-          the given name is registered
+        Raises
+        ------
+        ValueError
+            If no flux or DOF type with the given name is registered
+
         """
         if type_id in self._fluxes_types:
             flux_type = type_id
@@ -123,31 +159,21 @@ class FluxDofTypesRegister:
         self._dof_types.pop(dof_type)
 
 
-__flux_dof_register = FluxDofTypesRegister()
-
-
-def get_flux_dof_register() -> FluxDofTypesRegister:
-    """
-    Get the unique register storing the relation between flux types
-    and DOF types.
-
-    :return: The register mapping flux types with DOF types
-    :rtype: FluxDofTypesRegister
-    """
-    return __flux_dof_register
-
-
 @dataclass
 class Dof:
-    """
-    Degrees of freedom description.
+    """Degrees of freedom description.
+
+    Parameters
+    ----------
+    dof_id : str
+        The id of the dof
+    dof_type : str
+        The type of dof (ex: pressure, chemical, etc)
+
     """
 
     dof_id: str
-    """The id of the dof"""
-
     dof_type: str
-    """The type of dof (ex: pressure, chemical, etc)"""
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, Dof):

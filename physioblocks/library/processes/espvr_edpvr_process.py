@@ -23,123 +23,112 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare a process to compute the ESPVR and EDPVR curves."""
 
 from typing import Any
 
-from pandas import DataFrame, concat
-from rich.progress import Progress
+from pandas import DataFrame
 
-from physioblocks.computing.quantities import Quantity
 from physioblocks.description.nets import Net
 from physioblocks.registers.type_register import register_type
-from physioblocks.simulation.runtime import (
-    AbstractSimulation,
+from physioblocks.simulation.base import (
     AbstractSimulationProcess,
-    StaticSimulation,
+    SimulationModelFactory,
+    SimulationRange,
 )
-from physioblocks.simulation.setup import SimulationFactory
-from physioblocks.simulation.solvers import NewtonSolver
-from physioblocks.simulation.time_manager import TIME_QUANTITY_ID
+from physioblocks.simulation.solvers import ConvergenceError
+
+ESPVR_EDPVR_PROCESS_ID = "compute_espvr_edpvr"
 
 
-@register_type("compute_espvr_edpvr")
+@register_type(ESPVR_EDPVR_PROCESS_ID)
 class EspvrEdpvrProcess(AbstractSimulationProcess):
-    """
-    Compute ESPVR and EDPVR curves for the given net and parameters.
-    """
+    """Compute ESPVR and EDPVR curves for the given net and parameters.
 
-    parent_simulation: AbstractSimulation
+    Parameters
+    ----------
+    alternative_cavity_id : str
+        The id of the alternate model describing the
+        asymptotic model of the cavity
+    displacement_id : str
+        The id of the displacement parameter driving the simulation
+    displacement_range : SimulationRange
+        The displacement range driving the simulation
 
-    alternative_cavity_id: str
-    displacement: Quantity[Any]
-    displacement_min: float
-    displacement_max: float
-    displacement_step: float
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "compute_espvr_edpvr",
+            "outputs": ["<str>"],                // Name of the ESPVR and EDPVR output
+            "alternative_cavity_id": "<str>",    // Alternative type tag of the
+                                                 // asymptotic cavity model
+            "displacement_id": "<str>",          // Global name of the displacement
+                                                 // driving the simulation
+            "displacement_range": "<range type>" // Displacement range
+        }
+
+    """
 
     def __init__(
         self,
         alternative_cavity_id: str,
         displacement_id: str,
-        displacement_min: float,
-        displacement_max: float,
-        displacement_step: float,
+        displacement_range: SimulationRange,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         self.alternative_cavity_id = alternative_cavity_id
         self.displacement_id = displacement_id
-        self.displacement_min = displacement_min
-        self.displacement_max = displacement_max
-        self.displacement_step = displacement_step
+        self.displacement_range = displacement_range
 
         super().__init__(*args, **kwargs)
 
     def run(self) -> list[DataFrame]:
-        """
-        Run a static simulations piloted on displacement on the asymptotic cavity model
-        to compute ESPVR and EDPVR.
+        """Run static simulations driven by the displacement on the asymptotic cavity.
 
-        :return: the outputs dataframes
-        :rtype: list[DataFrame]
-        """
+        Returns
+        -------
+        list[DataFrame]
+            the outputs dataframes
 
-        parent_net: Net = self.parent_simulation.factory.net
+        """
+        parent_net: Net = self.model_factory.net
         cavity_net = parent_net.get_alternative_net(self.alternative_cavity_id)
-
-        factory = SimulationFactory(
-            "espvr_edpvr",
-            StaticSimulation,
-            NewtonSolver(tolerance=1e-12, iteration_max=10),
-            cavity_net,
+        asymptotic_cavity_model_factory = SimulationModelFactory(
+            cavity_net, parameters=self.model_factory.parameters.copy()
         )
-        sim = factory.create_simulation()
-
-        for qty_id, qty in self.parent_simulation.quantities.items():
-            if qty_id in sim.quantities:
-                sim.quantities[qty_id].initialize(qty.current)
-
-        if self.displacement_id in sim.quantities:
-            displacement_qty = sim.quantities[self.displacement_id]
-        else:
-            raise KeyError(
-                str.format(
-                    "{0}: not found in simulation quantities.", self.displacement_id
+        sim_model = asymptotic_cavity_model_factory.create_simulation_model()
+        results = []
+        disp = sim_model.parameters[self.displacement_id]
+        disp.initialize(self.displacement_range.start)
+        end = self.displacement_range.start + self.displacement_range.length
+        while disp <= end:
+            sol = sim_model.solver.solve(sim_model.state, sim_model.equation_system)
+            if sol.converged is True:
+                sim_model.state.set_vector(sol.x)
+                sim_model.saved_quantities.update()
+            else:
+                raise ConvergenceError(
+                    "ESPVR-EDPVR process did not converge for "
+                    f"displacement: {disp.current}"
                 )
+            result_line = {self.displacement_id: disp.current}
+            result_line.update(
+                {
+                    variable_id: variable_qty.current
+                    for variable_id, variable_qty in sim_model.state.quantities.items()
+                }
+            )
+            result_line.update(
+                {
+                    saved_qty_id: saved_qty.current
+                    for saved_qty_id, saved_qty in sim_model.saved_quantities.items()
+                }
             )
 
-        # Get variable magnitudes from parent simulation
-        variable_magnitudes = {
-            qty_id: qty
-            for qty_id, qty in self.parent_simulation.state.magnitudes.items()
-            if qty_id in sim.state
-        }
-        sim.state.set_variables_magnitudes(variable_magnitudes)
-
-        results: list[DataFrame] = []
-
-        disp = self.displacement_min
-
-        progress_step_update = (
-            100.0
-            * self.displacement_step
-            / (self.displacement_max - self.displacement_min)
-        )
-        with Progress() as progress:
-            sim_task = progress.add_task(
-                str.format("{0}: simulation in progress...", sim.name)
-            )
-            while disp <= self.displacement_max:
-                displacement_qty.initialize(disp)
-                result_line = sim.run()
-                result_line[sim.name][self.displacement_id] = disp
-                results.append(result_line[sim.name])
-                disp += self.displacement_step
-                progress.advance(sim_task, advance=progress_step_update)
-
-        results_df: DataFrame = concat(results)
-        results_df = (
-            results_df.drop(columns=TIME_QUANTITY_ID)
-            if TIME_QUANTITY_ID in results_df
-            else results_df
-        )
-        return [results_df]
+            results.append(result_line)
+            disp += self.displacement_range.step_size
+        return [DataFrame(results)]

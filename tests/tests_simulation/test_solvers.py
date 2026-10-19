@@ -31,8 +31,8 @@ import pytest
 from numpy.linalg import LinAlgError
 
 from physioblocks.computing.assembling import EqSystem
+from physioblocks.computing.quantities import QuantitiesRegistry
 from physioblocks.simulation.solvers import AbstractSolver, LinearSolver, NewtonSolver
-from physioblocks.simulation.state import State
 
 
 def mock_residual_converge():
@@ -81,10 +81,10 @@ def system() -> EqSystem:
 
 
 @pytest.fixture
-def state() -> State:
-    state = State()
-    state.add_variable("x0", 0.0)
-    state.add_variable("x1", 0.0)
+def state() -> QuantitiesRegistry:
+    state = QuantitiesRegistry()
+    state.add_quantity("x0", 0.0)
+    state.add_quantity("x1", 0.0)
     return state
 
 

@@ -24,184 +24,110 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
+from pathlib import Path
 
-import pandas as pd
+import pandas
 import pytest
+from pandas import DataFrame
 
-from physioblocks.library.processes.file_processes import CompareProcess
-
-
-@pytest.fixture
-def sample_dataframe():
-    return pd.DataFrame({"time": [1.0, 2.0, 3.0], "value": [10.0, 20.0, 30.0]})
-
-
-@pytest.fixture
-def comparison_dataframe():
-    return pd.DataFrame({"time": [1.0, 2.0, 3.0], "value": [11.0, 21.0, 31.0]})
+from physioblocks.library.processes.file_processes import (
+    DropProcess,
+    RenameProcess,
+    WriteProcess,
+)
 
 
-@pytest.fixture
-def expected_diff_dataframe():
-    return pd.DataFrame({"time": [1.0, 2.0, 3.0], "value": [1.0, 1.0, 1.0]})
+class TestRenameProcess:
+    def test_default_constructor(self):
+        process = RenameProcess()
+        assert process.mapping == {}
+        assert process.component == "columns"
 
-
-@pytest.fixture
-def expected_diff_without_abscissas():
-    return pd.DataFrame({"value": [1.0, 1.0, 1.0]}, index=[0, 1, 2])
-
-
-class TestCompareProcess:
-    def test_init_with_all_parameters(self):
-        process = CompareProcess(
-            reference="ref.csv",
-            abscissas="time",
-            ordinates=["value1", "value2"],
-            abscissas_precision=6,
-            options={"sep": ","},
-        )
-        assert process.reference == "ref.csv"
-        assert process.abscissas == "time"
-        assert process.ordinates == ["value1", "value2"]
-        assert process.abscissas_precision == 6
-        assert process.options == {"sep": ","}
-
-    def test_init_with_default_parameters(self):
-        process = CompareProcess()
-        assert process.reference is None
-        assert process.abscissas is None
-        assert process.ordinates == []
-        assert process.abscissas_precision == 9
-        assert process.options == {}
-
-    def test_can_run_without_reference(self):
-        process = CompareProcess()
-        assert process.can_run is False
-
-    def test_can_run_with_reference(self):
-        process = CompareProcess(reference="ref.csv")
+    def test_can_run_true(self):
+        process = RenameProcess()
         assert process.can_run is True
 
-    def test_run_without_reference(self, sample_dataframe):
-        process = CompareProcess()
-        with pytest.raises(ValueError, match="Process reference is not initialized"):
-            process.run(sample_dataframe)
+    def test_can_run_false(self):
+        process = RenameProcess()
+        process.mapping = None
+        assert process.can_run is False
 
-    def test_run_with_nonexistent_reference(self, sample_dataframe):
-        process = CompareProcess(reference="nonexistent.csv")
-        with pytest.raises(FileNotFoundError, match="File not found"):
-            process.run(sample_dataframe)
-
-    def test_run_with_unsupported_file_format(self, sample_dataframe, tmp_path):
-        test_file = tmp_path / "test.txt"
-        test_file.write_text("some content")
-
-        process = CompareProcess(reference=str(test_file))
-        with pytest.raises(NotImplementedError, match="Format not supported"):
-            process.run(sample_dataframe)
-
-    def test_run_with_csv_files(
-        self, sample_dataframe, comparison_dataframe, expected_diff_dataframe, tmp_path
-    ):
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe.to_csv(ref_file, index=False)
-
-        process = CompareProcess(reference=str(ref_file), abscissas="time")
-        result = process.run(comparison_dataframe)
-
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
-
-    def test_run_with_parquet_files(
-        self, sample_dataframe, comparison_dataframe, expected_diff_dataframe, tmp_path
-    ):
-        ref_file = tmp_path / "reference.parquet"
-        sample_dataframe.to_parquet(ref_file)
-
-        process = CompareProcess(reference=str(ref_file), abscissas="time")
-        result = process.run(comparison_dataframe)
-
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
-
-    def test_run_with_abscissas_precision_set(
-        self, tmp_path, sample_dataframe, comparison_dataframe, expected_diff_dataframe
-    ):
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe["time"] = [1.01, 2.01, 3.01]
-        sample_dataframe.to_csv(ref_file, index=False)
-
-        process = CompareProcess(
-            reference=str(ref_file), abscissas="time", abscissas_precision=1
+    def test_run(self):
+        dataframe_reference = pandas.DataFrame({"x": [], "y": []})
+        dataframe_a = pandas.DataFrame(
+            {
+                "a1": [],
+                "a2": [],
+            }
         )
-        result = process.run(comparison_dataframe)
-
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
-
-    def test_run_with_specific_ordinates(
-        self, tmp_path, sample_dataframe, comparison_dataframe, expected_diff_dataframe
-    ):
-        sample_dataframe["other_value"] = [100.0, 200.0, 300.0]
-        comparison_dataframe["other_value"] = [101.0, 201.0, 301.0]
-
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe.to_csv(ref_file, index=False)
-
-        process = CompareProcess(
-            reference=str(ref_file), abscissas="time", ordinates=["value"]
+        dataframe_b = pandas.DataFrame(
+            {
+                "b1": [],
+                "b2": [],
+            }
         )
-        result = process.run(comparison_dataframe)
-
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
-        assert list(result[0].columns) == ["time", "value"]
-
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
-
-    def test_run_with_csv_options(
-        self, tmp_path, sample_dataframe, comparison_dataframe, expected_diff_dataframe
-    ):
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe.to_csv(ref_file, index=False, sep=";")
-        process = CompareProcess(
-            reference=str(ref_file), options={"sep": ";"}, abscissas="time"
+        process = RenameProcess(
+            mapping={
+                "a1": "x",
+                "a2": "y",
+                "b1": "x",
+                "b2": "y",
+            }
         )
-        result = process.run(comparison_dataframe)
+        dataframe_a, dataframe_b = process.run(dataframe_a, dataframe_b)
 
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
+        pandas.testing.assert_frame_equal(dataframe_a, dataframe_reference)
+        pandas.testing.assert_frame_equal(dataframe_b, dataframe_reference)
 
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
 
-    def test_run_without_abscissas(
-        self, tmp_path, sample_dataframe, comparison_dataframe, expected_diff_dataframe
-    ):
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe.pop("time")
-        sample_dataframe.to_csv(ref_file, index=False)
+class TestDropProcess:
+    def test_default_constructor(self):
+        process = DropProcess()
+        assert process.columns is None
+        assert process.interval is None
+        assert process.abscissas == "time"
 
-        process = CompareProcess(reference=str(ref_file), abscissas=None)
-        comparison_dataframe.pop("time")
-        result = process.run(comparison_dataframe)
+    def test_drop_columns(self):
+        in_df = pandas.DataFrame({"x": [], "y": []})
+        process = DropProcess(columns="y")
 
-        assert len(result) == 1
-        assert isinstance(result[0], pd.DataFrame)
-        expected_diff_dataframe.pop("time")
-        pd.testing.assert_frame_equal(result[0], expected_diff_dataframe)
+        [out_df] = process.run(in_df)
+        assert "x" in out_df.columns
+        assert "y" not in out_df.columns
 
-    def test_run_preserves_original_dataframe(
-        self, tmp_path, sample_dataframe, comparison_dataframe, expected_diff_dataframe
-    ):
-        ref_file = tmp_path / "reference.csv"
-        sample_dataframe.to_csv(ref_file, index=False)
+    def test_drop_lines(self):
+        in_df = pandas.DataFrame(
+            {"x": [0.1 * i for i in range(5)], "y": [1.0 * i for i in range(5)]}
+        )
+        process = DropProcess(abscissas_name="x", abscissas_interval=[0.1, 0.3])
 
-        original_values = sample_dataframe.copy()
-        process = CompareProcess(reference=str(ref_file))
-        result = process.run(comparison_dataframe)
+        [out_df] = process.run(in_df)
+        assert "x" in out_df.columns
+        assert "y" in out_df.columns
+        assert out_df["x"].size == 3
+        assert out_df["y"].size == 3
 
-        assert len(result) == 1
-        pd.testing.assert_frame_equal(sample_dataframe, original_values)
+
+class TestWriteProcess:
+    @pytest.mark.parametrize(
+        "file_name",
+        [
+            pytest.param("tmp_file.csv", id="csv"),
+            pytest.param("tmp_file.parquet", id="parquet"),
+        ],
+    )
+    def test_write(self, tmp_path: Path, file_name: str):
+        file_path = tmp_path / file_name
+        process = WriteProcess([str(file_path)])
+        process.run(DataFrame())
+        assert file_path.exists() is True
+
+    def test_skip_warn_unsupported(self, tmp_path: Path):
+        json_file = tmp_path / "test_file.json"
+        csv_file = tmp_path / "test_file.csv"
+        process = WriteProcess([str(json_file), str(csv_file)])
+        with pytest.warns(UserWarning, match=("not supported" and ".json")):
+            process.run(DataFrame(), DataFrame())
+        # json file skipped, csv file is still written
+        assert json_file.exists() is False
+        assert csv_file.exists() is True

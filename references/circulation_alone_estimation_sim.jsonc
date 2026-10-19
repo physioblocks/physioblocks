@@ -1,0 +1,29 @@
+{
+    "type": "circulation_alone_estimation_ukf",
+    "data": {
+        // the measurements file should provide proximal pressure
+        // for the simulation length in mmHg.
+        "measurements": {
+            "filepath": "references/synthetic_data/circulation_alone_measurements.csv"
+        }
+    },
+    "preprocesses":{
+        "measurements_mapping": {
+            "mapping": {
+                // replace 'proximal_pressure' key with your measurement name in the file.
+                "proximal_pressure": "measurement.aorta_proximal.blood_pressure"
+            }
+        }
+    },
+    "parameters": {
+        "time.duration": 10.0,
+        "aorta_proximal.blood_pressure.init": 0.0, // in Pa
+        "aorta_distal.blood_pressure.init": 0.0, // in Pa
+        "heart_rate": 60.0, // in beats / min
+        "aorta_proximal.resistance": 7.0e6,
+        "aorta_distal.resistance.init": 5.0e8, // Initial guess for parameter
+        "venous.blood_pressure": 1600.0,
+        "aorta_proximal.blood_flow.min": 0.0,
+        "aorta_proximal.blood_flow.max": 0.5e-3
+    }
+}

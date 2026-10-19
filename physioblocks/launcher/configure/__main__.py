@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Configure a directory to be used as a root directory for the PhysioBlocks launcher.
-"""
+"""Configure a directory to use as the root directory for the launcher."""
 
 import argparse
 import logging
@@ -44,7 +42,7 @@ _logger.setLevel(logging.DEBUG)
 sys.excepthook = exceptions_utils.create_uncaught_exception_logger_handler(_logger)
 
 
-def main(target_dir: Path) -> int:
+def _main(target_dir: Path) -> int:
     if check_target_launcher_directory(target_dir) is False:
         raise OSError(
             str.format(
@@ -58,7 +56,6 @@ def main(target_dir: Path) -> int:
     _logger.info(
         str.format("Launcher directory created at {0}.", str(target_dir.absolute()))
     )
-
     return 0
 
 
@@ -101,7 +98,7 @@ if __name__ == "__main__":
     if args.verbose is True:
         console_log_level = logging.INFO
         if args.debug is True:
-            console_level = logging.DEBUG
+            console_log_level = logging.DEBUG
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
@@ -110,4 +107,4 @@ if __name__ == "__main__":
 
     # Convert the str path to a Pathlib Path
     launcher_directory_path = Path(args.launcher_directory)
-    sys.exit(main(launcher_directory_path))
+    sys.exit(_main(launcher_directory_path))

@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Define base classe to provide generic base operators"""
+"""Define base class to provide generic base operators."""
 
 from abc import ABC, abstractmethod
 from typing import Any
@@ -34,7 +34,7 @@ from numpy.typing import NDArray
 
 
 class AbstractBaseOperators(ABC):
-    """Base class defining behaviors for common operators
+    """Base class defining behaviors for common operators.
 
     The derived classes should implement the :attr:`operation_value` property
     to return the attribute of the class that will be used with base
@@ -44,19 +44,9 @@ class AbstractBaseOperators(ABC):
     @property
     @abstractmethod
     def operation_value(self) -> Any:
-        """
-        Overwrite in derived class to return the value used by the
-        class for the base operators.
-        """
-        raise NotImplementedError(
-            str.format(
-                "{0} is not implemented in {1} class.",
-                AbstractBaseOperators.operation_value.__name__,
-                type(self),
-            )
-        )
+        """Get the value used by the class for the base operators."""
 
-    # Convertion
+    # Conversion
 
     def __float__(self) -> float:
         return float(self.operation_value)
@@ -117,7 +107,7 @@ class AbstractBaseOperators(ABC):
     def __rsub__(self, other: Any) -> Any:
         return other - self.operation_value
 
-    # Oposite
+    # Opposite
     def __neg__(self) -> Any:
         return -self.operation_value
 

@@ -24,10 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define decorators to register any function as a specific load function
-of a configuration object.
-"""
+"""Define decorators to register functions as a configuration load function."""
 
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -43,14 +40,18 @@ T = TypeVar("T")
 def loads(
     loaded_type: type[T],
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """
-    Decorator to register a method that loads a registered type.
+    """Register a method that loads a registered type.
 
-    :param loaded_type: the loaded type
-    :type loaded_type: str
+    Parameters
+    ----------
+    loaded_type : type
+        the loaded type
 
-    :return: the class decorator
-    :rtype: Callable
+    Returns
+    -------
+    Callable
+        the function decorator
+
     """
 
     def register_decorator(load_function: Callable[..., T]) -> Callable[..., T]:
@@ -61,16 +62,26 @@ def loads(
 
 
 def get_load_function(loaded_type: type) -> Callable[..., Any]:
-    """
-    Get a registered load function.
+    """Get a registered load function.
 
-    :param type_id: the registered type id
-    :type type_id: str
+    When the function type itself is not registered, get the function registered for
+    the closest parent type in the type MRO.
 
-    :raise KeyError: Raises a key error if the type is not registered.
+    Parameters
+    ----------
+    loaded_type : type
+        the type to get the load function for.
 
-    :return: the registered type
-    :rtype: type
+    Returns
+    -------
+    Callable[..., Any]
+        the registered load function
+
+    Raises
+    ------
+    KeyError
+        If the type is not registered.
+
     """
     key_type = _get_closest_type(loaded_type)
 
@@ -84,10 +95,8 @@ def get_load_function(loaded_type: type) -> Callable[..., Any]:
     return __load_functions_register[key_type]
 
 
-def _get_closest_type(searched_type: type | None) -> None | type:
-    if searched_type is None:
-        return None
-    elif searched_type in __load_functions_register:
-        return searched_type
-    else:
-        return _get_closest_type(searched_type.__base__)
+def _get_closest_type(searched_type: type) -> type | None:
+    for _parent_type in searched_type.mro():
+        if _parent_type in __load_functions_register:
+            return _parent_type
+    return None

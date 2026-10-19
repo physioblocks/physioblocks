@@ -24,10 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define decorators to register any function as a specific save function
-of a configuration object.
-"""
+"""Define decorators to register functions as a configuration save function."""
 
 from collections.abc import Callable
 from typing import Any
@@ -40,14 +37,18 @@ __save_functions_register: dict[type, Callable[..., Any]] = {}
 def saves(
     saved_type: type,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """
-    Decorator to register a method that saves a registered type.
+    """Register a method that saves a registered type.
 
-    :param saved_type: the saved type by the method
-    :type saved_type: str
+    Parameters
+    ----------
+    saved_type : type
+        the saved type by the method
 
-    :return: the class decorator
-    :rtype: Callable
+    Returns
+    -------
+    Callable
+        the function decorator
+
     """
 
     def register_decorator(
@@ -60,30 +61,44 @@ def saves(
 
 
 def has_save_function(key: type) -> bool:
-    """
-    Check if the type has a save function
+    """Check if the type has a save function.
 
-    :param key: the key to test
-    :type key: Any
+    Parameters
+    ----------
+    key : type
+        the type to test
 
-    :return: True if the key is registered, False otherwise
-    :rtype: bool
+    Returns
+    -------
+    bool
+        True if the key is registered, False otherwise
+
     """
     key_type = _get_closest_type(key)
     return key_type in __save_functions_register
 
 
 def get_save_function(saved_type: type) -> Callable[..., Any]:
-    """
-    Get a registered save function.
+    """Get a registered save function.
 
-    :param type_id: the registered type id
-    :type type_id: str
+    When the function type itself is not registered, get the function registered for
+    the closest parent in the type MRO.
 
-    :raise KeyError: Raises a key error if the type is not registered.
+    Parameters
+    ----------
+    saved_type : type
+        the type to get the save function for.
 
-    :return: the registered type
-    :rtype: type
+    Returns
+    -------
+    Callable[..., Any]
+        the registered save function
+
+    Raises
+    ------
+    KeyError
+        Raises a key error if the type is not registered.
+
     """
     key_type = _get_closest_type(saved_type)
 
@@ -97,10 +112,8 @@ def get_save_function(saved_type: type) -> Callable[..., Any]:
     return __save_functions_register[key_type]
 
 
-def _get_closest_type(searched_type: type | None) -> None | type:
-    if searched_type is None:
-        return None
-    elif searched_type in __save_functions_register:
-        return searched_type
-    else:
-        return _get_closest_type(searched_type.__base__)
+def _get_closest_type(searched_type: type) -> type | None:
+    for _parent_type in searched_type.mro():
+        if _parent_type in __save_functions_register:
+            return _parent_type
+    return None

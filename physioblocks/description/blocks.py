@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Declares the **Blocks** and their **Local Nodes**
-"""
+"""Declares the **Blocks** and their **Local Nodes**."""
 
 from __future__ import annotations
 
@@ -36,9 +34,8 @@ from copy import copy
 from physioblocks.computing.models import (
     Block,
     Expression,
-    ExpressionDefinition,
     ModelComponent,
-    TermDefinition,
+    Term,
 )
 from physioblocks.registers.type_register import register_type
 
@@ -51,34 +48,68 @@ MODEL_DESCRIPTION_TYPE_ID = "model_description"
 
 @register_type(MODEL_DESCRIPTION_TYPE_ID)
 class ModelComponentDescription:
-    """
-    Description of a :class:`~physioblocks.computing.models.ModelComponent` object
-    in a :class:`~physioblocks.description.nets.Net` object.
+    """Description of a :class:`~.ModelComponent` in a :class:`~.Net`.
 
     **Model Components** have no fluxes and their description can not interact directly
     with the net.
 
-    To use a model component in a net, it has to be added has a sub-model of a
-    :class:`~physioblocks.description.blocks.BlockDescription` object or
-    of a another :class:`~physioblocks.description.blocks.ModelComponentDescription`
-    object.
+    To use a model component in a net, it has to be added as a sub-model of a
+    :class:`~.BlockDescription` object or of another
+    :class:`~.ModelComponentDescription` object.
 
-    :param unique_id: the model name in the net
-    :type unique_id: str
+    The model component description is used as a submodel of a
+    :class:`~.BlockDescription` or of another :class:`~.ModelComponentDescription`.
 
-    :param model_type: the described **ModelComponent type**
-    :type model_type: type[ModelComponent]
+    Every model component local quantity can be given a global name in the
+    net. The default global name of a quantity is ``<model name>.<local name>``.
 
-    :param global_ids: mapping of all the component local parameter name with
-      their global names in the net
-    :type global_ids: dict[str, str]
+    Parameters
+    ----------
+    unique_id : str
+        the model name in the net
+    model_type : type[ModelComponent]
+        the described :class:`~.ModelComponent` type
+    global_ids : dict[str, str]
+        mapping of all the component local parameter name with
+        their global names in the net
+    submodels : dict[str, ModelComponentDescription]
+        mapping of all the model submodels with their name.
+    alternative_types : Mapping[str, type[ModelComponent]]
+        mapping of all the alternative types of the model
+        description with their tag id.
 
-    :param submodels: mapping of all the model submodels with their name.
-    :type submodels: dict[str, ModelComponentDescription]
+    Raises
+    ------
+    AttributeError
+        if a key of ``global_ids`` is not a local id of the model type.
 
-    :param alternative_types: mapping of all the alternative types of the model
-      description with their tag id.
-    :type alternative_types: Mapping[str, type[ModelComponent]]
+    See Also
+    --------
+    ~.ModelComponent
+        the described objects.
+    ~.BlockDescription
+        Can reference model components
+    ~.Net
+        Can reference model components in the block descriptions
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "model_description",
+            "model_type": "<str>",        // Type id of the described model component
+            "<local name>": "<str>",      // Global name of the local quantity
+            // (optional, default: "<model name>.<local name>")
+            "submodels": {                // Submodel descriptions with their names
+                "<str>": "<model description type>"  // (optional)
+            },
+            "alternative_types": {        // Alternative model component type id
+                "<str>": "<str>"          // with its tag (optional)
+            }
+        }
+
     """
 
     _unique_id: str
@@ -124,14 +155,6 @@ class ModelComponentDescription:
         # update with user ids
         self._global_ids.update(user_ids)
 
-        # build expressions definitions once
-        self._internal_defs = self._get_global_expressions_definitions(
-            self._described_type.internal_expressions
-        )
-        self._saved_quantities_defs = self._get_global_expressions_definitions(
-            self._described_type.saved_quantities_expressions
-        )
-
         # Initialise submodels
         self._submodels = {}
         if submodels is not None:
@@ -142,72 +165,81 @@ class ModelComponentDescription:
         self._alternative_descriptions = self._get_alternative_descriptions()
 
     def _get_global_expressions_definitions(
-        self, local_definitions: list[ExpressionDefinition]
-    ) -> list[ExpressionDefinition]:
+        self, local_definitions: list[Expression]
+    ) -> list[Expression]:
         return [
-            ExpressionDefinition(
-                Expression(
-                    expression_def.expression.size,
-                    expression_def.expression.expr_func,
-                    {
-                        self.global_ids[grad_key]: grad_expr
-                        for grad_key, grad_expr in expression_def.expression.expr_gradients.items()  # noqa: E501
-                    },
-                ),
+            Expression(
+                expression.size,
+                expression.expr_func,
                 [
-                    TermDefinition(self.global_ids[term.term_id], term.size, term.index)
-                    for term in expression_def.terms
+                    Term(self.global_ids[local_id], size, index)
+                    for local_id, size, index in expression.terms
                 ],
+                {
+                    self.global_ids[local_id]: grad_func
+                    for local_id, grad_func in expression.expr_gradients.items()
+                },
             )
-            for expression_def in local_definitions
+            for expression in local_definitions
         ]
 
     @property
     def name(self) -> str:
         """Get the model component name.
 
-        :return: the model component name
-        :rtype: str
+        Returns
+        -------
+        str
+            the model component name
+
         """
         return self._unique_id
 
     @property
     def global_ids(self) -> dict[str, str]:
-        """Get a mapping of all local name of the quantities matching
-        their global name in the net.
+        """Get local name of the quantities matching their global name in the net.
 
-        :return: the global ids of the model
-        :rtype: dict[str, str]
+        Returns
+        -------
+        dict[str, str]
+            the global ids of the model
+
         """
         return self._global_ids.copy()
 
     @property
     def described_type(self) -> type[ModelComponent]:
-        """Get the described :class:`~physioblocks.computing.models.ModelComponent`
-        type.
+        """Get the described type.
 
-        :return: the model component type
-        :rtype: type[ModelComponent]
+        Returns
+        -------
+        type[ModelComponent]
+            the model component type
+
         """
         return self._described_type
 
     @property
     def alternative_types(self) -> Mapping[str, type[ModelComponent]]:
-        """Get all the alternative
-        :class:`~physioblocks.computing.models.ModelComponent` types.
+        """Get all the alternative types for the model.
 
-        :return: the alternatives model component types
-        :rtype: dict[str, type[ModelComponent]]
+        Returns
+        -------
+        Mapping[str, type[ModelComponent]]
+            the alternatives model component types
+
         """
         return copy(self._alternative_types)
 
     @property
     def alternative_descriptions(self) -> Mapping[str, ModelComponentDescription]:
-        """Get all the alternative
-        :class:`~physioblocks.computing.models.ModelComponentDescription`.
+        """Get all the alternative descriptions for the model.
 
-        :return: the alternatives model component descriptions
-        :rtype: dict[str, ModelComponentDescription]
+        Returns
+        -------
+        Mapping[str, ModelComponentDescription]
+            the alternatives model component descriptions
+
         """
         return copy(self._alternative_descriptions)
 
@@ -215,23 +247,33 @@ class ModelComponentDescription:
     def submodels(self) -> dict[str, ModelComponentDescription]:
         """Get the submodels descriptions.
 
-        :return: the submodel descriptions
-        :rtype: dict[str, ModelComponentDescription]
+        Returns
+        -------
+        dict[str, ModelComponentDescription]
+            the submodel descriptions
+
         """
         return self._submodels.copy()
 
     @property
-    def internal_variables(self) -> list[tuple[str, int]]:
-        """
-        Get the model **Internal Variables** global names recursively for the
-        model and its submodels.
+    def internal_variables(self) -> list[Term]:
+        """Get the model **Internal Variables** terms.
 
-        :return: the internal variables name and sizes
-        :rtype: list[tuple[str, int]]
+        Get the terms recursively for the model and its submodels.
+
+        Returns
+        -------
+        list[Term]
+            the internal variables terms
+
         """
         internal_variables = [
-            (self._global_ids[term_def.term_id], term_def.size)
-            for term_def in self._described_type.internal_variables
+            Term(self.global_ids[term_id], term_size, term_index)
+            for (
+                term_id,
+                term_size,
+                term_index,
+            ) in self._described_type.internal_variables
         ]
 
         for model in self.submodels.values():
@@ -240,29 +282,34 @@ class ModelComponentDescription:
         return internal_variables
 
     @property
-    def internal_expressions(self) -> list[ExpressionDefinition]:
-        """
-        Get the :class:`~physioblocks.computing.models.ExpressionDefinition` object
-        representing model's **Internal equations**.
+    def internal_expressions(self) -> list[Expression]:
+        """Get the object expressions representing model's **Internal equations**.
 
-        :return: all the model internal equations
-        :rtype: list[ExpressionDefinition]
+        Returns
+        -------
+        list[Expression]
+            all the model internal equations
+
         """
-        return self._internal_defs
+        return self._get_global_expressions_definitions(
+            self._described_type.internal_expressions
+        )
 
     @property
-    def saved_quantities(self) -> list[tuple[str, int]]:
-        """
-        Get the model **Saved Quantities** global names and sizes recursively
-        for the model and its submodels.
+    def saved_quantities(self) -> list[Term]:
+        """Get the model **Saved Quantities** terms.
 
-        :return: the saved quantities name and sizes
-        :rtype: list[tuple[str, int]]
-        """
+        Get the terms recursively for the model and all its submodels.
 
+        Returns
+        -------
+        list[Term]
+            the saved quantities name and sizes
+
+        """
         saved_quantities = [
-            (self._global_ids[term_def.term_id], term_def.size)
-            for term_def in self._described_type.saved_quantities
+            Term(self.global_ids[term_id], term_size, term_index)
+            for term_id, term_size, term_index in self._described_type.saved_quantities
         ]
 
         for model in self.submodels.values():
@@ -271,38 +318,35 @@ class ModelComponentDescription:
         return saved_quantities
 
     @property
-    def saved_quantities_expressions(self) -> list[ExpressionDefinition]:
-        """
-        Get all saved quantities expressions definitions for model
+    def saved_quantities_expressions(self) -> list[Expression]:
+        """Get the model saved quantities expressions.
 
-        :return: all the model saved quantities expression definitions
-        :rtype: list[ExpressionDefinition]
+        Returns
+        -------
+        list[Expression]
+            The model saved quantities expression definitions
+
         """
-        return self._saved_quantities_defs
+        return self._get_global_expressions_definitions(
+            self._described_type.saved_quantities_expressions
+        )
 
     def rename_global_id(self, old_id: str, new_id: str) -> None:
-        """Rename the global name with the new name in the current model and
-        all its submodels.
+        """Rename the global id in the model and its submodels recursively.
 
-        If no name is a match, then no name are changed.
+        If no name is a match, then no name is changed.
 
-        :param old_id: the global name to rename
-        :type old_id: str
+        Parameters
+        ----------
+        old_id : str
+            the global id to rename
+        new_id : str
+            the new id to set
 
-        :param new_id: the new name to set
-        :type new_id: str
         """
         for local_id, global_id in self._global_ids.items():
             if old_id == global_id:
                 self._global_ids[local_id] = new_id
-
-        # Update the definitions with new names
-        self._internal_defs = self._get_global_expressions_definitions(
-            self._described_type.internal_expressions
-        )
-        self._saved_quantities_defs = self._get_global_expressions_definitions(
-            self._described_type.saved_quantities_expressions
-        )
 
         for submodel in self._submodels.values():
             submodel.rename_global_id(old_id, new_id)
@@ -313,20 +357,23 @@ class ModelComponentDescription:
     def add_submodel(
         self, local_model_id: str, model_description: ModelComponentDescription
     ) -> ModelComponentDescription:
-        """
-        Add a submodel to the model.
+        """Add a submodel to the model.
 
         Create and return a copy of the input model description
         updated with correct ids.
 
-        :param model_id: The submodel name
-        :type model_id: str
+        Parameters
+        ----------
+        local_model_id : str
+            The submodel name
+        model_description : ModelComponentDescription
+            The model to add
 
-        :param model_description: The model to add
-        :type model_type: type[ModelComponent]
+        Returns
+        -------
+        ModelComponentDescription
+            the submodel description in the current model description
 
-        :return: the submodel description in the current model description
-        :rtype: ModelComponentDescription
         """
         submodel_id = ID_SEPARATOR.join([self.name, local_model_id])
 
@@ -347,14 +394,18 @@ class ModelComponentDescription:
         return self._submodels[local_model_id]
 
     def remove_submodel(self, model_id: str) -> ModelComponentDescription:
-        """
-        Remove the submodel.
+        """Remove the submodel.
 
-        :param model_id: the id of the submodel to remove
-        :type model_id: str
+        Parameters
+        ----------
+        model_id : str
+            the id of the submodel to remove
 
-        :return: the removed submodel description
-        :rtype: ModelComponentDescription
+        Returns
+        -------
+        ModelComponentDescription
+            the removed submodel description
+
         """
         return self._submodels.pop(model_id)
 
@@ -398,48 +449,82 @@ BLOCK_DESCRIPTION_TYPE_ID = "block_description"
 
 @register_type(BLOCK_DESCRIPTION_TYPE_ID)
 class BlockDescription(ModelComponentDescription):
-    """
-    Extend the :class:`~.ModelComponentDescription` to describe
-    :class:`~physioblocks.computing.models.Block` object in the net.
+    """Extend :class:`ModelComponentDescription` to describe :class:`~.Block` objects.
 
-    Block descriptions connect their block's flux to
-    :type:`~physioblocks.description.nets.Node` objects to share
+    Block descriptions connect their block's flux to :class:`~.Node` objects to share
     them across the net.
 
     .. note:: **Internal variables** can be empty, but described
-      :type:`~physioblocks.computing.models.Block` type should at
-      least define one **Flux** (otherwise, it can not interact with the others
-      blocks in the net)
+      :class:`~.Block` type should define
+      fluxes to interact with the others blocks in the net.
 
-    :param block_id: the block name in the net
-    :type block_id: str
+    Every block local quantity can be given a global name in the
+    configuration. Default global name is ``<block name>.<local name>``.
 
-    :param block_type: the described block type
-    :type block_type: type[Block]
+    Parameters
+    ----------
+    block_id : str
+        the block name in the net
+    block_type : type[Block]
+        the described block type
+    flux_type : str
+        the type of flux exchanged by the block
+    global_ids : dict[str, str]
+        mapping of all the block local parameter name with
+        their global names in the net
+    submodels : dict[str, ModelComponentDescription]
+        mapping of all the block submodels with their name.
+    alternative_types : Mapping[str, type[Block]]
+        mapping of all the alternative block types of the block
+        description with their tag id.
 
-    :param flux_type: the type of flux exchanged by the block
-    :type flux_type: str
+    Examples
+    --------
+    >>> block_description = BlockDescription(
+    ...     "rc_block_1",  # block name
+    ...     RCBlock,  # block type
+    ...     "flow",  # block flux type
+    ...     {
+    ...         "resistance": "r1",  # rename "rc_block_1.resistance" to "r1"
+    ...         "capacitance": "c1",  # rename "rc_block_1.capacitance" to "c1"
+    ...     },
+    ...     # no submodels defined
+    ... )
 
-    :param global_ids: mapping of all the block local parameter name with
-      their global names in the net
-    :type global_ids: dict[str, str]
+    See Also
+    --------
+    ~.Block
+        the described object
+    ~.ModelComponentDescription
+        base class
+    ~.Net
+        reference block description to describe the fluxes
 
-    :param submodels: mapping of all the block submodels with their name.
-    :type submodels: dict[str, ModelComponentDescription]
+    Configuration
+    -------------
 
-    Example
-    ^^^^^^^
+    The ``node`` field of the block configuration matches node indexes in the actual
+    :class:`~.Block` type to a node defined in the net.
 
-        >>> block_description = BlockDescription(
-                "rc_block_1", # block name
-                RCBlock, # block type
-                "flow", # block flux type
-                {
-                    "resistance": "r1", # rename "rc_block_1.resistance" to "r1"
-                    "capacitance": "c1", # rename "rc_block_1.capacitance" to "c1"
-                }
-                # no submodels defined
-            )
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "<str>",        // Type id of the described block
+            "flux_type": "<str>",         // Type of flux exchanged by the block
+            "nodes": {                    // Net node name for each block local node
+                "<int>": "<str>"
+            },
+            "<local name>": "<str>",      // Global name of the local quantity
+            // (optional, default: "<block name>.<local name>")
+            "submodels": {                // Submodel descriptions with their names
+                "<str>": "<model description type>"  // (optional)
+            },
+            "alternative_types": {        // Alternative block type id
+                "<str>": "<str>"          // with its tag (optional)
+            }
+        }
+
     """
 
     _block_id: str
@@ -468,41 +553,52 @@ class BlockDescription(ModelComponentDescription):
 
     @property
     def described_type(self) -> type[Block]:
-        """Get the described :class:`~physioblocks.computing.models.Block` type.
+        """Get the described block type.
 
-        :return: the block type
-        :rtype: type[Block]
+        Returns
+        -------
+        type[Block]
+            the block type
+
         """
         return self._described_type
 
     @property
     def fluxes(self) -> dict[int, Expression]:
-        """
-        Get a mapping of flux `~physioblocks.computing.models.Expression` associated
-        with their **Local Node** index.
+        """Get the fluxes expressions associated with their **Local Node** index.
 
-        :return: the flux expression at each local node
-        :rtype: dict[int, Expression]
+        Returns
+        -------
+        dict[int, Expression]
+            the flux expression at each local node
+
         """
         return {
             loc_node_index: Expression(
-                flux_def.expression.size,
-                flux_def.expression.expr_func,
+                flux_expression.size,
+                flux_expression.expr_func,
+                [
+                    Term(self.global_ids[term_id], term_size, term_index)
+                    for term_id, term_size, term_index in flux_expression.terms
+                    if term_id in self.global_ids
+                ],
                 {
                     self.global_ids[grad_key]: grad_expr
-                    for grad_key, grad_expr in flux_def.expression.expr_gradients.items()  # noqa: E501
+                    for grad_key, grad_expr in flux_expression.expr_gradients.items()
                 },
             )
-            for loc_node_index, flux_def in self.described_type.fluxes_expressions.items()  # noqa: E501
+            for loc_node_index, flux_expression in self.described_type.fluxes_expressions.items()  # noqa: E501
         }
 
     @property
     def flux_type(self) -> str:
-        """
-        Get the type of the block's flux.
+        """Get the type of the block's flux.
 
-        :return: the flux type
-        :rtype: str
+        Returns
+        -------
+        str
+            the flux type
+
         """
         return self._flux_type
 

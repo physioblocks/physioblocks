@@ -24,15 +24,8 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
-
-import pytest
-
-from physioblocks.computing.quantities import Quantity
 from physioblocks.description.nets import Net
 from physioblocks.simulation.solvers import AbstractSolver
-from physioblocks.simulation.state import State
-from physioblocks.simulation.time_manager import TimeManager
 
 
 def assert_net_equals(net_a: Net, net_b: Net) -> None:
@@ -49,37 +42,6 @@ def assert_net_equals(net_a: Net, net_b: Net) -> None:
         assert node.local_nodes == net_b.nodes[node_id].local_nodes
 
 
-def assert_parameters_equals(
-    parameters_a: dict[str, Quantity[Any]], parameters_b: dict[str, Quantity[Any]]
-) -> None:
-    assert len(parameters_a) == len(parameters_b)
-    for ref_id, ref_qty in parameters_b.items():
-        assert ref_id in parameters_a
-        qty = parameters_a[ref_id]
-        assert qty.size == ref_qty.size
-        if qty.size == 1:
-            assert ref_qty.current == pytest.approx(qty.current)
-            assert ref_qty.new == pytest.approx(qty.new)
-        else:
-            assert qty.current == pytest.approx(ref_qty.current, abs=1e-16)
-            assert qty.new == pytest.approx(ref_qty.new, abs=1e-16)
-
-
 def assert_solvers_equals(solver_a: AbstractSolver, solver_b: AbstractSolver):
     assert solver_a.tolerance == solver_b.tolerance
     assert solver_a.iteration_max == solver_b.iteration_max
-
-
-def assert_states_equals(state_a: State, state_b: State) -> None:
-    assert state_a.variables == state_b.variables
-    assert state_a.indexes == state_b.indexes
-
-
-def assert_time_manager_equals(
-    time_manager_a: TimeManager, time_manager_b: TimeManager
-) -> None:
-    assert time_manager_a.step_size == pytest.approx(time_manager_b.step_size)
-    assert time_manager_a.end == pytest.approx(time_manager_b.end)
-    assert time_manager_a.start == pytest.approx(time_manager_b.start)
-    assert time_manager_a.min_step == pytest.approx(time_manager_b.min_step)
-    assert time_manager_a.step_size == pytest.approx(time_manager_b.step_size)

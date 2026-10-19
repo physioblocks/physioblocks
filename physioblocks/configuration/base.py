@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define the base configurations objects
-"""
+"""Define the base configurations objects."""
 
 from __future__ import annotations
 
@@ -37,19 +35,23 @@ from typing import Any
 
 @dataclass
 class Configuration(Mapping[str, Any]):
-    """
-    Define a generic configuration object that can easily be serialized.
+    """Define a generic configuration object that can easily be serialized.
 
     .. note::
 
         The ``configuration_items`` can also be :class:`~.Configuration` instances.
+
+    Attributes
+    ----------
+    label : str
+        The item type name
+    configuration_items : dict[str, Any]
+        Configuration values
+
     """
 
     label: str
-    """The item type name"""
-
     configuration_items: dict[str, Any] = field(default_factory=dict)
-    """Configuration values"""
 
     def __getitem__(self, key: str) -> Any:
         return self.configuration_items[key]
@@ -81,43 +83,49 @@ class Configuration(Mapping[str, Any]):
         return len(self.configuration_items)
 
     def items(self) -> ItemsView[str, Any]:
-        """
-        Get a view on configuration key and value pairs.
+        """Get a view on configuration key and value pairs.
 
-        :return: a view on configuration key-value
-        :rtype: ItemsView[str, Any]
+        Returns
+        -------
+        ItemsView[str, Any]
+            a view on configuration key-value
+
         """
         return self.configuration_items.items()
 
     def keys(self) -> KeysView[str]:
-        """
-        Get a view on configuration keys
+        """Get a view on configuration keys.
 
-        :return: a view on configuration keys
-        :rtype: KeysView[str]
+        Returns
+        -------
+        KeysView[str]
+            a view on configuration keys
+
         """
         return self.configuration_items.keys()
 
     def values(self) -> ValuesView[Any]:
-        """
-        Get an iterable on configuration values
+        """Get an iterable on configuration values.
 
-        :return: a view on configuration values
-        :rtype: ValuesView[Any]
+        Returns
+        -------
+        ValuesView[Any]
+            a view on configuration values
+
         """
         return self.configuration_items.values()
 
     def copy(self) -> Configuration:
-        """
-        Get a copy of the configuration.
+        """Get a copy of the configuration.
 
-        :return: a copy of the configuration item.
-        :rtype: Configuration
+        Returns
+        -------
+        Configuration
+            a copy of the configuration item.
+
         """
         return Configuration(self.label, self.configuration_items.copy())
 
 
 class ConfigurationError(Exception):
-    """
-    Error raised when a configuration can not be loaded or saved.
-    """
+    """Error raised when a configuration can not be loaded or saved."""

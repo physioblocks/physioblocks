@@ -1,5 +1,5 @@
 requires = ["tox>=4"]
-env_list = ["format", "lint", "type", "coverage", "3.14", "3.13", "3.12", "3.11", "3.10"]
+env_list = ["format", "lint", "type", "docs", "coverage", "3.14", "3.13", "3.12", "3.11", "3.10"]
 
 [env.format]
 description = "run formatter"
@@ -27,6 +27,14 @@ deps = [
 commands = [
     ["coverage", "run", "-m", "pytest"], 
     ["coverage", "html"]
+]
+
+[env.docs]
+description = "build the documentation"
+deps = [
+    "sphinx", "pydata-sphinx-theme", "sphinxcontrib-tikz"]
+commands = [
+    ["sphinx-build", "-b", "html", "doc/source", "doc/build/html"],
 ]
 
 [env_run_base]

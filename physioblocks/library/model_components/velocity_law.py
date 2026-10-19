@@ -24,11 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Module describing a discretized Velocity Law Block.
-
-It defines two residual giving a dynamics on the velocity and acceleration.
-"""
+"""Declare velocity law models."""
 
 from dataclasses import dataclass
 
@@ -36,13 +32,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 from physioblocks.computing import (
-    Expression,
     ModelComponent,
     Quantity,
     diff,
     mid_alpha,
     mid_point,
 )
+from physioblocks.computing.models import declares_internal_equation
 from physioblocks.registers import register_type
 from physioblocks.simulation import Time
 
@@ -53,48 +49,110 @@ VELOCITY_LAW_HHT_TYPE_ID = "velocity_law_hht"
 @dataclass
 @register_type(VELOCITY_LAW_HHT_TYPE_ID)
 class VelocityLawHHTModelComponent(ModelComponent):
-    r"""
-    Velocity law HHT quantities and equation definitions
+    r"""Declare a velocity law HHT model.
 
     Implement the extended version of the **HHT time integration scheme**.
-    Velocity and acceleration unknowns are introduced and solved for by
 
-    **Discretised Internal Equations:**
+    Internal Equations
+    ------------------
 
-        .. math::
+    .. math::
 
-            \frac{\dot{y}^{n+1}-\dot{y}^n}{\Delta t^n}
-            - (\tfrac{1}{2}+\alpha)\, \ddot{y}^{n+1}
-            - (\tfrac{1}{2}-\alpha)\, \ddot{y}^n = 0
+        \frac{d\dot{y}}{dt} - \ddot{y} = 0
 
-        .. math::
+    .. math::
 
-            \frac{y^{n+1}-y^n}{\Delta t^n}
-            - \dot{y}^{n + \frac{1}{2}}
-            - \frac{\alpha^2}{4}\Delta t^n\, (\ddot{y}^{n+1}-\ddot{y}^n) = 0
+        \frac{dy}{dt} - \dot{y} = 0
+
+    Discretization
+    --------------
+
+    .. math::
+
+        \frac{\dot{y}^{n+1}-\dot{y}^n}{\Delta t^n}
+        - (\tfrac{1}{2}+\alpha)\, \ddot{y}^{n+1}
+        - (\tfrac{1}{2}-\alpha)\, \ddot{y}^n = 0
+
+    .. math::
+
+        \frac{y^{n+1}-y^n}{\Delta t^n}
+        - \dot{y}^{n + \frac{1}{2}}
+        - \frac{\alpha^2}{4}\Delta t^n\, (\ddot{y}^{n+1}-\ddot{y}^n) = 0
+
+    Parameters
+    ----------
+    scheme_ts_hht : Quantity[np.float64]
+        :math:`\alpha` the scheme time shift
+    accel : Quantity[np.float64]
+        :math:`\ddot{y}` the acceleration
+    vel : Quantity[np.float64]
+        :math:`\dot{y}` the velocity
+    disp : Quantity[np.float64]
+        :math:`y` the displacement
+    time : Time
+        :math:`t` the time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "model_description",
+            "model_type": "velocity_law_hht",
+            "scheme_ts_hht": "<str>", // Scheme time shift global name (optional)
+            "accel": "<str>",         // Acceleration global name (internal variable)
+                                      // (optional)
+            "vel": "<str>",           // Velocity global name (internal variable)
+                                      // (optional)
+            "disp": "<str>",          // Displacement global name (optional)
+            "time": "<str>"           // Simulation time name
+        }
+
+    Aliases
+    -------
+
+    .. _alias_velocity_law_hht:
+
+    **velocity_law_hht**
+        Aliases :class:`~.ModelComponentDescription`
+        (``model_description``) with ``model_type`` set to ``velocity_law_hht`` and the
+        ``time`` quantity bound to the global ``time`` quantity.
+
+        .. code-block:: json
+
+            {
+                "type": "velocity_law_hht",
+                "scheme_ts_hht": "<str>", // Scheme time shift global name (optional)
+                "accel": "<str>",         // Acceleration global name (internal
+                                          // variable) (optional)
+                "vel": "<str>",           // Velocity global name (internal variable)
+                                          // (optional)
+                "disp": "<str>"           // Displacement global name (optional)
+            }
+
     """
 
     scheme_ts_hht: Quantity[np.float64]
-    """:math:`\\alpha` the time shift scheme"""
 
     accel: Quantity[np.float64]
-    """:math:`\\ddot{y}` the acceleration"""
 
     vel: Quantity[np.float64]
-    """:math:`\\dot{y}` the velocity"""
 
     disp: Quantity[np.float64]
-    """:math:`y` the displacement"""
 
     time: Time
-    """:math:`t` the time"""
 
+    @declares_internal_equation("accel", size=1, starting_index=1)
+    @declares_internal_equation("vel", size=1, starting_index=0)
     def velocity_law_residual(self) -> NDArray[np.float64]:
-        """
-        Compute the velocity law residual
+        """Compute the velocity law residual.
 
-        :return: the residual value
-        :rtype: NDArray[np.float64]
+        Returns
+        -------
+        NDArray[np.float64]
+            the residual value
+
         """
         accel_mid_alpha = mid_alpha(self.accel, self.scheme_ts_hht.current)
         vel_mid_point = mid_point(self.vel)
@@ -105,7 +163,7 @@ class VelocityLawHHTModelComponent(ModelComponent):
                 (
                     self.time.inv_dt * diff(self.disp)
                     - vel_mid_point
-                    - np.power(self.scheme_ts_hht.current, 2)
+                    - self.scheme_ts_hht.current**2
                     * self.time.dt
                     / 4.0
                     * diff(self.accel)
@@ -113,57 +171,47 @@ class VelocityLawHHTModelComponent(ModelComponent):
             ],
         )
 
+    @velocity_law_residual.partial_derivative("accel")
     def velocity_law_residual_daccel(self) -> NDArray[np.float64]:
-        """
-        Compute the velocity law residual partial derivative for ``accel``
+        """Compute the velocity law residual partial derivative for ``accel``.
 
-        :return: the partial derivative for accel
-        :rtype: NDArray[np.float64]
+        Returns
+        -------
+        NDArray[np.float64]
+            the partial derivative for accel
+
         """
         return np.array(
             [
                 -(0.5 + self.scheme_ts_hht.current),
-                -np.power(self.scheme_ts_hht.current, 2) * self.time.dt * 0.25,
+                -(self.scheme_ts_hht.current**2) * self.time.dt * 0.25,
             ],
         )
 
+    @velocity_law_residual.partial_derivative("vel")
     def velocity_law_residual_dvel(self) -> NDArray[np.float64]:
-        """
-        Compute the velocity law residual partial derivative for ``vel``
+        """Compute the velocity law residual partial derivative for ``vel``.
 
-        :return: the partial derivative for vel
-        :rtype: NDArray[np.float64]
+        Returns
+        -------
+        NDArray[np.float64]
+            the partial derivative for vel
+
         """
         return np.array(
             [self.time.inv_dt, -0.5],
         )
 
+    @velocity_law_residual.partial_derivative("disp")
     def velocity_law_residual_ddisp(self) -> NDArray[np.float64]:
-        """
-        Compute the velocity law residual partial derivative for ``disp``
+        """Compute the velocity law residual partial derivative for ``disp``.
 
-        :return: the partial derivative for disp
-        :rtype: NDArray[np.float64]
+        Returns
+        -------
+        NDArray[np.float64]
+            the partial derivative for disp
+
         """
         return np.array(
             [0.0, self.time.inv_dt],
         )
-
-
-# Define the residual expression of the velocity law and its partial derivatives
-_velocity_law_hht_expression = Expression(
-    2,
-    VelocityLawHHTModelComponent.velocity_law_residual,
-    {
-        "accel": VelocityLawHHTModelComponent.velocity_law_residual_daccel,
-        "vel": VelocityLawHHTModelComponent.velocity_law_residual_dvel,
-        "disp": VelocityLawHHTModelComponent.velocity_law_residual_ddisp,
-    },
-)
-
-VelocityLawHHTModelComponent.declares_internal_expression(
-    "vel", _velocity_law_hht_expression, 1, 0
-)
-VelocityLawHHTModelComponent.declares_internal_expression(
-    "accel", _velocity_law_hht_expression, 1, 1
-)

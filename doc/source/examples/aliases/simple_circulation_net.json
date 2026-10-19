@@ -1,0 +1,29 @@
+{
+    "type": "net",
+    "nodes": ["A", "B", "C"],
+    "flux_dof_definitions": {"flow": "pressure"},
+    "blocks": {
+        "RC_1": {
+            "type": "rc_block",
+            "flux_type": "flow",
+            "resistance": "Ra",
+            "capacitance": "Ca",
+            "nodes":
+            {
+                "1": "B",
+                "2": "A"
+            }
+        },
+        "RC_2": {
+            "type": "rc_block",
+            "flux_type": "flow",
+            "resistance": "Rb",
+            "capacitance": "Cb",
+            "nodes":
+            {
+                "1": "C",
+                "2": "B"
+            }
+        }
+    }
+}

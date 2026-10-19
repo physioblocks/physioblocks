@@ -46,6 +46,7 @@ def ref_newton_solver() -> NewtonSolver:
     return NewtonSolver(tolerance=1e-12, iteration_max=2)
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_get_solver_config(
     ref_newton_solver: NewtonSolver, ref_solver_config: Configuration
 ):

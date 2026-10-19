@@ -25,277 +25,236 @@
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
-from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from physioblocks.computing.models import (
-    BlockMetaClass,
-    Expression,
-    ExpressionDefinition,
-    TermDefinition,
-)
-from physioblocks.computing.quantities import Quantity
-from physioblocks.configuration.constants import DEFAULT_SIMULATION_NAME, NET_ID
-from physioblocks.configuration.simulation.simulations import (
+from physioblocks.computing.assembling import EqSystem
+from physioblocks.computing.quantities import QUANTITY_ID
+from physioblocks.configuration.base import Configuration
+from physioblocks.configuration.constants import (
+    BLOCKS_ITEM_ID,
+    BOUNDARIES_ID,
+    DATA_ID,
+    FLUX_DOF_DEFINITION_ID,
+    ITERATION_MAX_VAL_ID,
+    NET_ID,
+    NODES_ITEM_ID,
+    OUTPUTS_FUNCTIONS_ID,
     PARAMETERS_ID,
-    load_simulation_config,
+    POST_PROCESSES_ID,
+    PRE_PROCESSES_ID,
+    QUANTITY_MAGNITUDE_ID,
+    QUANTITY_STDEV_ID,
+    QUANTITY_VALUE_ID,
+    RANGE_LENGTH_ID,
+    SIMULATION_NAME,
+    SIMULATION_OPTIONS,
+    SOLVER_ID,
+    STATE_ID,
+    TIME_ID,
+    TIME_START_TIME_VAL_ID,
+    TIME_STEP_MIN_VAL_ID,
+    TIME_STEP_TIME_VAL_ID,
+    TOLERANCE_VAL_ID,
+    UPDATE_FUNCTIONS,
+)
+from physioblocks.configuration.simulation.simulations import (
+    load_simulation_factory,
     save_simulation_config,
 )
-from physioblocks.description.blocks import (
-    BLOCK_DESCRIPTION_TYPE_ID,
-    ID_SEPARATOR,
-    Block,
-    BlockDescription,
+from physioblocks.description.flux import FLUX_TYPE_REGISTER_ID, FluxDofTypesRegister
+from physioblocks.description.nets import Net
+from physioblocks.simulation.base import (
+    MODEL_FACTORY_ID,
+    RANGE_ID,
+    SIMULATION_FACTORY_ID,
+    QuantityInit,
+    SimulationFactory,
+    SimulationModel,
+    SimulationModelFactory,
+    SimulationRange,
 )
-from physioblocks.description.flux import (
-    FLUX_TYPE_REGISTER_ID,
-    FluxDofTypesRegister,
+from physioblocks.simulation.forward import FORWARD_SIM_ID, ForwardSimulation
+from physioblocks.simulation.functions import (
+    SIMULATION_FUNCTION_FACTORY_TYPE_ID,
+    AbstractFunction,
+    AbstractInitializationFunction,
+    SimulationFunctionFactory,
 )
-from physioblocks.description.nets import BOUNDARY_CONDITION_ID, BoundaryCondition, Net
-from physioblocks.io.configuration import read_json
-from physioblocks.simulation.functions import AbstractFunction
-from physioblocks.simulation.runtime import AbstractSimulation, ForwardSimulation
-from physioblocks.simulation.setup import SimulationFactory
-from physioblocks.simulation.solvers import AbstractSolver
-from physioblocks.simulation.time_manager import TIME_MANAGER_ID, TimeManager
-from tests.helpers.assertion_helpers import (
-    assert_net_equals,
-    assert_solvers_equals,
-    assert_states_equals,
-    assert_time_manager_equals,
-)
+from physioblocks.simulation.solvers import NEWTON_SOLVER_TYPE_ID, NewtonSolver
+from tests.helpers.assertion_helpers import assert_net_equals, assert_solvers_equals
 
-ref_config_file_path = Path(
-    "./tests/tests_config/tests_simulation/simulation_reference.json"
-)
-
-DOF_ID = "dof"
-SCALAR_ID = "scalar"
-VECTOR_ID = "vector"
-NODE_A_ID = "node_a"
-NODE_B_ID = "node_b"
-BLOCK_A_ID = "block_a"
-BLOCK_LOCAL_POTENTIAL = "potential_id"
-INLET_FLUX_CONDITION_ID = "inlet_flux_condition"
-OUTPUT_ID = "output_id"
-FLUX_TYPE_ID = "flux_type"
-DOF_TYPE_ID = "potential_type"
-FUNC_TYPE_ID = "FunctionType"
-SIM_TYPE_ID = "SimulationType"
-BLOCK_TYPE_ID = "BlockType"
-SOLVER_TYPE_ID = "SolverType"
-OUTLET_POTENTIAL_CONDITION_ID = ID_SEPARATOR.join([BLOCK_A_ID, BLOCK_LOCAL_POTENTIAL])
+SIM_NAME = "test_sim"
+STATE_QUANTITY_ID = "variable"
+PARAMETER_ID = "parameter"
+OUTPUT_FUNCTION_ID = "output_function"
+UPDATE_FUNCTION_ID = "update_function"
+FUNC_TYPE_ID = "function_type"
+COMPUTED_PARAMETER_ID = "computed_parameter"
+CONSTANT_FUNCTION = "constant_function"
 
 
 @dataclass
-class BlockTest(Block):
-    potential_id: Quantity
+class ConstantFunction(AbstractInitializationFunction):
+    value: float
+
+    def eval(self) -> float:
+        return self.value
 
 
-def ref_func():
-    pass
+TYPE_REGISTER = {
+    FUNC_TYPE_ID: AbstractFunction,
+    CONSTANT_FUNCTION: ConstantFunction,
+    SIMULATION_FACTORY_ID: SimulationFactory,
+    FORWARD_SIM_ID: ForwardSimulation,
+    RANGE_ID: SimulationRange,
+    NET_ID: Net,
+    FLUX_TYPE_REGISTER_ID: FluxDofTypesRegister,
+    QUANTITY_ID: QuantityInit,
+    MODEL_FACTORY_ID: SimulationModelFactory,
+    NEWTON_SOLVER_TYPE_ID: NewtonSolver,
+    SIMULATION_FUNCTION_FACTORY_TYPE_ID: SimulationFunctionFactory,
+    AbstractFunction: FUNC_TYPE_ID,
+    ConstantFunction: CONSTANT_FUNCTION,
+    SimulationFactory: SIMULATION_FACTORY_ID,
+    ForwardSimulation: FORWARD_SIM_ID,
+    NewtonSolver: NEWTON_SOLVER_TYPE_ID,
+    Net: NET_ID,
+    SimulationRange: RANGE_ID,
+    FluxDofTypesRegister: FLUX_TYPE_REGISTER_ID,
+    QuantityInit: QUANTITY_ID,
+    SimulationModelFactory: MODEL_FACTORY_ID,
+    SimulationFunctionFactory: SIMULATION_FUNCTION_FACTORY_TYPE_ID,
+}
 
 
 @pytest.fixture
-def ref_term() -> TermDefinition:
-    return TermDefinition(DOF_ID, 1)
+def ref_net() -> Net:
+    return Net(FluxDofTypesRegister())
 
 
 @pytest.fixture
-def ref_expression():
-    return Expression(1, ref_func)
+def simulation_model_factory(ref_net: Net) -> SimulationModelFactory:
+    return SimulationModelFactory(
+        net=ref_net,
+        time=SimulationRange(start=0.0, length=0.001, step_size=0.001),
+        state={STATE_QUANTITY_ID: QuantityInit(value=0.1, magnitude=1.1, stdev=0.5)},
+        parameters={PARAMETER_ID: 0.0},
+        update_functions={
+            UPDATE_FUNCTION_ID: SimulationFunctionFactory(AbstractFunction, {})
+        },
+        solver=NewtonSolver(),
+    )
 
 
 @pytest.fixture
-def ref_expression_definition(
-    ref_expression: Expression, ref_term: TermDefinition
-) -> ExpressionDefinition:
-    return ExpressionDefinition(ref_expression, [ref_term])
+def simulation_factory(
+    simulation_model_factory: SimulationModelFactory,
+) -> SimulationFactory:
+    return SimulationFactory(
+        SIM_NAME,
+        ForwardSimulation,
+        simulation_model_factory,
+        output_functions={
+            OUTPUT_FUNCTION_ID: SimulationFunctionFactory(AbstractFunction, {})
+        },
+        simulation_options={TIME_STEP_MIN_VAL_ID: 0.001},
+    )
 
 
 @pytest.fixture
-def ref_nodes():
-    return {0: [FLUX_TYPE_ID], 1: [FLUX_TYPE_ID]}
+def simulation_reference(
+    simulation_factory: SimulationFactory,
+    simulation_model_factory: SimulationModelFactory,
+) -> ForwardSimulation:
+    return ForwardSimulation(
+        factory=simulation_factory,
+        simulation_name=SIM_NAME,
+        simulation_model=SimulationModel(
+            factory=simulation_model_factory, equation_system=EqSystem(0)
+        ),
+        min_step=0.001,
+    )
 
 
 @pytest.fixture
-def ref_flux_expressions(ref_expression_definition: ExpressionDefinition):
-    return {
-        0: ref_expression_definition,
-        1: ref_expression_definition,
+def ref_config() -> Configuration:
+    config = Configuration(FORWARD_SIM_ID)
+    config[SIMULATION_NAME] = SIM_NAME
+    config[NET_ID] = Configuration(
+        NET_ID,
+        {
+            FLUX_DOF_DEFINITION_ID: {},
+            NODES_ITEM_ID: [],
+            BLOCKS_ITEM_ID: {},
+            BOUNDARIES_ID: {},
+        },
+    )
+    config[TIME_ID] = Configuration(
+        RANGE_ID,
+        {
+            TIME_START_TIME_VAL_ID: 0.0,
+            RANGE_LENGTH_ID: 0.001,
+            TIME_STEP_TIME_VAL_ID: 0.001,
+        },
+    )
+    config[STATE_ID] = {
+        STATE_QUANTITY_ID: Configuration(
+            QUANTITY_ID,
+            {
+                QUANTITY_VALUE_ID: 0.1,
+                QUANTITY_STDEV_ID: 0.5,
+                QUANTITY_MAGNITUDE_ID: 1.1,
+            },
+        )
+    }
+    config[PARAMETERS_ID] = {PARAMETER_ID: 0.0}
+    config[UPDATE_FUNCTIONS] = {UPDATE_FUNCTION_ID: Configuration(FUNC_TYPE_ID)}
+    config[SOLVER_ID] = Configuration(
+        NEWTON_SOLVER_TYPE_ID, {TOLERANCE_VAL_ID: 1.0e-9, ITERATION_MAX_VAL_ID: 10}
+    )
+    config[SIMULATION_OPTIONS] = {TIME_STEP_MIN_VAL_ID: 0.001}
+    config[OUTPUTS_FUNCTIONS_ID] = {OUTPUT_FUNCTION_ID: Configuration(FUNC_TYPE_ID)}
+    config[DATA_ID] = {}
+    config[PRE_PROCESSES_ID] = {}
+    config[POST_PROCESSES_ID] = {}
+    return config
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+@patch("physioblocks.registers.type_register.__type_register", new=TYPE_REGISTER)
+def test_simulation_save_config(simulation_reference, ref_config: Configuration):
+    configuration = save_simulation_config(simulation_reference)
+
+    assert configuration == ref_config
+
+
+@patch("physioblocks.registers.type_register.__type_register", new=TYPE_REGISTER)
+def test_simulation_load_config(
+    simulation_factory: SimulationFactory, ref_config: Configuration
+):
+    ref_config[PARAMETERS_ID] = {
+        **ref_config[PARAMETERS_ID],
+        COMPUTED_PARAMETER_ID: Configuration(CONSTANT_FUNCTION, {"value": 0.5}),
     }
 
+    loaded_factory = load_simulation_factory(ref_config)
 
-@pytest.fixture
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE_ID: DOF_TYPE_ID},
-    _dof_types={DOF_TYPE_ID: FLUX_TYPE_ID},
-)
-def net_reference(ref_nodes, ref_flux_expressions):
-    with patch.multiple(
-        BlockMetaClass,
-        fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
-        nodes=PropertyMock(return_value=ref_nodes),
-        local_ids=PropertyMock(return_value=[BLOCK_LOCAL_POTENTIAL]),
-    ):
-        net = Net()
-        net.add_node(NODE_A_ID)
-        net.add_node(NODE_B_ID)
-        net.add_block(
-            BLOCK_A_ID,
-            BlockDescription(BLOCK_A_ID, BlockTest, FLUX_TYPE_ID),
-            {0: NODE_A_ID, 1: NODE_B_ID},
-        )
+    assert loaded_factory.simulation_model_factory.parameters.pop(
+        COMPUTED_PARAMETER_ID
+    ) == pytest.approx(0.5)
 
-        net.set_boundary(NODE_A_ID, FLUX_TYPE_ID, INLET_FLUX_CONDITION_ID)
-        net.set_boundary(NODE_B_ID, DOF_TYPE_ID, OUTLET_POTENTIAL_CONDITION_ID)
+    assert loaded_factory.simulation_name == simulation_factory.simulation_name
+    assert loaded_factory.simulation_type == simulation_factory.simulation_type
+    assert loaded_factory.output_functions == simulation_factory.output_functions
+    assert loaded_factory.simulation_options == simulation_factory.simulation_options
 
-        return net
-
-
-def time_func(self, time):
-    return 0.0
-
-
-def func_init(self):
-    pass
-
-
-@pytest.fixture
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE_ID: DOF_TYPE_ID},
-    _dof_types={DOF_TYPE_ID: FLUX_TYPE_ID},
-)
-def simulation_reference(net_reference: Net, ref_flux_expressions, ref_nodes):
-    with (
-        patch.multiple(AbstractSimulation, __abstractmethods__=set()),
-        patch.multiple(AbstractSolver, __abstractmethods__=set()),
-        patch.multiple(AbstractFunction, __abstractmethods__=set(), eval=time_func),
-        patch.multiple(
-            BlockMetaClass,
-            fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
-            nodes=PropertyMock(return_value=ref_nodes),
-            __init__=MagicMock(return_value=None),
-        ),
-    ):
-        factory = SimulationFactory(
-            DEFAULT_SIMULATION_NAME, AbstractSimulation, AbstractSolver(), net_reference
-        )
-        sim = factory.create_simulation()
-        sim.state.set_variables_magnitudes(
-            {str.format("{0}.{1}", NODE_A_ID, DOF_TYPE_ID): 1.1}
-        )
-        sim.register_timed_parameter_update(INLET_FLUX_CONDITION_ID, AbstractFunction())
-        sim.register_output_function(OUTPUT_ID, AbstractFunction())
-        sim.parameters[VECTOR_ID] = 3 * [0.0]
-        sim.parameters[SCALAR_ID] = 0.0
-        return sim
-
-
-@patch(
-    "physioblocks.registers.type_register.__type_register",
-    new={
-        FUNC_TYPE_ID: AbstractFunction,
-        SIM_TYPE_ID: AbstractSimulation,
-        BLOCK_DESCRIPTION_TYPE_ID: BlockDescription,
-        BLOCK_TYPE_ID: BlockTest,
-        SOLVER_TYPE_ID: AbstractSolver,
-        TIME_MANAGER_ID: TimeManager,
-        NET_ID: Net,
-        BOUNDARY_CONDITION_ID: BoundaryCondition,
-        FLUX_TYPE_REGISTER_ID: FluxDofTypesRegister,
-        AbstractFunction: FUNC_TYPE_ID,
-        AbstractSimulation: SIM_TYPE_ID,
-        BlockDescription: BLOCK_DESCRIPTION_TYPE_ID,
-        BlockTest: BLOCK_TYPE_ID,
-        AbstractSolver: SOLVER_TYPE_ID,
-        Net: NET_ID,
-        TimeManager: TIME_MANAGER_ID,
-        BoundaryCondition: BOUNDARY_CONDITION_ID,
-        FluxDofTypesRegister: FLUX_TYPE_REGISTER_ID,
-    },
-)
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE_ID: DOF_TYPE_ID},
-    _dof_types={DOF_TYPE_ID: FLUX_TYPE_ID},
-)
-def test_simulation_save_config(
-    simulation_reference: ForwardSimulation, ref_flux_expressions, ref_nodes
-):
-    with (
-        patch.multiple(
-            BlockMetaClass,
-            fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
-            nodes=PropertyMock(return_value=ref_nodes),
-        ),
-        patch.multiple(
-            AbstractFunction,
-            __abstractmethods__=set(),
-            eval=time_func,
-            __init__=func_init,
-        ),
-    ):
-        configuration = save_simulation_config(simulation_reference)
-        ref_config = read_json(ref_config_file_path)
-        assert configuration == ref_config
-
-
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={FLUX_TYPE_ID: DOF_TYPE_ID},
-    _dof_types={DOF_TYPE_ID: FLUX_TYPE_ID},
-)
-@patch(
-    "physioblocks.registers.type_register.__type_register",
-    new={
-        FUNC_TYPE_ID: AbstractFunction,
-        SIM_TYPE_ID: AbstractSimulation,
-        BLOCK_DESCRIPTION_TYPE_ID: BlockDescription,
-        BLOCK_TYPE_ID: BlockTest,
-        SOLVER_TYPE_ID: AbstractSolver,
-        TIME_MANAGER_ID: TimeManager,
-        NET_ID: Net,
-        BOUNDARY_CONDITION_ID: BoundaryCondition,
-        AbstractFunction: FUNC_TYPE_ID,
-        AbstractSimulation: SIM_TYPE_ID,
-        BlockDescription: BLOCK_DESCRIPTION_TYPE_ID,
-        BlockTest: BLOCK_TYPE_ID,
-        AbstractSolver: SOLVER_TYPE_ID,
-        Net: NET_ID,
-        TimeManager: TIME_MANAGER_ID,
-        BoundaryCondition: BOUNDARY_CONDITION_ID,
-    },
-)
-@patch.multiple(AbstractSimulation, __abstractmethods__=set())
-@patch.multiple(AbstractSolver, __abstractmethods__=set())
-@patch.multiple(AbstractFunction, __abstractmethods__=set(), eval=time_func)
-def test_simulation_load_config(
-    simulation_reference: ForwardSimulation, ref_flux_expressions, ref_nodes
-):
-    with patch.multiple(
-        BlockMetaClass,
-        fluxes_expressions=PropertyMock(return_value=ref_flux_expressions),
-        nodes=PropertyMock(return_value=ref_nodes),
-    ):
-        ref_config = read_json(ref_config_file_path)
-        sim = load_simulation_config(ref_config, ForwardSimulation)
-
-        assert sim.parameters == simulation_reference.parameters
-        assert_net_equals(sim.factory.net, simulation_reference.factory.net)
-        assert_solvers_equals(sim.solver, simulation_reference.solver)
-        assert_states_equals(sim.state, simulation_reference.state)
-        assert_time_manager_equals(sim.time_manager, simulation_reference.time_manager)
-
-        # load raises exceptions correctly:
-        ref_config[PARAMETERS_ID]["wrong_type_id"] = object()
-        with pytest.raises(TypeError):
-            load_simulation_config(ref_config)
+    loaded_model_factory = loaded_factory.simulation_model_factory
+    ref_model_factory = simulation_factory.simulation_model_factory
+    assert_net_equals(loaded_model_factory.net, ref_model_factory.net)
+    assert_solvers_equals(loaded_model_factory.solver, ref_model_factory.solver)
+    assert loaded_model_factory.time == ref_model_factory.time
+    assert loaded_model_factory.state == ref_model_factory.state
+    assert loaded_model_factory.parameters == ref_model_factory.parameters
+    assert loaded_model_factory.update_functions == ref_model_factory.update_functions

@@ -26,9 +26,8 @@
 
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.blocks.valves import ValveRLBlock
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
@@ -52,16 +51,16 @@ def ref_block() -> ValveRLBlock:
 
 @pytest.fixture
 def state(ref_block: ValveRLBlock):
-    state = State()
+    state = QuantitiesRegistry()
     state["pressure_1"] = ref_block.pressure_1
     state["pressure_2"] = ref_block.pressure_2
     state["flux"] = ref_block.flux
-    state.set_variables_magnitudes({"pressure_1": 1e4, "pressure_2": 1e4, "flux": 1e-3})
+    state.set_magnitudes({"pressure_1": 1e4, "pressure_2": 1e4, "flux": 1e-3})
     return state
 
 
 class TestValveRLBlock:
-    def test_check_gradient(self, ref_block: ValveRLBlock, state: State):
+    def test_check_gradient(self, ref_block: ValveRLBlock, state: QuantitiesRegistry):
         assert gradient_test_from_model(ref_block, state)
 
     def test_check_gradient_flux_neg(self, ref_block: ValveRLBlock, state):

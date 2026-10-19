@@ -24,13 +24,11 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Define a register to hold **SavedQuantities** during the simulation.
-"""
+"""Define a register to hold :class:`~.SavedQuantities` during the simulation."""
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, ItemsView, ValuesView
 from typing import Any
 
 from physioblocks.computing.models import Expression, ModelComponent
@@ -38,9 +36,7 @@ from physioblocks.computing.quantities import Quantity
 
 
 class SavedQuantities:
-    """
-    Register holding saved quantities.
-    """
+    """Register holding saved quantities."""
 
     _saved_quantities: dict[str, Quantity[Any]]
     _quantities_expressions: dict[str, tuple[Expression, ModelComponent, int, int]]
@@ -53,31 +49,35 @@ class SavedQuantities:
         return quantity_id in self._saved_quantities
 
     def __getitem__(self, quantity_id: str) -> Quantity[Any]:
-        """
-        Get the saved quantity
-
-        :param quantity_id: the quantity global name.
-        :type quantity_id: str
-
-        :return: the saved quantity
-        :rtype: Quantity
-        """
         return self._saved_quantities[quantity_id]
 
-    def items(self) -> Generator[tuple[str, Quantity[Any]], None, None]:
-        yield from self._saved_quantities.items()
+    def items(self) -> ItemsView[str, Quantity[Any]]:
+        """
+        Get a view on saved quantities key-value pairs.
 
-    def values(self) -> Generator[Quantity[Any], None, None]:
-        yield from self._saved_quantities.values()
+        Returns
+        -------
+        ItemsView[str, Quantity[Any]]
+            the saved quantities key and value.
+        """
+        return self._saved_quantities.items()
+
+    def values(self) -> ValuesView[Quantity[Any]]:
+        """
+        Get a view on SavedQuantity values.
+
+        Returns
+        -------
+        ValuesView[Quantity[Any]]
+            the saved quantities
+        """
+        return self._saved_quantities.values()
 
     def __iter__(self) -> Generator[str, None, None]:
         yield from self._saved_quantities
 
     def update(self) -> None:
-        """
-        Update all saved quantities using their
-        :class:`~physioblocks.computing.models.Expression` object.
-        """
+        """Update all saved quantities values."""
         for quantity_id, (
             expression,
             model,
@@ -101,17 +101,21 @@ class SavedQuantities:
         size: int,
         index: int,
     ) -> None:
-        """
-        Register a **Saved Quantity** with its expression and model.
+        """Register a **Saved Quantity** with its expression and model.
 
-        :param quantity_id: the global saved quantity name
-        :type quantity_id: str
+        Parameters
+        ----------
+        quantity_id : str
+            the global saved quantity name
+        expression : Expression
+            the expression to use for the quantity
+        model : ModelComponent
+            the model declaring the expression
+        size : int
+            the size of the saved quantity
+        index : int
+            the start index of the saved quantity in the expression result
 
-        :param expression: the expression to use for the quantity
-        :type expression: Expression
-
-        :param model: the model declaring the expression
-        :type model: ModelComponent
         """
         self._quantities_expressions[quantity_id] = (expression, model, size, index)
         # initialise quantity to 0
@@ -119,11 +123,13 @@ class SavedQuantities:
         self._saved_quantities[quantity_id] = Quantity(init_value)
 
     def unregister(self, quantity_id: str) -> None:
-        """
-        Unregister a saved quantity
+        """Unregister a saved quantity.
 
-        :param quantity_id: the quantity global name to unregister
-        :type quantity_id: str
+        Parameters
+        ----------
+        quantity_id : str
+            the quantity global name to unregister
+
         """
         self._saved_quantities.pop(quantity_id)
         self._quantities_expressions.pop(quantity_id)

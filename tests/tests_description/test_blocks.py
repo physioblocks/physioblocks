@@ -28,6 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from physioblocks.computing.models import Term
 from physioblocks.description.blocks import (
     BlockDescription,
     ModelComponentDescription,
@@ -56,12 +57,12 @@ def model_a_local_ids():
 
 @pytest.fixture
 def term_a_definition():
-    return MagicMock(term_id=PARAM_A, size=1, index=0)
+    return Term(PARAM_A, 1, 0)
 
 
 @pytest.fixture
 def term_b_definition():
-    return MagicMock(term_id=PARAM_B, size=1, index=0)
+    return Term(PARAM_B, 1, 0)
 
 
 @pytest.fixture
@@ -95,20 +96,22 @@ def alternative_model_a_local_ids():
 
 @pytest.fixture
 def alternative_model_a_type_mock(alternative_model_a_local_ids):
-    model_a_type_mock = MagicMock(local_ids=alternative_model_a_local_ids)
+    model_a_type_mock = MagicMock(
+        local_ids=alternative_model_a_local_ids,
+    )
     return model_a_type_mock
 
 
 @pytest.fixture
 def flux_expression():
-    return MagicMock(size=1)
+    return MagicMock(terms=[Term(DOF_ID, 1, 0)])
 
 
 @pytest.fixture
 def flux_definition(flux_expression):
     return MagicMock(
         expression=flux_expression,
-        terms=[MagicMock(term_id=DOF_ID, size=1, index=0)],
+        terms=[Term(DOF_ID, 1, 0)],
         valid=True,
     )
 
@@ -141,8 +144,8 @@ class TestModelComponentDescription:
         assert model_desc.submodels == {}
         assert model_desc.alternative_types == {}
         assert model_desc.alternative_descriptions == {}
-        assert model_desc.internal_variables == [(f"{MODEL_A_ID}.{PARAM_A}", 1)]
-        assert model_desc.saved_quantities == [(f"{MODEL_A_ID}.{PARAM_B}", 1)]
+        assert model_desc.internal_variables == [Term(f"{MODEL_A_ID}.{PARAM_A}", 1, 0)]
+        assert model_desc.saved_quantities == [Term(f"{MODEL_A_ID}.{PARAM_B}", 1, 0)]
 
     def test_constructor_with_global_ids(self, model_a_type_mock):
         global_ids = {PARAM_A: PARAM_A, PARAM_B: PARAM_B}
@@ -292,8 +295,8 @@ class TestModelComponentDescription:
             model_desc.internal_expressions[0].terms[0].term_id
             == f"{MODEL_A_ID}.{PARAM_A}"
         )
-        assert model_desc.internal_expressions[0].terms[0].size == 1
-        assert model_desc.internal_expressions[0].terms[0].index == 0
+        assert model_desc.internal_expressions[0].terms[0].term_size == 1
+        assert model_desc.internal_expressions[0].terms[0].term_index == 0
 
     def test_saved_quantities_expressions(self, model_a_type_mock):
         model_desc = ModelComponentDescription(MODEL_A_ID, model_a_type_mock)
@@ -308,8 +311,8 @@ class TestModelComponentDescription:
             model_desc.saved_quantities_expressions[0].terms[0].term_id
             == f"{MODEL_A_ID}.{PARAM_B}"
         )
-        assert model_desc.saved_quantities_expressions[0].terms[0].size == 1
-        assert model_desc.saved_quantities_expressions[0].terms[0].index == 0
+        assert model_desc.saved_quantities_expressions[0].terms[0].term_size == 1
+        assert model_desc.saved_quantities_expressions[0].terms[0].term_index == 0
 
     def test_internal_variables_extends_from_submodels(
         self, model_a_type_mock, model_b_type_mock, term_a_definition
@@ -319,7 +322,7 @@ class TestModelComponentDescription:
             MODEL_B_ID, model_b_type_mock, submodels={MODEL_A_ID: submodel}
         )
         assert model_desc.internal_variables == [
-            (f"{MODEL_B_ID}.{MODEL_A_ID}.{PARAM_A}", 1)
+            Term(f"{MODEL_B_ID}.{MODEL_A_ID}.{PARAM_A}", 1)
         ]
         assert len(model_desc.internal_expressions) == 0  # expressions do not extend
 
@@ -332,7 +335,7 @@ class TestModelComponentDescription:
         )
 
         assert model_desc.saved_quantities == [
-            (f"{MODEL_B_ID}.{MODEL_A_ID}.{PARAM_B}", 1)
+            Term(f"{MODEL_B_ID}.{MODEL_A_ID}.{PARAM_B}", 1)
         ]
         assert (
             len(model_desc.saved_quantities_expressions) == 0
@@ -372,4 +375,7 @@ class TestBlockDescription:
         block_desc = BlockDescription(BLOCK_ID, block_type_mock, FLUX_TYPE)
         assert len(block_desc.fluxes) == 1
         assert 1 in block_desc.fluxes
-        assert block_desc.fluxes[1].size == 1
+        term_id, term_size, term_index = block_desc.fluxes[1].terms[0]
+        assert term_id == f"{block_desc.name}.{DOF_ID}"
+        assert term_size == 1
+        assert term_index == 0

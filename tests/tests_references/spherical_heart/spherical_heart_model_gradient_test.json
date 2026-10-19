@@ -1,0 +1,148 @@
+{
+    "type": "simulation_model_factory",
+    "time": {
+        "type": "range",
+        "start": 7.354,
+        "step_size": 0.001,
+        "length": 12.5
+    },
+    "net": {
+        "type": "spherical_heart_net",
+        "boundaries_conditions": {
+            "atrial": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "atrial.blood_pressure"
+                }
+            ],
+            "venous": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "venous.blood_pressure"
+                }
+            ]
+        }
+    },
+    "state": {
+        "valve_atrium.flux": {
+            "type": "quantity",
+            "value": 0.005,
+            "magnitude": 1.8e-3
+        },
+        "valve_arterial.flux": {
+            "type": "quantity",
+            "value": 1.9e-3,
+            "magnitude": 0.001
+        },
+        "cavity.dynamics.disp": {
+            "type": "quantity",
+            "value": 0.011,
+            "magnitude": 0.013
+        },
+        "cavity.velocity_law.vel": {
+            "type": "quantity",
+            "value": 0.204,
+            "magnitude": 0.12
+        },
+        "cavity.velocity_law.accel": {
+            "type": "quantity",
+            "value": 0.035,
+            "magnitude": 1.1
+        },
+        "cavity.rheology.fib_deform": {
+            "type": "quantity",
+            "value": 0.004,
+            "magnitude": 0.14
+        },
+        "cavity.rheology.active_law.active_stiffness": {
+            "type": "quantity",
+            "value": 11.3,
+            "magnitude": 11.2
+        },
+        "cavity.rheology.active_law.active_energy_sqrt": {
+            "type": "quantity",
+            "value": 2.52,
+            "magnitude": 2.33
+        },
+        "cavity.rheology.active_law.active_tension_discr": {
+            "type": "quantity",
+            "value": 7.905,
+            "magnitude": 7.901
+        },
+        "cavity.blood_pressure": {
+            "type": "quantity",
+            "value": 938.0,
+            "magnitude": 10005
+        },
+        "aorta_proximal.blood_pressure": {
+            "type": "quantity",
+            "value": 9498.0,
+            "magnitude": 10006
+        },
+        "aorta_distal.blood_pressure": {
+            "type": "quantity",
+            "value": 9514.0,
+            "magnitude": 10007
+        }
+    },
+    "parameters": {
+        "heart_radius": 0.02873797,
+        "heart_thickness": 0.009875603,
+        "heart_contractility": 68250.0,
+        "heartbeat_duration": 0.963,
+        "venous.blood_pressure": 500.0,
+        "pressure_pleural": 432.1,
+        "scheme_ts_pressure_pleural": 0.05,
+        "atrial.blood_pressure": 533.6,
+        "circulation_aorta_proximal.resistance": 15397200.0,
+        "cavity.dynamics.hyperelastic_cst": [
+            638.4135,
+            2.3724,
+            99.12522,
+            5.5326
+        ],
+        "cavity.dynamics.vol_mass": 1000.0,
+        "cavity.dynamics.damping_coef": 70.0,
+        "cavity.velocity_law.scheme_ts_hht": 0.4,
+        "cavity.rheology.series_stiffness": 100000000.0,
+        "cavity.rheology.active_law.activation": -18.3,
+        "cavity.rheology.damping_parallel": 70.0,
+        "cavity.rheology.active_law.destruction_rate": 12.0,
+        "cavity.rheology.active_law.crossbridge_stiffness": 273000.0,
+        "cavity.rheology.active_law.starling_abscissas": [
+            -0.1668,
+            -0.0073,
+            0.0534,
+            0.0969,
+            0.1326,
+            0.2016,
+            0.4663,
+            0.9187,
+            1.1762
+        ],
+        "cavity.rheology.active_law.starling_ordinates": [
+            0.0,
+            0.5614,
+            0.7748,
+            0.8933,
+            0.9618,
+            1.0,
+            1.0,
+            0.1075,
+            0.0
+        ],
+        "conductance_iso": 5e-12,
+        "valve_atrium.inductance": 1.0e3,
+        "valve_atrium.conductance": 9e-06,
+        "valve_arterial.inductance": 3.0e4,
+        "valve_arterial.conductance": 1.3e-05,
+        "capacitance_valve.capacitance": 5e-12,
+        "valve_atrium.scheme_ts_flux": 0.25,
+        "valve_arterial.scheme_ts_flux": 0.25,
+        "circulation_aorta_proximal.capacitance": 2.0e-10,
+        "circulation_aorta_distal.capacitance": 3.736e-8,
+        "circulation_aorta_distal.resistance": 2.245e6
+    }
+}

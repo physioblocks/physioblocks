@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Describes cavity blocks
-"""
+"""Describes cavity blocks."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -44,7 +42,7 @@ CAVITY_VOLUME_LOCAL_ID = "volume"
 # Local id for the pressure dof in the cavity
 CAVITY_PRESSURE_LOCAL_ID = "pressure"
 
-# Local id for the pressure dof in the cavity
+# Local id for the displacement in the cavity
 CAVITY_DISP_LOCAL_ID = "disp"
 
 # Constant for the cavity block type id
@@ -54,8 +52,10 @@ CAVITY_BLOCK_TYPE_ID = "spherical_cavity_block"
 @register_type(CAVITY_BLOCK_TYPE_ID)
 @dataclass
 class SphericalCavityBlock(Block):
-    r"""
-    Spherical cavity block implementation
+    r"""Spherical cavity block implementation.
+
+    Scheme
+    ------
 
     .. tikz:: Spherical Cavity Scheme
 
@@ -71,90 +71,149 @@ class SphericalCavityBlock(Block):
         \draw [thick][<->] (0, 3.0-0.2) -- node[anchor=south, yshift=5]{$d(y)$} (0, 3.0+0.2);
         \draw (3.0+0.2, 0) to[short, -*, i=$Q$]  (5, 0) node[above]{$P$};
 
-    **Node 1:**
+    Fluxes
+    ------
 
-        :math:`Q = - \frac {dV(y)}{dt}`
+    *Node 1:*
 
-    **Discretized:**
+    .. math::
 
-        :math:`Q^{n + \frac{1}{2}} = - \frac {V(y^{n + 1}) - V(y^{n})}{\Delta t^n}`
+        Q = - \frac {dV(y)}{dt}
+
+    Discretization
+    --------------
+
+    .. math::
+
+        Q^{n + \frac{1}{2}} = - \frac {V(y^{n + 1}) - V(y^{n})}{\Delta t^n}
 
     .. note::
 
         Notice that no dynamics is given on the **DOF** in the block.
-        **Model components** of the cavity can access the pressure and give it a dynamics.
+        **Model components** of the cavity can access the pressure and provide its dynamic.
+
+    Saved Quantities
+    ----------------
+
+    Fluid volume in the cavity:
+
+    .. math::
+
+        V(y) = \frac{4}{3} \pi R_0^3
+        (1 + \frac{y}{R_0}
+        - \frac{d_0}{ 2 R_0 (1 + \frac{y}{R_0})^2})^3
+
+    Parameters
+    ----------
+    disp : Quantity[np.float64]
+        :math:`y` the displacement
+    radius : Quantity[np.float64]
+        :math:`R_0` the initial sphere radius
+    thickness : Quantity[np.float64]
+        :math:`d_0` the initial thickness
+    time : Time
+        :math:`t` the time
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "spherical_cavity_block",
+            "flux_type": "<str>",    // Type of flux exchanged by the block
+            "nodes": {"1": "<str>"}, // Net node name of the local node 1
+            "disp": "<str>",         // Displacement global name (optional)
+            "radius": "<str>",       // Initial sphere radius global name (optional)
+            "thickness": "<str>",    // Initial thickness global name (optional)
+            "time": "<str>",         // Simulation time global name (optional)
+            "volume": "<str>"        // Fluid volume in the cavity global name (optional) (saved quantity)
+        }
+
+    Aliases
+    -------
+
+    .. _alias_spherical_cavity_block:
+
+    **spherical_cavity_block**
+        Aliases :class:`~.BlockDescription`
+        (``block_description``) with ``model_type`` set to ``spherical_cavity_block``
+        and the ``time`` quantity bound to the global ``time`` quantity.
+
+        .. code-block:: json
+
+            {
+                "type": "spherical_cavity_block",
+                "flux_type": "<str>",    // Type of flux exchanged by the block
+                "nodes": {"1": "<str>"}, // Net node name of the local node 1
+                "disp": "<str>",         // Displacement global name (optional)
+                "radius": "<str>",       // Initial sphere radius global name (optional)
+                "thickness": "<str>",    // Initial thickness global name (optional)
+                "volume": "<str>"        // Fluid volume in the cavity global name (optional) (saved quantity)
+            }
 
     """  # noqa: E501
 
     disp: Quantity[np.float64]
-    """Displacement :math:`y`"""
 
     radius: Quantity[np.float64]
-    """Initial sphere radius :math:`R0`"""
 
     thickness: Quantity[np.float64]
-    """Initial thickness :math:`d0`"""
 
     time: Time
-    """time"""
 
     def initialize(self) -> None:
-        """
-        Initialize block attributes from current quantity values
-        """
+        """Initialize block attributes from current quantity values."""
         self.inv_radius = 1.0 / self.radius.current
-        self.sphere_volume = (4.0 / 3.0) * np.pi * np.pow(self.radius.current, 3)
-        self.sphere_surface = 4.0 * np.pi * np.pow(self.radius.current, 2)
+        self.sphere_volume = (4.0 / 3.0) * np.pi * self.radius.current**3
+        self.sphere_surface = 4.0 * np.pi * self.radius.current**2
         self.thickness_radius_ratio = self.thickness.current * self.inv_radius
         self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
 
-    @declares_saved_quantity("volume")
-    def get_volume(self) -> Any:
-        """
-        Compute the current volume in the cavity.
-
-        :return: the cavity volume
-        :rtype: float
-        """
-        return self.fluid_volume_current()
-
+    @declares_saved_quantity(CAVITY_VOLUME_LOCAL_ID)
     def fluid_volume_current(self) -> Any:
-        """
-        Compute the current fluid volume in the cavity.
+        """Compute the current fluid volume in the cavity.
 
-        :return: the fluid volume
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the fluid volume
+
         """
         disp_cur_ratio = 1.0 + self.disp.current * self.inv_radius
-        return self.sphere_volume * np.pow(
-            disp_cur_ratio
-            - np.pow(disp_cur_ratio, -2) * self.half_thickness_radius_ratio,
-            3,
+        return (
+            self.sphere_volume
+            * (disp_cur_ratio - disp_cur_ratio**-2 * self.half_thickness_radius_ratio)
+            ** 3
         )
 
     def fluid_volume_new(self) -> Any:
-        """
-        Compute the new fluid volume in the cavity.
+        """Compute the new fluid volume in the cavity.
 
-        :return: the fluid volume
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the fluid volume
+
         """
         disp_new_ratio = 1.0 + self.disp.new * self.inv_radius
-        return self.sphere_volume * np.pow(
-            disp_new_ratio
-            - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
-            3,
+        return (
+            self.sphere_volume
+            * (disp_new_ratio - disp_new_ratio**-2 * self.half_thickness_radius_ratio)
+            ** 3
         )
 
     @declares_flux(1, CAVITY_PRESSURE_LOCAL_ID)
     def cavity_flux(self) -> Any:
-        """
-        Compute the cavity flux at local node 1.
+        """Compute the cavity flux at local node 1.
 
-        :return: the flux
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the flux
 
+        """
         cavity_flux = -(
             (self.fluid_volume_new() - self.fluid_volume_current()) * self.time.inv_dt
         )
@@ -163,24 +222,22 @@ class SphericalCavityBlock(Block):
 
     @cavity_flux.partial_derivative(CAVITY_DISP_LOCAL_ID)
     def dcavity_flux_ddisp(self) -> Any:
-        """
-        Compute the partial derivative of the cavity flux for ``disp``
+        """Compute the partial derivative of the cavity flux for ``disp``.
 
-        :return: the flux partial derivative
-        :rtype: np.float64
-        """
+        Returns
+        -------
+        np.float64
+            the flux partial derivative
 
+        """
         disp_new_ratio = 1.0 + self.disp.new * self.inv_radius
 
         return -(
             self.time.inv_dt
             * self.sphere_surface
-            * np.pow(
-                disp_new_ratio
-                - np.pow(disp_new_ratio, -2) * self.half_thickness_radius_ratio,
-                2,
-            )
-            * (1.0 + np.pow(disp_new_ratio, -3) * self.thickness_radius_ratio)
+            * (disp_new_ratio - disp_new_ratio**-2 * self.half_thickness_radius_ratio)
+            ** 2
+            * (1.0 + disp_new_ratio**-3 * self.thickness_radius_ratio)
         )
 
 
@@ -191,43 +248,75 @@ CAVITY_BLOCK_ASYMPTOTIC_TYPE_ID = CAVITY_BLOCK_TYPE_ID + "_asymptotic"
 @dataclass
 @register_type(CAVITY_BLOCK_ASYMPTOTIC_TYPE_ID)
 class SphericalCavityBlockAsymptotic(Block):
-    r"""
-    Asymptotic description of the spherical cavity block.
+    r"""Asymptotic description of the spherical cavity block.
 
-    **Saves Volume:**
+    It is defined to use as an alternative block of the Spherical Cavity.
+    It doesn't define fluxes to interact with the net, only a saved quantity
+    to save the volume updated from the submodels.
 
-    :math:`V(y) = \frac{4}{3} \pi (R_0 + y - \frac{d_0}{2(1 + \frac{y}{R_0})^2})^3`
-    """
+    Saved Quantities
+    ----------------
+
+    Fluid volume in the cavity
+
+    .. math::
+
+        V(y) = \frac{4}{3} \pi R_0^3
+        (1 + \frac{y}{R_0}
+        - \frac{d_0}{ 2 R_0 (1 + \frac{y}{R_0})^2})^3
+
+    Parameters
+    ----------
+    disp : Quantity[np.float64]
+        Displacement :math:`y`
+    radius : Quantity[np.float64]
+        Initial sphere radius :math:`R_0`
+    thickness : Quantity[np.float64]
+        Initial thickness :math:`d_0`
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "block_description",
+            "model_type": "spherical_cavity_block_asymptotic",
+            "flux_type": "<str>", // Type of flux exchanged by the block
+            "disp": "<str>",      // Displacement global name (optional)
+            "radius": "<str>",    // Initial sphere radius global name (optional)
+            "thickness": "<str>", // Initial thickness global name (optional)
+            "volume": "<str>"     // Fluid volume in the cavity global name (optional) (saved quantity)
+        }
+
+    """  # noqa: E501
 
     disp: Quantity[np.float64]
-    """Displacement :math:`y`"""
 
     radius: Quantity[np.float64]
-    """Initial sphere radius :math:`R0`"""
 
     thickness: Quantity[np.float64]
-    """Initial thickness :math:`d0`"""
 
     def initialize(self) -> None:
-        """
-        Initialize block attributes from current quantity values
-        """
+        """Initialize block attributes from current quantity values."""
         self.inv_radius = 1.0 / self.radius.current
-        self.sphere_volume = (4.0 / 3.0) * np.pi * np.pow(self.radius.current, 3)
-        self.sphere_surface = 4.0 * np.pi * np.pow(self.radius.current, 2)
+        self.sphere_volume = (4.0 / 3.0) * np.pi * self.radius.current**3
+        self.sphere_surface = 4.0 * np.pi * self.radius.current**2
         self.thickness_radius_ratio = self.thickness.current * self.inv_radius
         self.half_thickness_radius_ratio = 0.5 * self.thickness_radius_ratio
 
-    @declares_saved_quantity("volume")
+    @declares_saved_quantity(CAVITY_VOLUME_LOCAL_ID)
     def fluid_volume(self) -> Any:
-        """
-        Compute the current fluid volume in the cavity.
+        """Compute the current fluid volume in the cavity.
 
-        :return: the fluid volume
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the fluid volume
+
         """
-        disp_ratio = 1.0 + self.disp.new * self.inv_radius
-        return self.sphere_volume * np.pow(
-            disp_ratio - np.pow(disp_ratio, -2) * self.half_thickness_radius_ratio,
-            3,
+        disp_ratio = 1.0 + self.disp.current * self.inv_radius
+        return (
+            self.sphere_volume
+            * (disp_ratio - disp_ratio**-2 * self.half_thickness_radius_ratio) ** 3
         )

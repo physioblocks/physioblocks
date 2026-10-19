@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Declare functions to define piecewise functions in the configuration"""
+"""Declare configurable piecewise functions."""
 
 from __future__ import annotations
 
@@ -44,34 +44,62 @@ PIECEWISE_LINEAR_NAME = "piecewise_linear"
 @register_type(PIECEWISE_LINEAR_NAME)
 @dataclass
 class PiecewiseLinear(AbstractFunction):
-    """
-    Defines an evaluation method to get the value of a piecewise function
-    for the given time.
+    """Evaluate a piecewise linear function.
+
+    Parameters
+    ----------
+    points_abscissas : NDArray[np.float64]
+        The function abscissas
+    points_ordinates : NDArray[np.float64]
+        The function ordinates
+    left_value : np.float64 | None
+        Function value when the evaluation point is before the provided abscissas.
+        If it is not provided, it is the first ordinate value.
+    right_value : np.float64 | None
+        Function value when the evaluation point is after the provided abscissas.
+        If it is not provided, it is the last ordinate value.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "piecewise_linear",
+            "points_abscissas": ["<float>"],  // The function abscissas
+            "points_ordinates": ["<float>"],  // The function ordinates
+            "left_value": "<float>",          // Value before the first abscissa
+                                              // (optional, default: first ordinate)
+            "right_value": "<float>",         // Value after the last abscissa
+                                              // (optional, default: last ordinate)
+            "evaluation_quantities": {
+                "time": "<str>"               // Global name of the time quantity
+            }
+        }
+
     """
 
     points_abscissas: NDArray[np.float64]
-    """The function abscissas"""
 
     points_ordinates: NDArray[np.float64]
-    """The function ordinates"""
 
     left_value: np.float64 | None = None
-    """Function value when the evaluation point is before the provided abscissas.
-    If it is not provided, it is the first ordinate value."""
 
     right_value: np.float64 | None = None
-    """Function value when the evaluation point is after the provided abscissas.
-    If it is not provided, it is the last ordinate value."""
 
     def eval(self, time: np.float64) -> Any:
-        """
-        Evaluate piecewise function for the given time.
+        """Evaluate piecewise function for the given time.
 
-        :param time: the evaluated time
-        :type time: np.float64
+        Parameters
+        ----------
+        time : np.float64
+            the evaluated time
 
-        :return: the activation point_value
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the function value
+
         """
         return np.interp(
             time,
@@ -89,29 +117,53 @@ PIECEWISE_LINEAR_PERIODIC_NAME = "piecewise_linear_periodic"
 @register_type(PIECEWISE_LINEAR_PERIODIC_NAME)
 @dataclass
 class PiecewiseLinearPeriodic(AbstractFunction):
-    """
-    Defines an evaluation method to get the value of a piecewise periodic function
-    for the given time.
+    """Evaluate a piecewise linear periodic function.
+
+    Attributes
+    ----------
+    period : np.float64
+        The function period
+    points_abscissas : NDArray[np.float64]
+        The function abscissas
+    points_ordinates : NDArray[np.float64]
+        The function ordinates
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "piecewise_linear_periodic",
+            "period": "<float>",              // The function period
+            "points_abscissas": ["<float>"],  // The function abscissas over one period
+            "points_ordinates": ["<float>"],  // The function ordinates over one period
+            "evaluation_quantities": {
+                "time": "<str>"               // Global name of the time quantity
+            }
+        }
+
     """
 
     period: np.float64
-    """The function period"""
 
     points_abscissas: NDArray[np.float64]
-    """The function abscissas"""
 
     points_ordinates: NDArray[np.float64]
-    """The function ordinates"""
 
     def eval(self, time: np.float64) -> Any:
-        """
-        Evaluate piecewise periodic function for the given time.
+        """Evaluate piecewise periodic function for the given time.
 
-        :param time: the evaluated time
-        :type time: np.float64
+        Parameters
+        ----------
+        time : np.float64
+            the evaluated time
 
-        :return: the activation point_value
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the function value
+
         """
         return np.interp(
             time, self.points_abscissas, self.points_ordinates, period=self.period
@@ -124,24 +176,52 @@ RESCALE_TWO_PHASES_FUNCTION_NAME = "rescale_two_phases_function"
 
 @register_type(RESCALE_TWO_PHASES_FUNCTION_NAME)
 class RescaleTwoPhasesFunction(AbstractFunction):
-    """
-    Rescale each part of the input function (a linear interpollation) depending on
-    the proportion of variation of phase 0 when the period differs from the
+    """Evaluate a rescaled two phases function.
+
+    The input function that presents two distinct parts is rescaled depending on the
+    configured proportion of variation of phase 0 when the period differs from the
     reference function.
+
+    Attributes
+    ----------
+    rescaled_period : float
+        The actual function period
+    reference_function : list[tuple[float, float]]
+        The reference function. Coordinates format is ``(abscissa, ordinate)``
+    alpha : float
+        Proportion of the variation of phase 0
+    phases : list[int]
+        For each interval of the reference function, determine if it belongs to
+        phase 0 or 1.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "rescale_two_phases_function",
+            "rescaled_period": "<float>",        // The actual function period
+            "reference_function": [              // Reference function points
+                ["<float>", "<float>"]           // as [abscissa, ordinate]
+            ],
+            "alpha": "<float>",                  // Proportion of variation of phase 0
+            "phases": ["<int>"],                 // Phase (0 or 1) of each interval
+                                                 // of the reference function
+            "evaluation_quantities": {
+                "time": "<str>"                  // Global name of the time quantity
+            }
+        }
+
     """
 
     rescaled_period: float
-    """The actual function period"""
 
     reference_function: list[tuple[float, float]]
-    """The reference function. Coordinates format is ``(abscissa, ordinate)``"""
 
     alpha: float
-    """Proportion of the variation of phase 0"""
 
     phases: list[int]
-    """For each intervals point of the reference, determine if it belong to
-    phase 0 or 1."""
 
     def __init__(
         self,
@@ -249,19 +329,23 @@ class RescaleTwoPhasesFunction(AbstractFunction):
 
         ordinates = [value[1] for value in self.reference_function]
 
-        self.rescaled_period = abscissas[-1]
+        self.rescaled_period = abscissas[-1] - abscissas[0]
         self.function_abcissas = np.array(abscissas)
         self.function_ordinates = np.array(ordinates)
 
     def eval(self, time: float) -> Any:
-        """
-        Evaluate the function.
+        """Evaluate the function at the given time.
 
-        :param time: the evaluated time
-        :type time: float
+        Parameters
+        ----------
+        time : float
+            the evaluated time
 
-        :return: the function value
-        :rtype: np.float64
+        Returns
+        -------
+        np.float64
+            the function value
+
         """
         return np.interp(
             time,

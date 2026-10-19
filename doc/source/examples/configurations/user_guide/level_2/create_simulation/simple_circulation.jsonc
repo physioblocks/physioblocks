@@ -1,0 +1,144 @@
+{
+    "type": "forward_simulation",
+    "solver": {
+        "type": "newton_solver",
+        "tolerance": 1e-9,
+        "iteration_max": 2
+    },
+    "time": {
+        "type": "range",
+        "start": 0.0,
+        "length": 30.0,
+        "step_size": 0.001
+    },
+    "simulation_options": {
+        "min_step": 6.25e-5
+    },
+    "net": {
+        "type": "net",
+        "flux_dof_definitions": {
+            "flow": "pressure"
+        },
+        "nodes": ["A", "B", "C"],
+        "blocks": {
+            "RC_1": {
+                "type": "rc_block",
+                "flux_type": "flow",
+                "resistance": "Ra",
+                "capacitance": "Ca",
+                "nodes":
+                {
+                    "1": "B",
+                    "2": "A"
+                }
+            },
+            "RC_2": {
+                "type": "rc_block",
+                "flux_type": "flow",
+                "resistance": "Rb",
+                "capacitance": "Cb",
+                "nodes":
+                {
+                    "1": "C",
+                    "2": "B"
+                }
+            }
+        },
+        "boundaries_conditions": {
+            "C": [
+                {
+                    "type": "condition",
+                    "condition_type": "pressure",
+                    "condition_id": "C.pressure"
+                }
+            ],
+            "A": [
+                {
+                    "type": "condition",
+                    "condition_type": "flow",
+                    "condition_id": "A.flow"
+                }
+            ]
+        }
+    },
+    "state": {
+        "A.pressure": {
+            "type": "quantity",
+            "value": 8e3,
+            "magnitude": 1e5
+        },
+        "B.pressure": {
+            "type": "quantity",
+            "value": 8e3,
+            "magnitude": 1e5
+        }
+    },
+    "parameters": {
+        "Ca": 2.0e-10,
+        "Ra": 8.0e6,
+        "Cb": 1.7e-08,
+        "Rb": 1.0e8,
+        "C.pressure": 1.6e3,
+        "sin_period": 0.80
+    },
+    "update_functions": {
+        "A.flow": {
+            "type": "sinus_offset",
+            "evaluation_quantities": {"time": "time"},
+            "offset_value": 1.0e-3,
+            "amplitude": 1.0e-3,
+            "frequency": {
+                "type": "product",
+                "factors": [1.0],
+                "inverses": ["sin_period"]
+            },
+            "phase_shift": 0.0
+        }
+    },
+    "output_functions":{
+        "A.flow": {"type": "watch_quantity", "evaluation_quantities": {"quantity": "A.flow"}},
+        "Ca.volume_stored": {
+            "type": "product",
+            "factors": ["Ca", "A.pressure"],
+            "evaluation_quantities": {"A.pressure": "A.pressure"}
+        }
+    },
+    // We did not define preprocesses for the simulation.
+    // "preprocesses": {}
+    "postprocesses": {
+        "conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "A.flow": 1.0e6, // from m3/s to mL/s
+                "Ca.volume_stored": 1.0e6, // from m3 to mL
+                "A.pressure": 0.00750062, // from Pa to mmHg
+                "B.pressure": 0.00750062 // from Pa to mmHg
+            },
+            "inputs": ["main"],
+            "outputs": ["main_medical_units"]
+        }
+    },
+    "plots": {
+        "pressures": {
+            "type": "plot",
+            "abscissas": "time",
+            "subplots": ["A.pressure", "B.pressure"],
+            "inputs": ["main_medical_units"]
+        },
+        "main_medical_units": {
+            "type": "plot",
+            "abscissas": "time",
+            "inputs": ["main_medical_units"],
+            "layout": {
+                "xaxis1_title": "time (s)",
+                "yaxis1_title": "pressure (mmHg)",
+                "xaxis2_title": "time (s)",
+                "yaxis2_title": "pressure (mmHg)",
+                "xaxis3_title": "time (s)",
+                "yaxis3_title": "flux (mL/s)",
+                "xaxis4_title": "time (s)",
+                "yaxis4_title": "pressure (mL)"
+            }
+        }
+    }
+}

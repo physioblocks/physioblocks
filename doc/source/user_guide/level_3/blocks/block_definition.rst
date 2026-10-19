@@ -42,13 +42,13 @@ To define a :class:`~physioblocks.computing.models.Block` object, we have to dec
 But first, we have to distinguish what belongs to the :class:`~physioblocks.computing.models.Block` type, from what belongs exclusively to the :class:`~physioblocks.computing.models.Block` instance.
 The :class:`~physioblocks.computing.models.Block` type holds:
 
-    * **Flux** expressions
-    * **Internal Equations** expressions
-    * **Saved Quantities** expressions
+* **Flux** expressions
+* **Internal Equations** expressions
+* **Saved Quantities** expressions
 
 They are shared among **Blocks** of the same type. The instance of a :class:`~physioblocks.computing.models.Block` however only holds:
 
-    * Actual quantities needed to compute the :class:`~physioblocks.computing.models.Block` expressions
+* Actual quantities needed to compute the :class:`~physioblocks.computing.models.Block` expressions
 
 When writing a :class:`~physioblocks.computing.models.Block`, we are first going to declare **block quantities**, then write functions to compute the **block expressions**.
 Then we will assign **expressions** combining those functions to the **block type**.
@@ -88,7 +88,7 @@ We express the dynamics on :math:`P_\text{mid}` with the relation:
 
 .. math::
     
-    C\dot{P}_\text{mid} - \frac{P_\text{mid} - P_{1}}{R_{1}} - \frac{P_\text{mid} - P_{2}}{R_{2}} = 0
+    C\dot{P}_\text{mid} - \frac{P_{1} - P_\text{mid}}{R_{1}} - \frac{P_{2} - P_\text{mid}}{R_{2}} = 0
 
 We will add it as a **internal equation** to include :math:`P_\text{mid}` as an **internal variable** in the system.
 
@@ -101,7 +101,7 @@ We are going to declare a **Saved Quantity**:
 
 
 Flux relations are discretized with a mid-point time scheme for consistency with other fluxes at the nodes.
-We get :
+We get:
 
 .. math::
     
@@ -115,7 +115,7 @@ The internal equations reads:
 
 .. math::
     
-    C\ \frac{P_{\text{mid}}^{n + 1} - P_{\text{mid}}^{n}}{\Delta t^n} - \frac{P_1^{n + \frac{1}{2}} - P_{\text{mid}}^{n + \frac{1}{2}}}{R_1} + \frac{P_2^{n + \frac{1}{2}} - P_{\text{mid}}^{n + \frac{1}{2}}}{R_2} = 0
+    C\ \frac{P_{\text{mid}}^{n + 1} - P_{\text{mid}}^{n}}{\Delta t^n} - \frac{P_1^{n + \frac{1}{2}} - P_{\text{mid}}^{n + \frac{1}{2}}}{R_1} - \frac{P_2^{n + \frac{1}{2}} - P_{\text{mid}}^{n + \frac{1}{2}}}{R_2} = 0
 
 For the saved quantity expression, we compute it for each time step at:
 
@@ -146,8 +146,13 @@ This is implemented by making the :class:`~physioblocks.computing.models.Block` 
 .. code:: python
 
     from dataclasses import dataclass
-    from physioblocks.computing.model import Block
-    from physioblocks.computing.quantities import Quantity
+    from physioblocks.computing.models import (
+        Block,
+        declares_flux,
+        declares_internal_equation,
+        declares_saved_quantity,
+    )
+    from physioblocks.computing.quantities import Quantity, diff, mid_point
     from physioblocks.simulation.time_manager import Time
 
     # Dataclass decorator provides a constructor for annotated members.
@@ -187,12 +192,12 @@ We define methods to compute the :class:`~physioblocks.computing.models.Block` r
 
 To make the methods available to build the residual matrix the methods are decorated to identify:
     
-    * **Fluxes** with :func:`~physioblocks.computing.models.declares_flux` decorator.
-      You will need to set the local node index where the flux is shared as well as the local name in the block of the dof at the node.
-      The default flux size is 1 but can be updated.
-    * **Internal equations** with :func:`~physioblocks.computing.models.declares_internal_equation` decorator.
-      You need to set at least the local name of the variable on which the equation provides a dynamic.
-      Default equation size is set to 1 and can be updated.
+* **Fluxes** with :func:`~physioblocks.computing.models.declares_flux` decorator.
+  You will need to set the local node index where the flux is shared as well as the local name in the block of the dof at the node.
+  The default flux size is 1 but can be updated.
+* **Internal equations** with :func:`~physioblocks.computing.models.declares_internal_equation` decorator.
+  You need to set at least the local name of the variable on which the equation provides a dynamic.
+  Default equation size is set to 1 and can be updated.
 
 
 .. code:: python
@@ -204,8 +209,9 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the flux at first node.
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_1_discr = 0.5 * (self.pressure_1.new - self.pressure_1.current)
+        # mid_point(q) computes 0.5 * (q.new + q.current)
+        pressure_mid_discr = mid_point(self.pressure_mid)
+        pressure_1_discr = mid_point(self.pressure_1)
         
         return (pressure_mid_discr - pressure_1_discr) / self.resistance_1.current
 
@@ -214,8 +220,8 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the flux at second node.
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_2_discr = 0.5 * (self.pressure_2.new - self.pressure_2.current)
+        pressure_mid_discr = mid_point(self.pressure_mid)
+        pressure_2_discr = mid_point(self.pressure_2)
         
         return (pressure_mid_discr - pressure_2_discr) / self.resistance_2.current
 
@@ -225,14 +231,16 @@ To make the methods available to build the residual matrix the methods are decor
         """
         Computes the rcr block internal equation residual
         """
-        pressure_mid_discr = 0.5 * (self.pressure_mid.new - self.pressure_mid.current)
-        pressure_1_discr = 0.5 * (self.pressure_1.new - self.pressure_1.current)
-        pressure_2_discr = 0.5 * (self.pressure_2.new - self.pressure_2.current)
+        pressure_mid_discr = mid_point(self.pressure_mid)
+        pressure_1_discr = mid_point(self.pressure_1)
+        pressure_2_discr = mid_point(self.pressure_2)
         
         return (
-            self.capacitance * (self.pressure_mid.new - self.pressure_mid.current) * self.time.inv_dt # time quantity also define its inverse.
-            - (pressure_1_discr - pressure_mid_discr) / self.resistance_1
-            - (pressure_2_discr - pressure_mid_discr) / self.resistance_2
+            # diff(q) computes q.new - q.current.
+            # The time quantity also defines its inverse step size.
+            self.capacitance.current * diff(self.pressure_mid) * self.time.inv_dt
+            - (pressure_1_discr - pressure_mid_discr) / self.resistance_1.current
+            - (pressure_2_discr - pressure_mid_discr) / self.resistance_2.current
         )
 
 To be able to add output values that are not variables, we identify the saved quantities with :func:`~physioblocks.computing.models.declares_saved_quantity` decorator.
@@ -240,12 +248,12 @@ To be able to add output values that are not variables, we identify the saved qu
 .. code:: python
 
     # Saved Quantity definition
-    @declares_saved_quantities("volume")
+    @declares_saved_quantity("volume")
     def volume_stored(self):
         """
         Computes volume stored in the capacitance.
         """
-        return self.pressure_mid.current * self.capacitance
+        return self.pressure_mid.current * self.capacitance.current
 
 Declare all flux and internal equations partial derivatives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -301,9 +309,9 @@ Each decorator associate the function with its the derivation variable local nam
         """
         
         return (
-            self.capacitance * self.time.inv_dt
-            + 0.5 / self.resistance_1
-            + 0.5 / self.resistance_2
+            self.capacitance.current * self.time.inv_dt
+            + 0.5 / self.resistance_1.current
+            + 0.5 / self.resistance_2.current
         )
 
     @residual_pressure_mid.partial_derivative("pressure_1")
@@ -312,7 +320,7 @@ Each decorator associate the function with its the derivation variable local nam
         Computes internal equation partial derivative for pressure_1.
         """
         return (
-            - 0.5 / self.resistance_1
+            - 0.5 / self.resistance_1.current
         )
 
     @residual_pressure_mid.partial_derivative("pressure_2")
@@ -321,7 +329,7 @@ Each decorator associate the function with its the derivation variable local nam
         Computes internal equation partial derivative for pressure_2.
         """
         return (
-            - 0.5 / self.resistance_2
+            - 0.5 / self.resistance_2.current
         )
 
 

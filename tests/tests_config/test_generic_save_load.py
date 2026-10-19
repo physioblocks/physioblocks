@@ -284,7 +284,7 @@ class TestLoad:
     def test_load_base_object_exception(
         self, ref_base_object_config_exception: Configuration
     ):
-        err_msg = str.format("Error while initialising key {0}", WRONG_KEY)
+        err_msg = str.format("Error while initializing key {0}", WRONG_KEY)
         with pytest.raises(ConfigurationError, match=err_msg):
             load(ref_base_object_config_exception, configuration_key=WRONG_KEY)
 
@@ -370,6 +370,7 @@ class TestLoad:
         DataClassObj: DATA_CLASS_OBJECT_ITEM_ID,
     },
 )
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestSave:
     def test_save_base_object(
         self, ref_base_object_config: Configuration, ref_base_object: DataClassObj

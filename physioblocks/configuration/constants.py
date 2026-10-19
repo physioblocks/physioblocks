@@ -23,11 +23,18 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare configuration constants."""
 
 # Simulation
 
 # Simulation item id in the configuration
 SIMULATION_ID = "simulation"
+
+# Simulation type item
+SIMULATION_TYPE_ID = "simulation_type"
+
+# Data item id in the simulation configuration
+DATA_ID = "data"
 
 # Boundary conditions item id in the configuration.
 BOUNDARIES_ID = "boundaries_conditions"
@@ -72,7 +79,7 @@ SUBMODEL_ITEM_ID = "submodels"
 # Label of the model type item
 MODEL_COMPONENT_TYPE_ITEM_ID = "model_type"
 
-# Label of the model type item
+# Label of the alternative types item
 ALTERNATIVE_TYPES_ITEM_ID = "alternative_types"
 
 
@@ -100,15 +107,24 @@ ITERATION_MAX_VAL_ID = "iteration_max"
 # State
 
 # Id of the initialization values of the variables in the configuration
-INIT_VARIABLES_ID = "variables_initialization"
+STATE_ID = "state"
 
+# Quantities
+
+# Quantity current/init value id in the configuration
+QUANTITY_VALUE_ID = "value"
+
+# Quantity standard deviation id in the configuration
+QUANTITY_STDEV_ID = "stdev"
+
+# Quantity magnitude id in the configuration
+QUANTITY_MAGNITUDE_ID = "magnitude"
 
 # Time Manager
 
-# Time id in the configuration
-TIME_MANAGER_ID = "time"
+TIME_ID = "time"
 
-# End time of the simulation id in the configuration
+# Duration of the simulation id in the configuration
 TIME_DURATION_TIME_VAL_ID = "duration"
 
 # Start time of the simulation id in the configuration
@@ -117,9 +133,18 @@ TIME_START_TIME_VAL_ID = "start"
 # Time step id in the configuration
 TIME_STEP_TIME_VAL_ID = "step_size"
 
+# Length of the simulation time range id in the configuration
+RANGE_LENGTH_ID = "length"
+
 # Minimum time step size id in the configuration
 TIME_STEP_MIN_VAL_ID = "min_step"
 
+# Configuration field id for functions update parameters each time step
+UPDATE_FUNCTIONS = "update_functions"
+
+# Simulation Functions
+
+FUNCTION_TYPE_ID = "function_type"
 
 # Outputs
 
@@ -129,10 +154,17 @@ OUTPUTS_FUNCTIONS_ID = "output_functions"
 # Processes
 
 # Optional field id for simulation pre-processes
-PRE_PROCESSES_ID = "pre-processes"
+PRE_PROCESSES_ID = "preprocesses"
 
 # Optional field id for simulation post-processes
-POST_PROCESSES_ID = "post-processes"
+POST_PROCESSES_ID = "postprocesses"
 
 # Optional field for simulation plots
 PLOTS_CONFIGURATION_ID = "plots"
+
+# Estimation simulation
+
+FILTER_CONFIGURATION_ID = "filter"
+OBSERVER_CONFIGURATION_ID = "observer"
+OBSERVER_MEASUREMENTS_CONFIGURATION_ID = "measurements"
+OBSERVER_OPERATORS_CONFIGURATION_ID = "operators"

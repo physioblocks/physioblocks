@@ -26,9 +26,8 @@
 
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.blocks.capacitances import CBlock, RCBlock, RCRBlock
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
@@ -44,7 +43,7 @@ def ref_c_block() -> CBlock:
 
 class TestCBlock:
     def test_check_gradient(self, ref_c_block: CBlock):
-        state = State()
+        state = QuantitiesRegistry()
         state["pressure"] = ref_c_block.pressure
         ref_c_block.time.update(0.001)
 
@@ -64,7 +63,7 @@ def ref_rc_block() -> RCBlock:
 
 class TestRCBlock:
     def test_check_gradient(self, ref_rc_block: RCBlock):
-        state = State()
+        state = QuantitiesRegistry()
         state["pressure_1"] = ref_rc_block.pressure_1
         state["pressure_2"] = ref_rc_block.pressure_2
         ref_rc_block.time.update(0.001)
@@ -87,7 +86,7 @@ def ref_rcr_block() -> RCRBlock:
 
 class TestRCRBlock:
     def test_check_gradient(self, ref_rcr_block: RCRBlock):
-        state = State()
+        state = QuantitiesRegistry()
         state["pressure_1"] = ref_rcr_block.pressure_1
         state["pressure_mid"] = ref_rcr_block.pressure_mid
         state["pressure_2"] = ref_rcr_block.pressure_2

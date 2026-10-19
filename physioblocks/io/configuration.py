@@ -24,18 +24,20 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines methods to save and load
-:class:`~physioblocks.configuration.base.Configuration` objects to a json file
+"""Defines methods to save and load :class:`~.Configuration` objects to a json file.
 
 .. note::
 
     It is possible to save and load ``.jsonc`` files and use ``//`` characters to
     comment the file.
 
-    The comments are discarded when the file is loaded: there are only here to increase
+    The comments are discarded when the file is loaded: they are only here to increase
     the json readability.
 
+See Also
+--------
+~.Configuration
+    objects to save in json format.
 """
 
 import json
@@ -53,22 +55,22 @@ _COMMENT_CHAR = "//"
 
 
 class _JSONConfigEncoder(json.JSONEncoder):
-    """
-    Derive from the base JSONEncoder class to redefine the
-    encoding of Configuration and Configuration objects
-    """
+    """Define the Configuration objects encoding."""
 
     def default(self, obj: Any) -> Any:
+        """Overwrite the default encoder method.
+
+        Parameters
+        ----------
+        obj : Any
+            the object to encode
+
+        Returns
+        -------
+        Any
+            the encoded object
+
         """
-        Overwrite the default encoder method.
-
-        :param obj: the object to encode
-        :type obj: Any
-
-        :return: the encoded object
-        :rtype: dict[str, obj]
-        """
-
         if isinstance(obj, Configuration):
             item_dict: dict[str, Any]
             item_dict = {}
@@ -81,29 +83,33 @@ class _JSONConfigEncoder(json.JSONEncoder):
 
 
 def write_json(file_path: str, config: Configuration) -> None:
-    """
-    Write the :class:`~physioblocks.configuration.base.Configuration` object
-    to a json file
+    """Write the :class:`~.Configuration` object to a json file.
 
-    :param file_path: the path of the file to read
-    :type file_path: str
+    Parameters
+    ----------
+    file_path : str
+        the path of the file to write
+    config : Configuration
+        the configuration to write
 
-    :param config: the configuration to write
-    :type config: Configuration
     """
     config_json = json.dumps(config, cls=_JSONConfigEncoder, indent=4)
     Path(file_path).write_text(config_json)
 
 
 def read_json(file_path: str) -> Any:
-    """
-    Read a :class:`~physioblocks.configuration.base.Configuration` from a json file
+    """Read a :class:`~.Configuration` object from a json file.
 
-    :param file_path: the path of the file to read
-    :type file_path: str
+    Parameters
+    ----------
+    file_path : str
+        the path of the file to read
 
-    :return: the loaded configuration
-    :rtype: Configuration
+    Returns
+    -------
+    Any
+        the loaded configuration.
+
     """
     json_txt = Path(file_path).read_text()
 

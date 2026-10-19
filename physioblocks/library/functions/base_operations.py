@@ -34,51 +34,79 @@ from typing import Any
 
 import numpy as np
 
-from physioblocks.base.operators import AbstractBaseOperators
 from physioblocks.registers.type_register import register_type
-from physioblocks.simulation import AbstractFunction
+from physioblocks.simulation.functions import (
+    AbstractFunction,
+    AbstractInitializationFunction,
+)
 
-# Sum funtion type id
+# Sum function type id
 SUM_TYPE_ID = "sum"
 
 
 @dataclass
 @register_type(SUM_TYPE_ID)
-class Sum(AbstractFunction, AbstractBaseOperators):
-    """
-    Sum the elements in ``add`` and subtract the elements in ``subtract``.
+class Sum(AbstractInitializationFunction):
+    """Sum the elements in ``add`` and subtract the elements in ``subtract``.
+
+    Mostly useful in the configuration to initialize parameters with reference to other
+    parameters.
+
+    Attributes
+    ----------
+    add : Iterable[Any]
+        the values to sum
+    subtract : Iterable[Any] | None
+        the values to subtract. Default is None.
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "sum",
+            "add": ["<float>"],            // Values to sum
+            "subtract": ["<float>"]        // Values to subtract
+                                           // (optional, default: none)
+        }
+
     """
 
     add: Iterable[Any] = field(default_factory=list)
-    """the values to sum"""
 
     subtract: Iterable[Any] | None = None
-    """the values to subtract"""
 
-    @property
-    def operation_value(self) -> Any:
+    def eval(self, **quantities: Any) -> Any:
+        """Sum the elements in ``add`` and subtract the elements in ``subtract``.
+
+        Parameters
+        ----------
+        quantities: Any
+            Keyword arguments providing the value of the quantities
+
+        Returns
+        -------
+        Any
+            the sum result
+
         """
-        Value used with base operators.
+        positives = [
+            quantities[to_add] if isinstance(to_add, str) else to_add
+            for to_add in self.add
+        ]
 
-        :return: the current evaluation of the function
-        :rtype: Any
-        """
-        return self.eval()
-
-    def eval(self) -> Any:
-        """
-        Sum the elements in ``add`` and subtract the elements in ``subtract``.
-
-        :return: the sum result
-        :rtype: Any
-        """
-
-        pos = np.sum(np.array(self.add), axis=0)
+        pos = np.sum(np.array(positives), axis=0)
 
         if self.subtract is None:
             return pos
 
-        neg = np.sum(np.array(self.subtract), axis=0)
+        negatives = [
+            quantities[to_subtract] if isinstance(to_subtract, str) else to_subtract
+            for to_subtract in self.subtract
+        ]
+
+        neg = np.sum(np.array(negatives), axis=0)
         return pos - neg
 
 
@@ -95,35 +123,67 @@ PRODUCT_TYPE_ID = "product"
 
 @dataclass
 @register_type(PRODUCT_TYPE_ID)
-class Product(AbstractFunction, AbstractBaseOperators):
-    """
-    Multiply all values provided in ``factors`` list and divide the
-    result with the multiplication of the values in the ``inverses`` list.
+class Product(AbstractFunction, AbstractInitializationFunction):
+    """Simple configurable Product.
 
-    ..note:: It uses the numpy multiply function
+    Multiply all values provided in ``factors`` list and divide the result by the
+    product of the values in the ``inverses`` list.
+
+    Mostly useful in the configuration to initialize parameters with reference to other
+    parameters.
+
+    .. note:: It uses the numpy multiply function
+
+    Attributes
+    ----------
+    factors : Iterable[Any]
+        The values to multiply
+    inverses : Iterable[Any] | None
+        The values to inverse then multiply
+
+    Configuration
+    -------------
+
+    .. code-block:: json
+
+        {
+            "type": "product",
+            "factors": ["<float>"],        // Values to multiply
+            "inverses": ["<float>"]        // Values dividing the
+                                           // product (optional, default: none)
+        }
 
     """
 
     factors: Iterable[Any] = field(default_factory=list)
-    """The values to multiply"""
 
     inverses: Iterable[Any] | None = None
-    """The values to inverse then multiply"""
 
-    @property
-    def operation_value(self) -> Any:
+    def eval(self, **quantities: Any) -> Any:
         """
-        Value used with base operators.
+        Perform the product.
 
-        :return: the current evaluation of the function
-        :rtype: Any
+        Parameters
+        ----------
+        quantities: Any
+            Keyword arguments providing the value of the quantities
+
+        Returns
+        -------
+        Any
+            the product
         """
-        return self.eval()
-
-    def eval(self) -> Any:
-        product = _multiply(self.factors)
+        current_factors = [
+            quantities[factor] if isinstance(factor, str) else factor
+            for factor in self.factors
+        ]
+        product = _multiply(current_factors)
         if self.inverses is None:
             return product
         else:
-            inverses_product = _multiply(self.inverses)
+            current_inverses = [
+                quantities[inverse] if isinstance(inverse, str) else inverse
+                for inverse in self.inverses
+            ]
+            inverses_product = _multiply(current_inverses)
             return product / inverses_product

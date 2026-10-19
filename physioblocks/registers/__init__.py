@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines functions to access registers
-"""
+"""Declare functions to populate and access registers."""
 
 __all__ = ["register_type"]
 from physioblocks.registers.type_register import register_type

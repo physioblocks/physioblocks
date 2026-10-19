@@ -1,0 +1,29 @@
+{
+    "type": "plot",
+    "rows_height": 1000,
+    "traces": {
+        "Ventricle Pressure": {
+            "matches": "{subplot_id}.blood_pressure",
+            "style":{
+                "mode": "lines",
+                "line": {"color": "red"},
+                "fill": "toself",
+                "fillcolor": "rgba(255, 0, 0, 0.2)"
+            }
+        },
+        "ESPVR": {
+            "matches": "{subplot_id}.dynamics.ESPVR",
+            "style":{
+                "mode": "lines",
+                "line": {"color": "green"}
+            }
+        },
+        "EDPVR": {
+            "matches": "{subplot_id}.dynamics.EDPVR",
+            "style":{
+                "mode": "lines",
+                "line": {"color": "blue"}
+            }
+        }
+    }
+}

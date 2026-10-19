@@ -1,0 +1,7 @@
+{
+    "type": "piecewise_linear_periodic",
+    "evaluation_quantities": {"time": "time"},
+    "period": 1.0,
+    "points_abscissas": [0.0, 0.075, 0.135, 0.140, 0.275],
+    "points_ordinates": [0.0, 0.0, 0.5e-3, 0.5e-3, 0.0]
+}

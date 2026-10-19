@@ -23,6 +23,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
+"""Declare methods to load and save nets configurations."""
 
 from typing import Any
 
@@ -36,7 +37,7 @@ from physioblocks.configuration.constants import (
 )
 from physioblocks.configuration.functions import load, save
 from physioblocks.description.blocks import BlockDescription
-from physioblocks.description.flux import get_flux_dof_register
+from physioblocks.description.flux import FluxDofTypesRegister
 from physioblocks.description.nets import BoundaryCondition, Net
 from physioblocks.registers.load_function_register import loads
 from physioblocks.registers.save_function_register import saves
@@ -44,14 +45,22 @@ from physioblocks.registers.save_function_register import saves
 
 @saves(Net)
 def save_net_config(net: Net, *args: Any, **kwargs: Any) -> Configuration:
-    """
-    Create a Configuration for a net
+    """Create a :class:`~.Configuration` for a net.
 
-    :param net: the net
-    :type net: Net
+    Parameters
+    ----------
+    net : Net
+        the net
 
-    :return: the configuration
-    :rtype: Configuration
+    Returns
+    -------
+    Configuration
+        the configuration
+
+    Raises
+    ------
+    ConfigurationError
+        if the blocks can not be saved as a dict.
     """
     # save blocks
     blocks_config = save(net.blocks, *args, **kwargs)
@@ -74,10 +83,11 @@ def save_net_config(net: Net, *args: Any, **kwargs: Any) -> Configuration:
         blocks_config[block_id][NODES_ITEM_ID] = block_connections
 
     node_ids = list(net.nodes.keys())
-    flux_dof_register = get_flux_dof_register()
 
     net_config = Configuration(NET_ID)
-    net_config[FLUX_DOF_DEFINITION_ID] = save(flux_dof_register.flux_dof_couples)
+    net_config[FLUX_DOF_DEFINITION_ID] = save(
+        net.flux_dof_type_register.flux_dof_couples
+    )
     net_config[NODES_ITEM_ID] = node_ids
     net_config[BLOCKS_ITEM_ID] = blocks_config
     net_config[BOUNDARIES_ID] = save(net.boundary_conditions, *args, **kwargs)
@@ -93,30 +103,38 @@ def load_net_config(
     *args: Any,
     **kwargs: Any,
 ) -> Net:
+    """Load a net from a configuration.
+
+    Parameters
+    ----------
+    configuration : Configuration
+        the configuration
+    configuration_type : type[Net]
+        the type of the configured net.
+    configurable_object : Net | None
+        a net to fill with the configuration. Default is None, then a new net is
+        created.
+
+    Returns
+    -------
+    Net
+        the net
     """
-    Load a net from a configuration.
-
-    :param configuration: the configuration
-    :type configuration: Configuration
-
-    :param boundaries: the boundaries of the net at each node
-    :type boundaries: dict[str, list[BoundaryCondition]]
-
-    :return: the net
-    :rtype: Net
-    """
-
-    configurable_net = (
-        configuration_type() if configurable_object is None else configurable_object
-    )
-    nodes_ids = configuration[NODES_ITEM_ID]
-
-    # Fill the flux type singleton from the configured value
-    if FLUX_DOF_DEFINITION_ID in configuration:
+    flux_dof_definitions = (
         load(
             configuration[FLUX_DOF_DEFINITION_ID],
-            configuration_object=get_flux_dof_register(),
+            configuration_object=FluxDofTypesRegister(),
         )
+        if FLUX_DOF_DEFINITION_ID in configuration
+        else FluxDofTypesRegister()
+    )
+
+    configurable_net = (
+        configuration_type(flux_dof_definitions)
+        if configurable_object is None
+        else configurable_object
+    )
+    nodes_ids = configuration[NODES_ITEM_ID]
 
     for node_id in nodes_ids:
         configurable_net.add_node(node_id)

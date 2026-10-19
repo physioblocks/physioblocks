@@ -67,8 +67,11 @@ test debian:
     - pip install .[tox]
     - tox
   artifacts:
+    when: always
     paths:
       - htmlcov
+      - tests/tests_references/artifacts
+      - doc/build/html
 
 # Run reference simulation and trace the comparison with the reference
 test references debian:
@@ -80,9 +83,10 @@ test references debian:
   script:
     - pip install .
     - python -m physioblocks.launcher.configure -d ./launcher
-    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_sim_compare_reference.jsonc -d launcher -s Circulation
-    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
-    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_respiration_sim_compare_reference.jsonc -d launcher -s SphericalHeartRespiration
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_forward_sim_compare_reference.jsonc -d launcher -s Circulation
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_estimation_sim_compare_reference.jsonc -d launcher -s CirculationEstimation
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_forward_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_estimation_sim_compare_reference.jsonc -d launcher -s SphericalHeartEstimation
   artifacts:
     paths:
       - launcher/simulations
@@ -94,6 +98,12 @@ test windows:
   script:
     - pip install .[tox]
     - tox
+  artifacts:
+    when: always
+    paths:
+      - htmlcov
+      - tests/tests_references/artifacts
+      - doc/build/html
 
 # Run reference simulation and trace the comparison with the reference
 test references windows:
@@ -103,9 +113,10 @@ test references windows:
   script:
     - pip install .
     - python -m physioblocks.launcher.configure -d ./launcher
-    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_sim_compare_reference.jsonc -d launcher -s Circulation
-    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
-    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_respiration_sim_compare_reference.jsonc -d launcher -s SphericalHeartRespiration
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_forward_sim_compare_reference.jsonc -d launcher -s Circulation
+    - python -m physioblocks.launcher tests/tests_references/circulation_alone/circulation_alone_estimation_sim_compare_reference.jsonc -d launcher -s CirculationEstimation
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_forward_sim_compare_reference.jsonc -d launcher  -s SphericalHeart
+    - python -m physioblocks.launcher tests/tests_references/spherical_heart/spherical_heart_estimation_sim_compare_reference.jsonc -d launcher -s SphericalHeartEstimation
   artifacts:
     paths:
       - launcher/simulations
@@ -119,9 +130,8 @@ pages:
     - large
   script:
     - pip install .[doc]
-    - cd doc
-    - make html
-    - mv build/html ../public/
+    - sphinx-build -b html doc/source/ doc/build/html/
+    - mv doc/build/html public/
   artifacts:
     paths:
       - public

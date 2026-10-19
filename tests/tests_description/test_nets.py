@@ -24,11 +24,13 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
+from physioblocks.computing.models import Term
 from physioblocks.description.blocks import BlockDescription, ModelComponentDescription
+from physioblocks.description.flux import FluxDofTypesRegister
 from physioblocks.description.nets import Net, Node
 
 NODE_ID = "node"
@@ -66,12 +68,12 @@ def expression():
 
 @pytest.fixture
 def term_a_definition():
-    return MagicMock(term_id=POTENTIAL_A, size=1, index=0)
+    return Term(term_id=POTENTIAL_A, term_size=1, term_index=0)
 
 
 @pytest.fixture
 def term_b_definition():
-    return MagicMock(term_id=POTENTIAL_B, size=1, index=0)
+    return Term(term_id=POTENTIAL_B, term_size=1, term_index=0)
 
 
 @pytest.fixture
@@ -138,27 +140,33 @@ def block_no_potential_type(flux_a_definition):
     )
 
 
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={
-        FLUX_TYPE: DOF_TYPE,
-        FLUX_TYPE_A: DOF_TYPE_A,
-        FLUX_TYPE_B: DOF_TYPE_B,
-    },
-    _dof_types={DOF_TYPE: FLUX_TYPE, DOF_TYPE_A: FLUX_TYPE_A, DOF_TYPE_B: FLUX_TYPE_B},
-)
+@pytest.fixture
+def flux_dof_types_register():
+    return MagicMock(
+        flux_dof_couples={
+            FLUX_TYPE: DOF_TYPE,
+            FLUX_TYPE_A: DOF_TYPE_A,
+            FLUX_TYPE_B: DOF_TYPE_B,
+        },
+        dof_flux_couples={
+            DOF_TYPE: FLUX_TYPE,
+            DOF_TYPE_A: FLUX_TYPE_A,
+            DOF_TYPE_B: FLUX_TYPE_B,
+        },
+    )
+
+
 class TestNode:
-    def test_constructor(self):
-        node = Node(NODE_ID)
+    def test_constructor(self, flux_dof_types_register: FluxDofTypesRegister):
+        node = Node(flux_dof_types_register, NODE_ID)
         assert node.name == NODE_ID
         assert node.dofs == []
         assert node.is_boundary is False
         assert node.boundary_conditions == []
         assert node.local_nodes == []
 
-    def test_set(self):
-        node = Node(NODE_ID)
+    def test_set(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
 
         with pytest.raises(AttributeError):
             node.name = ""
@@ -175,8 +183,8 @@ class TestNode:
         with pytest.raises(AttributeError):
             node.boundary_conditions = []
 
-    def test_add_remove_dof(self):
-        node = Node(NODE_ID)
+    def test_add_remove_dof(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
         assert node.dofs[0].dof_id == DOF_ID
         assert node.dofs[0].dof_type == DOF_TYPE
@@ -184,8 +192,8 @@ class TestNode:
         node.remove_dof(DOF_TYPE)
         assert node.dofs == []
 
-    def test_add_dof_with_unregistered_type(self):
-        node = Node(NODE_ID)
+    def test_add_dof_with_unregistered_type(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
 
         with pytest.raises(
             ValueError,
@@ -193,37 +201,37 @@ class TestNode:
         ):
             node.add_dof(DOF_ID, OTHER_ID)
 
-    def test_has_flux_type(self):
-        node = Node(NODE_ID)
+    def test_has_flux_type(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_A_ID, DOF_TYPE_A)
         assert node.has_flux_type(FLUX_TYPE_A) is True
         assert node.has_flux_type(FLUX_TYPE_B) is False
 
-    def test_get_dof(self):
-        node = Node(NODE_ID)
+    def test_get_dof(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
 
         assert node.dofs[0] == node.get_dof(DOF_ID)
 
-    def test_get_dof_with_unregistered_dof(self):
-        node = Node(NODE_ID)
+    def test_get_dof_with_unregistered_dof(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         with pytest.raises(KeyError):
             node.get_dof(OTHER_ID)
 
-    def test_get_flux_dof(self):
-        node = Node(NODE_ID)
+    def test_get_flux_dof(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
 
         assert node.dofs[0] == node.get_flux_dof(FLUX_TYPE)
 
-    def test_get_flux_dof_with_unregistered_flux(self):
-        node = Node(NODE_ID)
+    def test_get_flux_dof_with_unregistered_flux(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
 
         with pytest.raises(KeyError):
             node.get_flux_dof(FLUX_TYPE)
 
-    def test_add_remove_boundaries_on_flux(self):
-        node = Node(NODE_ID)
+    def test_add_remove_boundaries_on_flux(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
         node.add_boundary_condition(FLUX_TYPE, FLUX_ID)
 
@@ -233,8 +241,8 @@ class TestNode:
         node.remove_boundary_condition(FLUX_TYPE)
         assert len(node.boundary_conditions) == 0
 
-    def test_add_remove_boundaries_on_dof(self):
-        node = Node(NODE_ID)
+    def test_add_remove_boundaries_on_dof(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
         node.add_boundary_condition(DOF_TYPE, DOF_ID)
 
@@ -244,8 +252,8 @@ class TestNode:
         node.remove_boundary_condition(DOF_TYPE)
         assert len(node.boundary_conditions) == 0
 
-    def test_add_boundaries_with_pre_existing_condition(self):
-        node = Node(NODE_ID)
+    def test_add_boundaries_with_pre_existing_condition(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
         node.add_boundary_condition(FLUX_TYPE, FLUX_ID)
 
@@ -264,60 +272,50 @@ class TestNode:
         with pytest.raises(ValueError):
             node.add_boundary_condition(FLUX_TYPE, OTHER_ID)
 
-    def test_add_boundaries_with_no_matching_type(self):
-        node = Node(NODE_ID)
+    def test_add_boundaries_with_no_matching_type(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         with pytest.raises(ValueError):
             node.add_boundary_condition(DOF_TYPE, DOF_ID)
 
         with pytest.raises(ValueError):
             node.add_boundary_condition(FLUX_TYPE, DOF_ID)
 
-    def test_is_boundary_false(self):
-        node = Node(NODE_ID)
+    def test_is_boundary_false(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         assert node.is_boundary is False
 
-    def test_is_boundary_true(self):
-        node = Node(NODE_ID)
+    def test_is_boundary_true(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_dof(DOF_ID, DOF_TYPE)
         node.add_boundary_condition(FLUX_TYPE, FLUX_ID)
         assert node.is_boundary is True
 
-    def test_node_add_remove_node_local_true(self):
-        node = Node(NODE_ID)
+    def test_node_add_remove_node_local_true(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_node_local(BLOCK_ID, 1)
         assert node.local_nodes == [(BLOCK_ID, 1)]
 
         node.remove_node_local(BLOCK_ID, 1)
         assert node.local_nodes == []
 
-    def test_node_has_node_local_false(self):
-        node = Node(NODE_ID)
+    def test_node_has_node_local_false(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         assert node.has_node_local(BLOCK_ID, 0) is False
 
-    def test_node_has_node_local_true(self):
-        node = Node(NODE_ID)
+    def test_node_has_node_local_true(self, flux_dof_types_register):
+        node = Node(flux_dof_types_register, NODE_ID)
         node.add_node_local(BLOCK_ID, 0)
         assert node.has_node_local(BLOCK_ID, 0) is True
 
 
-@patch.multiple(
-    "physioblocks.description.nets._flux_type_register",
-    create=True,
-    _fluxes_types={
-        FLUX_TYPE: DOF_TYPE,
-        FLUX_TYPE_A: DOF_TYPE_A,
-        FLUX_TYPE_B: DOF_TYPE_B,
-    },
-    _dof_types={DOF_TYPE: FLUX_TYPE, DOF_TYPE_A: FLUX_TYPE_A, DOF_TYPE_B: FLUX_TYPE_B},
-)
 class TestNet:
-    def test_default_constructor(self):
-        net = Net()
+    def test_default_constructor(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         assert net.blocks == {}
         assert net.nodes == {}
 
-    def test_set_raise_attribute_error(self):
-        net = Net()
+    def test_set_raise_attribute_error(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         with pytest.raises(AttributeError):
             net.blocks = {}
 
@@ -327,8 +325,8 @@ class TestNet:
         with pytest.raises(AttributeError):
             net.boundary_conditions = {}
 
-    def test_cant_update(self):
-        net = Net()
+    def test_cant_update(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
 
         net.blocks[BLOCK_ID] = MagicMock()
         assert net.blocks == {}
@@ -339,8 +337,8 @@ class TestNet:
         net.boundary_conditions[NODE_ID] = [MagicMock()]
         assert net.boundary_conditions == {}
 
-    def test_add_remove_node(self):
-        net = Net()
+    def test_add_remove_node(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         node = net.add_node(NODE_ID)
 
         assert len(net.nodes) == 1
@@ -351,8 +349,8 @@ class TestNet:
         assert NODE_ID not in net.nodes
         assert len(net.nodes) == 0
 
-    def test_add_node_raise_error(self):
-        net = Net()
+    def test_add_node_raise_error(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         with pytest.raises(
@@ -360,8 +358,8 @@ class TestNet:
         ):
             net.add_node(NODE_ID)
 
-    def test_add_remove_block(self, block_a_type):
-        net = Net()
+    def test_add_remove_block(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         net.add_block(
@@ -378,11 +376,13 @@ class TestNet:
         assert BLOCK_ID not in net.blocks
         assert len(net.blocks) == 0
 
-    def test_add_blocks_renames_submodels(self, block_a_type, submodel_type):
+    def test_add_blocks_renames_submodels(
+        self, flux_dof_types_register, block_a_type, submodel_type
+    ):
         submodel_desc = ModelComponentDescription(
             SUBMODEL_ID, submodel_type, {POTENTIAL_A: f"{BLOCK_ID}.{POTENTIAL_A}"}
         )
-        net = Net()
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -400,8 +400,8 @@ class TestNet:
             == f"{NODE_ID}.{DOF_TYPE}"
         )
 
-    def test_remove_node_removes_block(self, block_a_type):
-        net = Net()
+    def test_remove_node_removes_block(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -412,8 +412,10 @@ class TestNet:
         assert len(net.nodes) == 0
         assert len(net.blocks) == 0
 
-    def test_add_blocks_different_flux_types(self, block_a_type):
-        net = Net()
+    def test_add_blocks_different_flux_types(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         net.add_block(
@@ -444,8 +446,10 @@ class TestNet:
         assert net.nodes[NODE_ID].dofs[0].dof_type == DOF_TYPE_A
         assert net.nodes[NODE_ID].dofs[1].dof_type == DOF_TYPE_B
 
-    def test_add_multiple_blocks(self, block_a_type, block_b_type):
-        net = Net()
+    def test_add_multiple_blocks(
+        self, flux_dof_types_register, block_a_type, block_b_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
         net.add_node(NODE_B_ID)
 
@@ -479,8 +483,8 @@ class TestNet:
             == f"{NODE_B_ID}.{DOF_TYPE_A}"
         )
 
-    def test_add_block_raise_id_exists(self, block_a_type):
-        net = Net()
+    def test_add_block_raise_id_exists(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -498,8 +502,10 @@ class TestNet:
                 {0: NODE_A_ID},
             )
 
-    def test_add_block_raise_nodes_size_greater(self, block_a_type):
-        net = Net()
+    def test_add_block_raise_nodes_size_greater(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
         net.add_node(NODE_B_ID)
 
@@ -513,8 +519,10 @@ class TestNet:
                 {0: NODE_A_ID, 1: NODE_B_ID},
             )
 
-    def test_add_block_raise_nodes_size_lesser(self, block_b_type):
-        net = Net()
+    def test_add_block_raise_nodes_size_lesser(
+        self, flux_dof_types_register, block_b_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         with pytest.raises(
@@ -527,8 +535,8 @@ class TestNet:
                 {0: NODE_ID},
             )
 
-    def test_local_to_global_node_id(self, block_a_type):
-        net = Net()
+    def test_local_to_global_node_id(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         net.add_block(
@@ -538,8 +546,10 @@ class TestNet:
         )
         assert net.local_to_global_node_id(BLOCK_ID, 0) == NODE_ID
 
-    def test_local_to_global_node_id_multiple_blocks(self, block_a_type, block_b_type):
-        net = Net()
+    def test_local_to_global_node_id_multiple_blocks(
+        self, flux_dof_types_register, block_a_type, block_b_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
         net.add_node(NODE_B_ID)
 
@@ -558,13 +568,13 @@ class TestNet:
         assert net.local_to_global_node_id(BLOCK_B_ID, 0) == NODE_A_ID
         assert net.local_to_global_node_id(BLOCK_B_ID, 1) == NODE_B_ID
 
-    def test_local_to_global_node_id_raise_error(self):
-        net = Net()
+    def test_local_to_global_node_id_raise_error(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         with pytest.raises(ValueError):
             net.local_to_global_node_id(BLOCK_ID, 0)
 
-    def test_set_remove_flux_boundary(self, block_a_type):
-        net = Net()
+    def test_set_remove_flux_boundary(self, block_a_type, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         node = net.add_node(NODE_ID)
 
         net.add_block(
@@ -583,8 +593,8 @@ class TestNet:
         assert len(node.boundary_conditions) == 0
         assert NODE_ID not in net.boundary_conditions
 
-    def test_set_remove_dof_boundary(self, block_a_type):
-        net = Net()
+    def test_set_remove_dof_boundary(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         node = net.add_node(NODE_ID)
 
         net.add_block(
@@ -603,8 +613,10 @@ class TestNet:
         assert len(node.boundary_conditions) == 0
         assert NODE_ID not in net.boundary_conditions
 
-    def test_set_boundary_already_defined_flux(self, block_a_type):
-        net = Net()
+    def test_set_boundary_already_defined_flux(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -620,8 +632,10 @@ class TestNet:
         with pytest.raises(ValueError):
             net.set_boundary(NODE_ID, DOF_TYPE, DOF_ID)
 
-    def test_set_boundary_already_defined_dof(self, block_a_type):
-        net = Net()
+    def test_set_boundary_already_defined_dof(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -637,22 +651,22 @@ class TestNet:
         with pytest.raises(ValueError):
             net.set_boundary(NODE_ID, FLUX_TYPE, FLUX_ID)
 
-    def test_set_boundary_with_no_matching_flux(self):
-        net = Net()
+    def test_set_boundary_with_no_matching_flux(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
 
         with pytest.raises(ValueError):
             net.set_boundary(NODE_A_ID, FLUX_TYPE_A, FLUX_ID)
 
-    def test_set_boundary_with_no_matching_dof(self):
-        net = Net()
+    def test_set_boundary_with_no_matching_dof(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
 
         with pytest.raises(ValueError):
             net.set_boundary(NODE_A_ID, DOF_TYPE_A, FLUX_ID)
 
-    def test_set_boundary_multiple_dofs_error(self):
-        net = Net()
+    def test_set_boundary_multiple_dofs_error(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         # Manually add a second DOF to create the error condition
@@ -664,11 +678,13 @@ class TestNet:
         ):
             net.set_boundary(NODE_ID, DOF_TYPE, DOF_ID)
 
-    def test_set_dof_boundary_renames_submodels(self, block_a_type, submodel_type):
+    def test_set_dof_boundary_renames_submodels(
+        self, flux_dof_types_register, block_a_type, submodel_type
+    ):
         submodel_desc = ModelComponentDescription(
             SUBMODEL_ID, submodel_type, {POTENTIAL_A: POTENTIAL_A}
         )
-        net = Net()
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -688,8 +704,8 @@ class TestNet:
             == DOF_ID
         )
 
-    def test_remove_node_removes_boundary(self, block_a_type):
-        net = Net()
+    def test_remove_node_removes_boundary(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -702,8 +718,8 @@ class TestNet:
         assert len(net.nodes) == 0
         assert len(net.boundary_conditions) == 0
 
-    def test_get_alternative_net_empty(self):
-        net = Net()
+    def test_get_alternative_net_empty(self, flux_dof_types_register):
+        net = Net(flux_dof_types_register)
 
         alternative_net = net.get_alternative_net(OTHER_ID)
 
@@ -712,8 +728,8 @@ class TestNet:
         assert alternative_net.nodes == {}
         assert alternative_net.boundary_conditions == {}
 
-    def test_get_alternative_net(self, block_a_type):
-        net = Net()
+    def test_get_alternative_net(self, flux_dof_types_register, block_a_type):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
 
         # Add blocks with alternatives
@@ -736,8 +752,10 @@ class TestNet:
         assert NODE_ID in alternative_net.nodes
         assert alternative_net.nodes[NODE_ID] is not net.nodes[NODE_ID]
 
-    def test_get_alternative_net_with_dof_boundary(self, block_a_type):
-        net = Net()
+    def test_get_alternative_net_with_dof_boundary(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -760,8 +778,10 @@ class TestNet:
             alternative_net.boundary_conditions[NODE_ID][0].condition_type == DOF_TYPE
         )
 
-    def test_get_alternative_net_with_flux_boundary(self, block_a_type):
-        net = Net()
+    def test_get_alternative_net_with_flux_boundary(
+        self, flux_dof_types_register, block_a_type
+    ):
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_ID)
         net.add_block(
             BLOCK_ID,
@@ -785,9 +805,9 @@ class TestNet:
         )
 
     def test_get_alternative_net_with_missing_flux_in_alternative(
-        self, block_a_type, block_b_type
+        self, flux_dof_types_register, block_a_type, block_b_type
     ):
-        net = Net()
+        net = Net(flux_dof_types_register)
         net.add_node(NODE_A_ID)
         net.add_node(NODE_B_ID)
 

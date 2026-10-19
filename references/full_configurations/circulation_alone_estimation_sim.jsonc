@@ -1,0 +1,336 @@
+{
+    "type": "estimation_simulation",
+    "simulation_options": {
+        "min_step": 6.25e-05,
+        "model_noise_stdev": {
+            "aorta_proximal.blood_pressure": 0.0001,
+            "aorta_distal.blood_pressure": 0.0001,
+            "aorta_distal.resistance": 0.001
+        },
+        "transformation_operators": {
+            "aorta_distal.resistance": {
+                "type": "power_transform",
+                "scaling_factor": 100000000.0
+            }
+        }
+    },
+    "time": {
+        "type": "range",
+        "step_size": "time.step_size",
+        "start": "time.start",
+        "length": "time.duration"
+    },
+    "filter": {
+        "type": "unscented_kalman_filter"
+    },
+    "solver": {
+        "type": "linear_solver"
+    },
+    "plots": {
+        "main_plot": {
+            "type": "plot",
+            "inputs": [
+                "main"
+            ],
+            "abscissas": "time"
+        },
+        "estimations": {
+            "type": "plot",
+            "traces": {
+                "value": {
+                    "matches": "{subplot_id}",
+                    "style": {
+                        "mode": "lines",
+                        "line": {
+                            "color": "blue"
+                        },
+                        "legendgroup": "value"
+                    }
+                },
+                "stdev_min": {
+                    "matches": "stdev_min.{subplot_id}",
+                    "style": {
+                        "mode": "lines",
+                        "line": {
+                            "color": "blue",
+                            "width": 1.0
+                        },
+                        "legendgroup": "stdev"
+                    },
+                    "showlegend": 0
+                },
+                "stdev": {
+                    "matches": "stdev_plus.{subplot_id}",
+                    "style": {
+                        "mode": "lines",
+                        "line": {
+                            "color": "blue",
+                            "width": 1.0
+                        },
+                        "fill": "tonexty",
+                        "fillcolor": "rgba(0, 0, 255, 0.2)",
+                        "legendgroup": "stdev"
+                    }
+                },
+                "measurement": {
+                    "matches": "measurement.{subplot_id}",
+                    "style": {
+                        "mode": "lines",
+                        "line": {
+                            "color": "green",
+                            "dash": "dash"
+                        },
+                        "legendgroup": "measurement"
+                    }
+                }
+            },
+            "abscissas": "time",
+            "subplots": [
+                "aorta_proximal.blood_pressure",
+                "aorta_distal.blood_pressure",
+                "aorta_distal.resistance",
+                "aorta_proximal.blood_flow"
+            ],
+            "inputs": [
+                "main",
+                "measurements"
+            ]
+        }
+    },
+    "parameters": {
+        "time.start": 0.0,
+        "time.step_size": 0.001,
+        "heartbeat_duration": {
+            "type": "product",
+            "factors": [
+                60.0
+            ],
+            "inverses": [
+                "heart_rate"
+            ]
+        },
+        "aorta_proximal.capacitance": 2e-10,
+        "aorta_distal.capacitance": 1.2e-08,
+        "time.duration": 10.0,
+        "aorta_proximal.blood_pressure.init": 0.0,
+        "aorta_distal.blood_pressure.init": 0.0,
+        "heart_rate": 60.0,
+        "aorta_proximal.resistance": 7000000.0,
+        "aorta_distal.resistance.init": 500000000.0,
+        "venous.blood_pressure": 1600.0,
+        "aorta_proximal.blood_flow.min": 0.0,
+        "aorta_proximal.blood_flow.max": 0.0005
+    },
+    "filter_type": "unscented_kalman_filter",
+    "net": {
+        "type": "net",
+        "flux_dof_definitions": {
+            "blood_flow": "blood_pressure"
+        },
+        "nodes": [
+            "aorta_proximal",
+            "aorta_distal",
+            "venous"
+        ],
+        "blocks": {
+            "circulation_aorta_proximal": {
+                "type": "block_description",
+                "model_type": "rc_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "resistance": "aorta_proximal.resistance",
+                "capacitance": "aorta_proximal.capacitance",
+                "nodes": {
+                    "1": "aorta_distal",
+                    "2": "aorta_proximal"
+                }
+            },
+            "circulation_aorta_distal": {
+                "type": "block_description",
+                "model_type": "rc_block",
+                "time": "time",
+                "flux_type": "blood_flow",
+                "resistance": "aorta_distal.resistance",
+                "capacitance": "aorta_distal.capacitance",
+                "nodes": {
+                    "1": "venous",
+                    "2": "aorta_distal"
+                }
+            }
+        },
+        "boundaries_conditions": {
+            "aorta_proximal": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_flow",
+                    "condition_id": "aorta_proximal.blood_flow"
+                }
+            ],
+            "venous": [
+                {
+                    "type": "condition",
+                    "condition_type": "blood_pressure",
+                    "condition_id": "venous.blood_pressure"
+                }
+            ]
+        }
+    },
+    "data": {
+        "measurements": {
+            "type": "read_data",
+            "filepath": "references/synthetic_data/circulation_alone_measurements.csv"
+        }
+    },
+    "preprocesses": {
+        "measurements_mapping": {
+            "type": "rename_process",
+            "inputs": [
+                "measurements"
+            ],
+            "outputs": [
+                "measurements"
+            ],
+            "mapping": {
+                "proximal_pressure": "measurement.aorta_proximal.blood_pressure"
+            }
+        },
+        "interpolate_measurements": {
+            "type": "interpolation_process",
+            "inputs": [
+                "measurements"
+            ],
+            "outputs": [
+                "measurements"
+            ],
+            "abscissas": "time",
+            "abscissas_start": "time.start",
+            "abscissas_step": "time.step_size",
+            "abscissas_length": "time.duration"
+        },
+        "SI_unit_conversion": {
+            "type": "conversion_process",
+            "inputs": [
+                "measurements"
+            ],
+            "outputs": [
+                "measurements"
+            ],
+            "conversion_factors": {
+                "measurement.aorta_proximal.blood_pressure": 133.32231202220615
+            }
+        }
+    },
+    "observer": {
+        "type": "observer",
+        "observations": {
+            "observation.aorta_proximal.blood_pressure": {
+                "type": "observation",
+                "measurement": "measurement.aorta_proximal.blood_pressure",
+                "operator": {
+                    "type": "watch_quantity",
+                    "evaluation_quantities": {
+                        "quantity": "aorta_proximal.blood_pressure"
+                    }
+                },
+                "magnitude": 100000.0,
+                "stdev": 0.0001
+            }
+        }
+    },
+    "state": {
+        "aorta_proximal.blood_pressure": {
+            "type": "quantity",
+            "value": "aorta_proximal.blood_pressure.init",
+            "stdev": 0.05,
+            "magnitude": 100000.0
+        },
+        "aorta_distal.blood_pressure": {
+            "type": "quantity",
+            "value": "aorta_distal.blood_pressure.init",
+            "stdev": 0.05,
+            "magnitude": 100000.0
+        }
+    },
+    "estimated_parameters": {
+        "aorta_distal.resistance": {
+            "type": "quantity",
+            "value": "aorta_distal.resistance.init",
+            "stdev": 0.5,
+            "magnitude": 100000000.0
+        }
+    },
+    "update_functions": {
+        "aorta_proximal.blood_flow": {
+            "type": "rescale_two_phases_function",
+            "evaluation_quantities": {
+                "time": "time"
+            },
+            "rescaled_period": "heartbeat_duration",
+            "alpha": 0.8,
+            "reference_function": [
+                [
+                    0.0,
+                    "aorta_proximal.blood_flow.min"
+                ],
+                [
+                    0.075,
+                    "aorta_proximal.blood_flow.min"
+                ],
+                [
+                    0.134,
+                    "aorta_proximal.blood_flow.max"
+                ],
+                [
+                    0.142,
+                    "aorta_proximal.blood_flow.max"
+                ],
+                [
+                    0.281,
+                    "aorta_proximal.blood_flow.min"
+                ],
+                [
+                    0.9,
+                    "aorta_proximal.blood_flow.min"
+                ]
+            ],
+            "phases": [
+                0,
+                0,
+                1,
+                1,
+                0
+            ]
+        }
+    },
+    "output_functions": {
+        "aorta_proximal.blood_flow": {
+            "type": "watch_quantity",
+            "evaluation_quantities": {
+                "quantity": "aorta_proximal.blood_flow"
+            }
+        }
+    },
+    "postprocesses": {
+        "medical_units_conversion": {
+            "type": "conversion_process",
+            "conversion_factors": {
+                "aorta_proximal.blood_flow": 1000000.0,
+                "measurement.aorta_proximal.blood_pressure": 0.00750062,
+                "aorta_proximal.blood_pressure": 0.00750062,
+                "aorta_distal.blood_pressure": 0.00750062,
+                "stdev_plus.aorta_proximal.blood_pressure": 0.00750062,
+                "stdev_min.aorta_proximal.blood_pressure": 0.00750062,
+                "stdev_plus.aorta_distal.blood_pressure": 0.00750062,
+                "stdev_min.aorta_distal.blood_pressure": 0.00750062
+            },
+            "inputs": [
+                "main",
+                "measurements"
+            ],
+            "outputs": [
+                "main",
+                "measurements"
+            ]
+        }
+    }
+}

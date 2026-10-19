@@ -47,14 +47,14 @@ The **Net Descriptions** are done in JSON files and have four main components:
 4. **Blocks:** a dictionary of all the blocks in the net with their **names**.
    The blocks are defined by their:
     
-    a. **Type:** underlying model defining the **Flux and Internal Equations** of the block.
-    b. **Flux Type:** flux type exchanged by the block.
-       Nodes can receive *any flux type* from blocks.
-       They *sum Flux by type* thus providing *one equation per type of flux* they receive.
-    c. **Global Ids:** **global names** in the net of the block parameters and variable **local names**.
-    d. **Connections:** for every **local node** sharing a flux in the block, their matching **global node** in the net.
-    e. **Sub-models:** the **model components** enhancing the Block.
-    f. **Alternative types:** a dictionary matching **alternative types** with an **alternative net name** for the current block.
+   a. **Type:** underlying model defining the **Flux and Internal Equations** of the block.
+   b. **Flux Type:** flux type exchanged by the block.
+      Nodes can receive *any flux type* from blocks.
+      They *sum Flux by type* thus providing *one equation per type of flux* they receive.
+   c. **Global Ids:** **global names** in the net of the block parameters and variable **local names**.
+   d. **Connections:** for every **local node** sharing a flux in the block, their matching **global node** in the net.
+   e. **Sub-models:** the **model components** enhancing the Block.
+   f. **Alternative types:** a dictionary matching **alternative types** with an **alternative net name** for the current block.
 
 Alternative types and nets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,10 +76,10 @@ Simple circulation net example
 
 As a first example, we will create a *simple circulation net* configuration file consisting in a *two state windkessel model*.
 
-This simple example will focus on :
+This simple example will focus on:
 
-    * creating **nodes**, **blocks**, link them in the **net**
-    * change the **blocks** parameters name in the **global system**.
+* creating **nodes**, **blocks**, link them in the **net**
+* change the **blocks** parameters name in the **global system**.
 
 Simple circulation net model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ Declare blocks and add them to the Net
 
 Like the net, the block itself is represented with a dictionary.
 To declare it as a RC block, we set its ``type`` field.
-(you should be able to find the correct value to set to type for each block in the :ref:`blocks alias documentation <library_aliases_blocks>`).
+(you should be able to find the correct value to set to type for each block in the :mod:`blocks alias documentation <physioblocks.library.blocks>`).
 
 We also set the block's flux type to ``flow``, the only available flux type in our net.
 
@@ -172,8 +172,8 @@ Here is the example for ``RC_1``:
         "type": "rc_block",
         "flux_type": "flow",
         "nodes": {
-            1: "B",
-            2: "A"
+            "1": "B",
+            "2": "A"
         }
     }
 
@@ -195,8 +195,8 @@ If you repeat the process for ``RC_2``, the JSON file should then look like this
                 "flux_type": "flow",
                 "nodes":
                 {
-                    1: "B",
-                    2: "A"
+                    "1": "B",
+                    "2": "A"
                 }
             },
             "RC_2": {
@@ -204,8 +204,8 @@ If you repeat the process for ``RC_2``, the JSON file should then look like this
                 "flux_type": "flow",
                 "nodes":
                 {
-                    1: "C",
-                    2: "B"
+                    "1": "C",
+                    "2": "B"
                 }
             }
         }
@@ -231,8 +231,8 @@ You can rename them in the **Block Description**:
         "resistance": "Ra", // Default RC_1.resistance is renamed Ra
         "capacitance": "Ca", // Default RC_1.capacitance is renamed Ca
         "nodes": {
-            1: "B",
-            2: "A"
+            "1": "B",
+            "2": "A"
         }
     }
 
@@ -252,8 +252,8 @@ If you also rename ``RC_2`` block parameters to match the model name, you get th
                 "capacitance": "Ca",
                 "nodes":
                 {
-                    1: "B",
-                    2: "A"
+                    "1": "B",
+                    "2": "A"
                 }
             },
             "RC_2": {
@@ -263,8 +263,8 @@ If you also rename ``RC_2`` block parameters to match the model name, you get th
                 "capacitance": "Cb",
                 "nodes":
                 {
-                    1: "C",
-                    2: "B"
+                    "1": "C",
+                    "2": "B"
                 }
             }
         }
@@ -279,7 +279,7 @@ For example here, the DOF has a ``pressure`` type, so it is named ``A.pressure``
 
 .. note::
 
-    Notice that the ``A`` and ``B`` nodes only have **one flux** going in.
+    Notice that the ``A`` and ``C`` nodes only have **one flux** going in.
     
     This is inconsistent with our definition for the nodes where fluxes have to verify **Kirchhoff's law**.
     In the next section we will learn to add **Boundary Conditions** at nodes to complete the system.
@@ -294,9 +294,9 @@ Cardiovascular system net example
 
 We are now going to see a more complete **Net** example to learn how to:
     
-    * Enhance **Blocks Definition** with **Model Components**
-    * Define **Blocks parameters and variables** that **share the same quantity**.
-    * Describe **alternative blocks and model components** to perform additional computations on the models.
+* Enhance **Blocks Definition** with **Model Components**
+* Define **Blocks parameters and variables** that **share the same quantity**.
+* Describe **alternative blocks and model components** to perform additional computations on the models.
 
 
 Cardiovascular system model
@@ -312,11 +312,11 @@ Given the following cardiovascular model, we can schematize a **Block-Node** lay
 
 .. note:: 
 
-    If you want to launch a simulation of the model, a simulation configuration using the model is in the ``reference`` folder of the PhysioBlocks package.
+    If you want to launch a simulation of the model, a simulation configuration using the model is in the ``references`` folder of the PhysioBlocks package.
 
 Every block here has an implementation in the PhysioBlocks library.
-See the :ref:`library section of the API Reference <library_blocks>` for descriptions of the fluxes and internal equations shared for each block.
-The **type names** to declare the blocks in configurations are described in the :ref:`alias section<library_aliases_blocks>` of the library.
+See the :mod:`library section of the API Reference <physioblocks.library.blocks>` for descriptions of the fluxes and internal equations shared for each block.
+The **type names** to declare the blocks in configurations are described in the :mod:`alias section <physioblocks.library.blocks>` of the block.
 
 .. note::
 
@@ -345,10 +345,10 @@ Following the process in the last example, we declare:
 * the **net type**.
 * the **fluxes-DOFs couples** (for the cardiovascular system, we declare a ``"blood_flow": "blood_pressure"`` couple)
 * the **nodes names**.
-* We refer to the documentation in the :ref:`Library <library>` to:
+* We refer to the documentation in the :mod:`Library <physioblocks.library>` to:
 
-    * Declare the needed **block types**.
-    * Link the **local node indexes** in the blocks to the **global nodes names** in the net.
+  * Declare the needed **block types**.
+  * Link the **local node indexes** in the blocks to the **global nodes names** in the net.
 
 The JSON file should look like this:
 
@@ -427,12 +427,12 @@ Add model components to blocks
 Based on the :class:`~physioblocks.library.blocks.cavity.SphericalCavityBlock` object documentation, notice the cavity contributes a flux that only depends on the cavity **volume variation** based on ``disp`` (:math:`y` in the model).
 We could consider ``disp`` as a parameter and give it a value that varies over time.
 
-But here, we will add **model components** to the cavity to enhance the block with a dynamics on :math:`y` related to the pressure in the Ventricle (ie. the DOF at node ``ventricle`` or :math:`P_V` in the model).
+But here, we will add **model components** to the cavity to enhance the block with a dynamics on :math:`y` related to the pressure in the Ventricle (ie. the DOF at node ``cavity`` or :math:`P_V` in the model).
 
 To add a model component to a block, we update the ``submodels`` dictionary of the block.
 Every model component is defined with a dictionary where the ``type`` field is set to the wanted model component type.
 
-You will find the description of the model component internal equations in the :ref:`library<library_model_components>` and their type names in the :ref:`alias section<library_aliases_model_components>`.
+You will find the description of the model component internal equations in the :mod:`model documentation <physioblocks.library.model_components>` along with its configuration and alias description.
 
 For our cardiovascular system net, the cavity with sub-models gives:
 
@@ -443,16 +443,16 @@ For our cardiovascular system net, the cavity with sub-models gives:
         "flux_type": "blood_flow",
         "submodels": {
             "dynamics": {
-                "type": "spherical_dynamics",
+                "type": "spherical_dynamics"
             },
             "velocity_law": {
-                "type": "velocity_law_hht",
+                "type": "velocity_law_hht"
             },
             "rheology": {
                 "type": "rheology_fiber_additive",
                 "submodels": {
                     "active_law": {
-                        "type": "active_law_macro_huxley_two_moments",
+                        "type": "active_law_macro_huxley_two_moments"
                     }
                 }
             }
@@ -537,7 +537,7 @@ heart_radius                                         radius          radius     
 heart_thickness                                      thickness       thickness 
 **cavity.dynamics.disp**                             disp            disp                disp          disp
 **cavity.velocity_law.vel**                                          vel                 vel           
-**cavity.rheology.fib_deform**                                                                         fib_deform            fib_deform                       
+**cavity.rheology.fib_deform**                                       fib_deform                        fib_deform            fib_deform                       
 **cavity.rheology.series_stiffness**                                 series_stiffness                  series_stiffness
 **cavity.rheology.active_law.active_tension_discr**                                                    active_tension_discr  active_tension_discr
 heart_contractility                                                                                                          contractility
@@ -561,10 +561,10 @@ In order to provide the equations without redefining the current net layout, we 
 
 Here, we are in a very **specific use case** of the alternative nets since:
 
-    * We only define alternative behavior for the cavity block and model components.
-      We will get a **one block alternative net**.
-    * The equations in the alternative cavity net are **static**.
-      Therefore the simulation we will run using the alternative net will not be driven on time.
+* We only define alternative behavior for the cavity block and model components.
+  We will get a **one block alternative net**.
+* The equations in the alternative cavity net are **static**.
+  Therefore the simulation we will run using the alternative net will not be driven on time.
 
 However, keep in mind that you can build **alternative nets** with the same syntax for more generic use cases with a dynamics and several blocks.
 
@@ -576,7 +576,7 @@ Let's define an alternative cavity net using the asymptotic definition for model
 
 .. note::
 
-    All the asymptotic blocks and model components definitions we use are documented in the :ref:`Library <library>`.
+    All the asymptotic blocks and model components definitions we use are documented in the :mod:`Library <physioblocks.library>`.
 
 We only have to select the alternative blocks and models component types to add and match them to their main description.
 The alternative models global ids will then be derived for their main global ids, meaning *the alternative models have the same global ids as the main models*.
@@ -728,8 +728,8 @@ Finally, the full JSON net description for our model gives:
                 "type": "rc_block",
                 "flux_type": "blood_flow",
                 "nodes": {
-                    "1": "proximal"
-                    "2": "distal",
+                    "1": "distal",
+                    "2": "proximal"
                 }
             },
             "circulation_aorta_distal": {

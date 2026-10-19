@@ -26,12 +26,11 @@
 
 import pytest
 
-from physioblocks.computing.quantities import Quantity
+from physioblocks.computing.quantities import QuantitiesRegistry, Quantity
 from physioblocks.library.model_components.rheology import (
     RheologyFiberAdditiveModelComponent,
     RheologyFiberAdditiveModelComponentAsymptotic,
 )
-from physioblocks.simulation.state import State
 from physioblocks.simulation.time_manager import Time
 from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
@@ -51,7 +50,7 @@ class TestRheologyFiberAdditiveStaticModelComponent:
     def test_check_gradient(
         self, ref_model_static: RheologyFiberAdditiveModelComponentAsymptotic
     ):
-        state = State()
+        state = QuantitiesRegistry()
         state["fib_deform"] = ref_model_static.fib_deform
         state["disp"] = ref_model_static.disp
         state["active_tension_discr"] = ref_model_static.active_tension_discr
@@ -74,7 +73,7 @@ def ref_model() -> RheologyFiberAdditiveModelComponent:
 
 class TestRheologyFiberAdditiveModelComponent:
     def test_check_gradient(self, ref_model: RheologyFiberAdditiveModelComponent):
-        state = State()
+        state = QuantitiesRegistry()
         state["fib_deform"] = ref_model.fib_deform
         state["disp"] = ref_model.disp
         state["active_tension_discr"] = ref_model.active_tension_discr

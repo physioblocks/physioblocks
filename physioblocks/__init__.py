@@ -24,9 +24,9 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""Physioblocks package definition"""
+"""Physioblocks package definition."""
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 __copyright__ = "INRIA"
 __license__ = "LGPL-3.0-only"
 __authors__ = [

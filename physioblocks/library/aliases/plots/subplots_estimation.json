@@ -1,0 +1,51 @@
+{
+    "type": "plot",
+    "traces":{
+        "value": {
+            "matches": "{subplot_id}",
+            "style": {
+                "mode": "lines",
+                "line": {
+                    "color": "blue"
+                },
+                "legendgroup": "value"
+            }
+        },
+        "stdev_min": {
+            "matches": "stdev_min.{subplot_id}",
+            "style": {
+                "mode": "lines",
+                "line": {
+                    "color": "blue",
+                    "width": 1.0
+                },
+                "legendgroup": "stdev"
+            },
+            "showlegend": 0
+        },
+        "stdev": {
+            "matches": "stdev_plus.{subplot_id}",
+            "style": {
+                "mode": "lines",
+                "line": {
+                    "color": "blue",
+                    "width": 1.0
+                },
+                "fill": "tonexty",
+                "fillcolor": "rgba(0, 0, 255, 0.2)",
+                "legendgroup": "stdev"
+            }
+        },
+        "measurement": {
+            "matches": "measurement.{subplot_id}",
+            "style": {
+                "mode": "lines",
+                "line": {
+                    "color": "green",
+                    "dash": "dash"
+                },
+                "legendgroup": "measurement"
+            }
+        }
+    }
+}

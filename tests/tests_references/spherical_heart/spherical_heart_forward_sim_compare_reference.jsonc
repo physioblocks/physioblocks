@@ -1,0 +1,31 @@
+{
+    "type": "./references/spherical_heart_forward_sim.jsonc",
+    "postprocesses": {
+        "compare_reference_simulation": {
+            "type": "compare_process",
+            "inputs": ["main"],
+            "outputs": ["main_error"],
+            "abscissas": "time",
+            "reference": "./tests/tests_references/spherical_heart/ref_spherical_heart_sim.csv"
+        },
+        "compare_reference_espvr_edpvr": {
+            "type": "compare_process",
+            "inputs": ["espvr-edpvr"],
+            "outputs": ["espvr-edpvr_error"],
+            "abscissas": "cavity.dynamics.disp",
+            "reference": "./tests/tests_references/spherical_heart/ref_spherical_heart_sim_espvr_edpvr.csv"
+        }
+    },
+    "plots":{
+        "plot_error_main": {
+            "type": "plot",
+            "inputs": ["main_error"],
+            "abscissas": "time"
+        },
+        "plot_error_espvr_edpvr": {
+            "type": "plot",
+            "inputs": ["espvr-edpvr_error"],
+            "abscissas": "cavity.dynamics.disp"
+        }
+    }
+}

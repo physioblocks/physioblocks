@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines function to handles series and simulation results
-"""
+"""Defines functions to handle series and simulation results."""
 
 import socket
 from dataclasses import dataclass
@@ -46,29 +44,58 @@ from physioblocks.launcher.constants import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class SimulationInfo:
+    """
+    Hold information about the simulation.
+
+    Parameters
+    ----------
+    machine_name : str
+        the name of the machine running the simulation
+    date_time : str
+        the time stamp of the simulation run
+    series : str
+        the simulation series
+    number : str
+        the simulation number
+    version : str
+        the PhysioBlocks version used
+    message : str
+        a note associated with the simulation
+
+    """
+
     machine_name: str
-    "the mane of the machine running the simulation"
     date_time: str
-    "the time stamp of the simulation run"
     series: str
-    "the simulation serie"
     number: str
-    "the simulation number"
     version: str
-    "the PhysioBlocks version used"
     message: str = ""
-    "a note associated with the simulation"
 
     @property
     def reference(self) -> str:
+        """Get the simulation unique reference.
+
+        Returns
+        -------
+        str
+            the simulation reference.
+        """
         return str.join(
             LAUNCHER_REFERENCE_SEPARATOR, [self.machine_name, self.series, self.number]
         )
 
     @property
     def data_frame(self) -> pd.DataFrame:
+        """
+        Get a dataframe representing the simulation information.
+
+        Returns
+        -------
+        pd.DataFrame
+            the simulation information in a dataframe
+        """
         return pd.DataFrame(
             [
                 [
@@ -96,50 +123,79 @@ class SimulationInfo:
 
 
 def is_valid_reference_name(reference: str) -> bool:
+    """
+    Check a reference validity.
+
+    A valid reference has at least 3 sections separated with underscores and ends
+    with a number.
+
+    Parameters
+    ----------
+    reference : str
+        the reference to test.
+
+    Returns
+    -------
+    bool
+        True if the reference is valid, False otherwise.
+    """
     dir_name_split = reference.split(LAUNCHER_REFERENCE_SEPARATOR)
     return len(dir_name_split) >= 3 and str.isdigit(dir_name_split[-1])
 
 
 def is_valid_reference_dir_name(dir_name: str, series_name: str) -> bool:
+    """
+    Check a reference directory name validity.
+
+    A valid reference directory name is a valid reference name that also contains the
+    series name.
+
+    Parameters
+    ----------
+    dir_name : str
+        the name to check
+    series_name : str
+        the series name
+
+    Returns
+    -------
+    bool
+        True if the name is valid, False otherwise.
+    """
     dir_name_split = dir_name.split(LAUNCHER_REFERENCE_SEPARATOR)
-    dir_series_name = LAUNCHER_REFERENCE_SEPARATOR.join(dir_name_split[1:-1])
-    return is_valid_reference_name(dir_name) and dir_series_name == series_name
+    dir_name_no_suffix = LAUNCHER_REFERENCE_SEPARATOR.join(dir_name_split[0:-1])
+    return is_valid_reference_name(dir_name) and dir_name_no_suffix.endswith(
+        series_name
+    )
 
 
-def parse_reference_number(reference: str) -> tuple[str, str, int]:
-    split_ref = reference.split(LAUNCHER_REFERENCE_SEPARATOR)
+def get_reference_number(series_path: Path) -> str:
+    """Get the next reference number for the given series folder path.
 
-    if is_valid_reference_name(reference) is False:
-        raise ValueError(
-            str.format(
-                "{0} is not a valid simulation reference name.",
-                reference,
-            )
-        )
+    Parameters
+    ----------
+    series_path : Path
+        the series folder path
 
-    number = split_ref[-1]
-    serie = split_ref[-2]
-    machine = str.join(LAUNCHER_REFERENCE_SEPARATOR, split_ref[0:-2])
+    Returns
+    -------
+    str
+        the next reference number.
 
-    return machine, serie, int(number)
+    Raises
+    ------
+    ValueError
+        raises a ValueError if the given series path does not exist or is
+        not a directory.
 
-
-def reference_follows(tested_reference: str, base_reference: str) -> bool:
-    # Return true if the base reference comes after (or is the same as)
-    # the tested reference
-    parsed_tested = parse_reference_number(tested_reference)
-    parsed_base = parse_reference_number(base_reference)
-    return parsed_tested[1] == parsed_base[1] and parsed_tested[2] >= parsed_base[2]
-
-
-def get_reference_number(serie_path: Path) -> str:
-    serie_name = serie_path.name
-    if serie_path.exists() is False:
-        raise FileNotFoundError(str.format("No series directory at {0}", serie_path))
+    """
+    series_name = series_path.name
+    if series_path.exists() is False or series_path.is_dir() is False:
+        raise ValueError(str.format("No series directory at {0}", series_path))
     numbers = [
         int(d.name.split(LAUNCHER_REFERENCE_SEPARATOR)[-1])
-        for d in serie_path.iterdir()
-        if is_valid_reference_dir_name(d.name, serie_name) is True
+        for d in series_path.iterdir()
+        if is_valid_reference_dir_name(d.name, series_name) is True
     ]
     if len(numbers) > 0:
         return str(max(numbers) + 1)
@@ -147,8 +203,23 @@ def get_reference_number(serie_path: Path) -> str:
     return str(1)
 
 
-def get_simulation_info(serie_path: Path, message: str) -> SimulationInfo:
-    number = get_reference_number(serie_path)
+def get_simulation_info(series_path: Path, message: str) -> SimulationInfo:
+    """Create simulation info from the given series path and message.
+
+    Parameters
+    ----------
+    series_path : Path
+        the simulation series path
+    message : str
+        the simulation message
+
+    Returns
+    -------
+    SimulationInfo
+        the simulation information
+
+    """
+    number = get_reference_number(series_path)
 
     # get the machine name
     host_name = socket.gethostname()
@@ -161,5 +232,5 @@ def get_simulation_info(serie_path: Path, message: str) -> SimulationInfo:
     lib_version = version(physioblocks.__name__)
 
     return SimulationInfo(
-        machine_name, time_stamp, serie_path.name, number, lib_version, message
+        machine_name, time_stamp, series_path.name, number, lib_version, message
     )

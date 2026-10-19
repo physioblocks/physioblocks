@@ -24,9 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Defines object to describe Nets
-"""
+"""Define objects to describe Nets."""
 
 __all__ = ["BlockDescription", "ModelComponentDescription", "Net", "Node"]
 

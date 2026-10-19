@@ -38,5 +38,4 @@ Welcome to the PhysioBlocks documentation.
    presentation
    installation
    user_guide
-   library
    api_reference

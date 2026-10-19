@@ -33,7 +33,7 @@ They will be useful to debug or to setup non-regression tests.
 It is a simple test that compares the **estimated gradient** of the global system with the **computed gradient** from the defined partial derivatives.
 While it does not validate your residual function itself, it checks its consistency with the partial derivatives definition.
 
-The gradient test function updates a provided :class:`~physioblocks.simulation.state.State` object with an increment based on the **variables magnitudes**.
+The gradient test function updates a provided :class:`~physioblocks.computing.quantities.QuantitiesRegistry` object with an increment based on the **variables magnitudes**.
 It computes the gradient using the defined partial derivatives for the variables in the state.
 It then compares it to an estimation based on the computation of the **residual**.
 
@@ -45,10 +45,10 @@ Setup a logger
 
 Test output is directed to a logger. Main information and the matching ``loglevel`` are:
 
-    * ``INFO``: the variable names and their indexes in the state
-    * ``INFO``: the fluxes and internal expressions function names used at each residual line index
-    * ``DEBUG``: the difference between the computed and estimated gradient
-    * ``DEBUG``: the name of the variable and position in the gradient if an error is over the threshold
+* ``INFO``: the variable names and their indexes in the state
+* ``INFO``: the fluxes and internal expressions function names used at each residual line index
+* ``DEBUG``: the difference between the computed and estimated gradient
+* ``DEBUG``: the name of the variable and position in the gradient if an error is over the threshold
 
 You have to redirect the logs to a the console or a file. Let's see an example with the console.
     
@@ -56,17 +56,23 @@ You have to redirect the logs to a the console or a file. Let's see an example w
 
     import logging
     import sys
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    add_log_handler(stdout_handler, logging.DEBUG)
+    import physioblocks
 
-Typically, you can set the level to ``INFO`` for a minimal output and ``DEBUG`` for a full ouput of the tests informations.
+    logger = logging.getLogger(physioblocks.__name__)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger.setLevel(logging.DEBUG)
 
-Test a full net
----------------
+Typically, you can set the level to ``INFO`` for a minimal output and ``DEBUG`` for a full ouput of the tests information.
 
-``gradient_test_from_file`` function allows to test a net using a full configuration file.
+Test a net
+----------
+
+``gradient_test_from_file`` function allows to test a net using a configuration file.
 It is useful to check that your net definition is correct.
 In this case you don't have to provide a state: it is created from the **Net definition**.
+
+The configuration file describes a ``simulation_model_factory`` object rather than a full simulation.
+It holds the ``time``, ``net``, ``state`` and ``parameters`` items of a simulation configuration (see :ref:`how to write a simulation configuration <user_guide_level_2_create_simulation>`).
 
 It needs a configuration files, to import every object used in the configuration and to import the aliases you use in the configuration.
 You can simply import classes and functions you need for your configuration in your python script, but you can also use the ``dynamic_import_utils`` module to dynamically import the objects you need from your user library.
@@ -83,19 +89,31 @@ Then you can add any path to packages you want to load.
 
 .. code:: python
 
+    from pathlib import Path
+    from physioblocks.utils.dynamic_import_utils import import_libraries
+
     import_libraries(
-        Path("$PHYSIOBLOCKS_PACKAGE_PATH$/physioblocks/library"), 
-        Path("$PATH_TO_YOUR_LIBRARY$")
+        [
+            Path("$PHYSIOBLOCKS_PACKAGE_PATH$/physioblocks/library"),
+            Path("$PATH_TO_YOUR_LIBRARY$"),
+        ]
     )
+
+.. note::
+
+    The path you add must be in a site directory to be imported correctly.
+    If it is not the case, call ``site.addsitedir(PATH_TO_YOUR_LIBRARY)`` before dynamically importing your library or copy your library to an existing site.
 
 Load the aliases
 ^^^^^^^^^^^^^^^^
 
-You can load aliases with the ``load_aliases`` function from the PhysioBlocks ``aliases`` module.
+You can load aliases with the ``load_aliases`` function from the PhysioBlocks ``io.aliases`` module.
 
 It will also need to load the base PhysioBlocks aliases, and your user defined aliases:
 
 .. code:: python
+
+    from physioblocks.io.aliases import load_aliases
 
     load_aliases("$PHYSIOBLOCKS_PACKAGE_PATH$/physioblocks/library/aliases")
     load_aliases("$PATH_TO_YOUR_ALIAS_FOLDER$")
@@ -107,7 +125,9 @@ Once you have loaded every object and aliases you need, you can directly use the
 
 .. code:: python
 
-    assert gradient_test_from_file(FULL_PATH_TO_SIMULATION_CONFIGURATION_FILE)
+    from physioblocks.utils.gradient_test_utils import gradient_test_from_file
+
+    assert gradient_test_from_file(FULL_PATH_TO_MODEL_FACTORY_CONFIGURATION_FILE)
 
 
 Test a Block
@@ -116,14 +136,17 @@ Test a Block
 You can test a single block or model component definition with ``gradient_test_from_model`` function. 
 In this case you only test its fluxes and internal equations.
 
-You will have to create a :class:`~physioblocks.simulation.state.State` object containing the variables you want to test and provide **magnitudes** for the variables.
+You will have to create a :class:`~physioblocks.computing.quantities.QuantitiesRegistry` object containing the variables you want to test and provide **magnitudes** for the variables.
 In this case, since you will have to instantiate the block yourself, so you can import it directly.
 
 Let's see an example for the RCR Block:
 
 .. code:: python
 
+    from physioblocks.computing.quantities import Quantity, QuantitiesRegistry
     from physioblocks.library.blocks.capacitances import RCRBlock
+    from physioblocks.simulation.time_manager import Time
+    from physioblocks.utils.gradient_test_utils import gradient_test_from_model
 
     # Create the tested block
     rcr_block = RCRBlock(
@@ -135,16 +158,18 @@ Let's see an example for the RCR Block:
         capacitance=Quantity(2.3e-8),
         time=Time(0.0),
     )
+    # Set a time step
+    rcr_block.time.update(0.001)
 
     # Create a state:
-    state = State() # Create a state
+    state = QuantitiesRegistry() # Create a state
     # Create a state variable for each variable you want to test.
-    state["pressure_1"] = ref_block.pressure_1 # link variable to quantity in the block
-    state["pressure_mid"] = ref_block.pressure_mid
-    state["pressure_2"] = ref_block.pressure_2
+    state["pressure_1"] = rcr_block.pressure_1 # link variable to quantity in the block
+    state["pressure_mid"] = rcr_block.pressure_mid
+    state["pressure_2"] = rcr_block.pressure_2
 
     # Provide the variables magnitudes
-    state.set_variables_magnitudes(
+    state.set_magnitudes(
         {
             "pressure_1": 1e4,
             "pressure_mid": 1e4,
@@ -153,7 +178,7 @@ Let's see an example for the RCR Block:
     )
 
     # call the test function
-    assert gradient_test_from_model(ref_rcr_block, state)
+    assert gradient_test_from_model(rcr_block, state)
 
 
 Test a single expression
@@ -162,11 +187,15 @@ Test a single expression
 Alternatively you can also test a single :class:`~physioblocks.computing.models.Expression` object.
 In this case, you will still have to provide the state and the variables magnitudes.
 
-From our previous example, let's only test the flux at node 0:
+From our previous example, let's only test the flux at local node 1.
+The block type holds its flux expressions in a dictionary indexed by local node, and the tested block instance provides the parameters of the expression:
 
 .. code:: python
 
+    from physioblocks.computing.quantities import Quantity, QuantitiesRegistry
     from physioblocks.library.blocks.capacitances import RCRBlock
+    from physioblocks.simulation.time_manager import Time
+    from physioblocks.utils.gradient_test_utils import gradient_test_from_expression
 
     # Create the tested block
     rcr_block = RCRBlock(
@@ -178,17 +207,19 @@ From our previous example, let's only test the flux at node 0:
         capacitance=Quantity(2.3e-8),
         time=Time(0.0),
     )
+    # Set a time step
+    rcr_block.time.update(0.001)
 
     # Create a state:
-    state = State() # Create a state
+    state = QuantitiesRegistry() # Create a state
 
     # Create a state variable for each variable you want to test.
-    state["pressure_1"] = ref_block.pressure_1
-    state["pressure_mid"] = ref_block.pressure_mid
-    state["pressure_2"] = ref_block.pressure_2
+    state["pressure_1"] = rcr_block.pressure_1
+    state["pressure_mid"] = rcr_block.pressure_mid
+    state["pressure_2"] = rcr_block.pressure_2
 
     # Provide the variables magnitude
-    state.set_variables_magnitudes(
+    state.set_magnitudes(
         {
             "pressure_1": 1e4,
             "pressure_mid": 1e4,
@@ -197,4 +228,4 @@ From our previous example, let's only test the flux at node 0:
     )
 
     # call the test function
-    assert gradient_test_from_expression(RCRBlock.fluxes_expressions[0].expression, state)
+    assert gradient_test_from_expression(RCRBlock.fluxes_expressions[1], rcr_block, state)
