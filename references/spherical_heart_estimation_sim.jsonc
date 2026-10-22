@@ -5,7 +5,7 @@
         //  * proximal pressure in mmHg
         //  * proximal flow in mL/s
         "measurements": {
-            "filepath": "references/synthetic_data/spherical_heart_measurements.csv"
+            "filepath": "synthetic_data/spherical_heart_measurements.csv"
         }
     },
     "preprocesses":{

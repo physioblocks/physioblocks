@@ -57,7 +57,7 @@
     "data": {
         "measurements": {
             "type": "read_data",
-            "filepath": "simulations_results/user_guide/level_2/estimation/1_synthetic_data/synthetic_data.csv"
+            "filepath": "synthetic_data.csv"
         }
     },
     "preprocesses": {

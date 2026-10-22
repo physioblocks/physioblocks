@@ -24,6 +24,7 @@
 # You should have received a copy of the GNU Lesser General Public License along with
 # PhysioBlocks. If not, see <https://www.gnu.org/licenses/>.
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -121,12 +122,20 @@ def reference_test(
 
     """
     sim_config = read_json(case.config_path)
-    sim_config = unwrap_aliases(sim_config)
-    sim: AbstractSimulation = load(sim_config)
+    exec_dir = Path.cwd()
+    config_path = Path(case.config_path)
+    os.chdir(config_path.parent)
 
-    if case.duration is not None:
-        sim.simulation_model.time_manager.duration = case.duration
-    results = sim.run()
+    try:
+        sim_config = unwrap_aliases(sim_config)
+        sim: AbstractSimulation = load(sim_config)
+
+        if case.duration is not None:
+            sim.simulation_model.time_manager.duration = case.duration
+
+        results = sim.run()
+    finally:
+        os.chdir(exec_dir)
 
     tol_factors = (
         dict(sim.simulation_model.state.magnitudes) if case.use_state_magnitudes else {}

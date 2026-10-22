@@ -148,29 +148,37 @@ def _main(
     import_configured_libraries(launcher_configuration)
     import_configured_aliases(launcher_configuration)
 
-    # Load configuration and unwrap aliases
-    sim_config: Configuration = _load_configuration(config_file_path)
+    exec_dir = Path.cwd()
+    # Config paths are relative to the config file.
+    os.chdir(config_file_path.parent)
 
-    # copy the unwrapped simulation configuration file to the simulation folder
-    write_json(str(sim_folder / config_file_path.name), sim_config)
+    try:
+        # Load configuration and unwrap aliases
+        sim_config: Configuration = _load_configuration(config_file_path)
 
-    # run the simulation
-    data = _run_simulation(sim_config)
+        # copy the unwrapped simulation configuration file to the simulation folder
+        write_json(str(sim_folder / config_file_path.name), sim_config)
 
-    # write the result
-    write_simulation_results(sim_folder, data, extension)
+        # run the simulation
+        data = _run_simulation(sim_config)
 
-    # trace the configured plots.
-    if PLOTS_CONFIGURATION_ID in sim_config:
-        plots: dict[str, AbstractPlotProcess] = load(sim_config[PLOTS_CONFIGURATION_ID])
+        # write the result
+        write_simulation_results(sim_folder, data, extension)
 
-        # Initialize plot processes
-        for plot_id, plot_process in plots.items():
-            plot_process.folder_path = sim_folder
-            plot_process.plot_name = plot_id
+        # trace the configured plots.
+        if PLOTS_CONFIGURATION_ID in sim_config:
+            plots: dict[str, AbstractPlotProcess] = load(
+                sim_config[PLOTS_CONFIGURATION_ID]
+            )
 
-        # Run processes
-        run_processes(plots, data)
+            # Initialize plot processes
+            for plot_id, plot_process in plots.items():
+                plot_process.folder_path = sim_folder
+                plot_process.plot_name = plot_id
+
+            run_processes(plots, data)
+    finally:
+        os.chdir(exec_dir)
 
     return 0
 

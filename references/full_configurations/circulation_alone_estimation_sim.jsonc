@@ -178,7 +178,7 @@
     "data": {
         "measurements": {
             "type": "read_data",
-            "filepath": "references/synthetic_data/circulation_alone_measurements.csv"
+            "filepath": "../synthetic_data/circulation_alone_measurements.csv"
         }
     },
     "preprocesses": {

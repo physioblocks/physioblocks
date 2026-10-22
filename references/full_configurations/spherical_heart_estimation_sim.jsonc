@@ -624,7 +624,7 @@
     "data": {
         "measurements": {
             "type": "read_data",
-            "filepath": "references/synthetic_data/spherical_heart_measurements.csv"
+            "filepath": "../synthetic_data/spherical_heart_measurements.csv"
         }
     },
     "preprocesses": {
