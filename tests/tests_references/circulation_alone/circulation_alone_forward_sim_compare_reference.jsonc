@@ -1,12 +1,12 @@
 {
-    "type": "./references/circulation_alone_forward_sim.jsonc",
+    "type": "../../../references/circulation_alone_forward_sim.jsonc",
     "postprocesses": {
         "compare_reference_simulation": {
             "type": "compare_process",
             "inputs": ["main"],
             "outputs": ["main_error"],
             "abscissas": "time",
-            "reference": "./tests/tests_references/circulation_alone/ref_circulation_alone_forward_sim.csv"
+            "reference": "ref_circulation_alone_forward_sim.csv"
         }
     },
     "plots":{

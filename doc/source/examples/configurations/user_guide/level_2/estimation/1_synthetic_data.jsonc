@@ -55,7 +55,7 @@
         "copy": {
             "type": "write_process",
             "inputs": ["synthetic_data"],
-            "destinations": ["simulations_results/user_guide/level_2/estimation/1_synthetic_data/synthetic_data.csv"]
+            "destinations": ["synthetic_data.csv"]
         }
     },
     "plots": {

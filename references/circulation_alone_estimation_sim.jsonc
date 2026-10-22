@@ -4,7 +4,7 @@
         // the measurements file should provide proximal pressure
         // for the simulation length in mmHg.
         "measurements": {
-            "filepath": "references/synthetic_data/circulation_alone_measurements.csv"
+            "filepath": "synthetic_data/circulation_alone_measurements.csv"
         }
     },
     "preprocesses":{
